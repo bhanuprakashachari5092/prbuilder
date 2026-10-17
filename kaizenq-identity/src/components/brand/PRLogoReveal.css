@@ -1,0 +1,102 @@
+/* PR BUILDER — PREMIUM CINEMATIC LOGO REVEAL STYLES */
+
+.pr-reveal-viewport {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #F7F9FC;
+  isolation: isolate;
+  overflow: hidden;
+  user-select: none;
+}
+
+.pr-reveal-canvas {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* Subtle architectural coordinate grid background */
+.pr-reveal-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(225, 239, 242, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(225, 239, 242, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+}
+
+/* Ambient Radial Glow */
+.pr-reveal-ambient-glow {
+  position: absolute;
+  inset: -25%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at center,
+    rgba(225, 239, 242, 0.14) 0%,
+    rgba(164, 183, 191, 0.06) 45%,
+    transparent 72%
+  );
+  filter: blur(28px);
+  z-index: 1;
+}
+
+/* Tracing Drafting Line Styles */
+.pr-draft-stroke {
+  fill: none;
+  stroke: #E1EFF2;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)) drop-shadow(0 0 8px rgba(180, 210, 222, 0.5));
+}
+
+/* Drafting pen tip traveling glow */
+.pr-draft-head {
+  fill: #FFFFFF;
+  filter: drop-shadow(0 0 6px #FFFFFF) drop-shadow(0 0 12px rgba(225, 239, 242, 0.9));
+}
+
+/* Metallic Sheen Traveling Sweep */
+.pr-shine-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  mix-blend-mode: color-dodge;
+  overflow: hidden;
+}
+
+.pr-shine-beam {
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.0) 30%,
+    rgba(255, 255, 255, 0.45) 48%,
+    rgba(235, 245, 248, 0.8) 50%,
+    rgba(255, 255, 255, 0.45) 52%,
+    transparent 70%
+  );
+  transform: skewX(-25deg);
+  filter: blur(4px);
+}
+
+/* Reduced Motion Override */
+@media (prefers-reduced-motion: reduce) {
+  .pr-reveal-viewport *,
+  .pr-reveal-ambient-glow,
+  .pr-shine-beam {
+    animation: none !important;
+    transition: none !important;
+  }
+}

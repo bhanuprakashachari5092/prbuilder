@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 328 316" width="328" height="316" fill="none">
+  <defs>
+    <!-- Premium Metallic Silver Gradient matching original logo -->
+    <linearGradient id="prSilverMetallic" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EAF2F5" />
+      <stop offset="25%" stop-color="#C8D6DC" />
+      <stop offset="50%" stop-color="#A4B7BF" />
+      <stop offset="75%" stop-color="#CCD9DF" />
+      <stop offset="100%" stop-color="#8E9FA8" />
+    </linearGradient>
+
+    <!-- Chrome Edge Highlight -->
+    <linearGradient id="prStrokeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9" />
+      <stop offset="40%" stop-color="#C2D3DA" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#7B8E97" stop-opacity="0.4" />
+    </linearGradient>
+  </defs>
+
+  <!-- Part 1: Outer Shield Frame -->
+  <path
+    d="M 7,10 L 320,10 L 320,163 L 261,215 L 243,196 L 293,151 L 293,38 L 34,38 L 34,276 L 85,276 L 85,304 L 7,304 Z"
+    fill="url(#prSilverMetallic)"
+    stroke="url(#prStrokeGlow)"
+    stroke-width="1"
+    stroke-linejoin="miter"
+  />
+
+  <!-- Part 2: Upper PR Loop & Long Diagonal Slash -->
+  <path
+    d="M 84,81 L 244,81 L 244,118 L 86,262 L 84,228 L 214,109 L 84,109 Z"
+    fill="url(#prSilverMetallic)"
+    stroke="url(#prStrokeGlow)"
+    stroke-width="1"
+    stroke-linejoin="miter"
+  />
+
+  <!-- Part 3: Middle Horizontal Bar -->
+  <path
+    d="M 84,142 L 156,142 L 129,169 L 84,169 Z"
+    fill="url(#prSilverMetallic)"
+    stroke="url(#prStrokeGlow)"
+    stroke-width="1"
+    stroke-linejoin="miter"
+  />
+
+  <!-- Part 4: Bottom-Right Chevron / Checkmark -->
+  <path
+    d="M 176,197 L 208,228 L 233,205 L 252,223 L 208,264 L 158,215 Z"
+    fill="url(#prSilverMetallic)"
+    stroke="url(#prStrokeGlow)"
+    stroke-width="1"
+    stroke-linejoin="miter"
+  />
+</svg>
