@@ -11,6 +11,8 @@ import { useAuth } from './providers/AuthContext.tsx'
 import { PageContainer } from '../components/layout/PageContainer.tsx'
 import { PublicPortfolioPage } from '../pages/Portfolio/components/public/PublicPortfolioPage.tsx'
 import { AuthRequiredGate } from '../components/auth/AuthRequiredGate.tsx'
+import { AdminDashboard } from '../pages/Admin/index.tsx'
+import { AdminAccessDenied } from '../pages/Admin/components/AdminAccessDenied.tsx'
 
 export type RouteKey =
   | 'home'
@@ -22,6 +24,7 @@ export type RouteKey =
   | 'portfolio-preview'
   | 'public-portfolio'
   | 'settings'
+  | 'admin'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -71,6 +74,68 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           setIsAuthOpen(true)
         }}
         onGoHome={() => setCurrentRoute('home')}
+      />
+    )
+  }
+
+  return <>{children}</>
+}
+
+interface AdminProtectedRouteProps {
+  children: React.ReactNode
+}
+
+const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) => {
+  const { user, isAdmin, isLoading } = useAuth()
+  const { setIsAuthOpen, setAuthMode, setTargetRouteAfterAuth, setCurrentRoute } = useApp()
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setTargetRouteAfterAuth('admin')
+      setAuthMode('signin')
+      setIsAuthOpen(true)
+    }
+  }, [isLoading, user, setTargetRouteAfterAuth, setAuthMode, setIsAuthOpen])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#64748B] font-medium">Verifying administrator authorization...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <AuthRequiredGate
+        targetRouteName="Platform Administration Console"
+        onOpenSignup={() => {
+          setTargetRouteAfterAuth('admin')
+          setAuthMode('signup')
+          setIsAuthOpen(true)
+        }}
+        onOpenSignin={() => {
+          setTargetRouteAfterAuth('admin')
+          setAuthMode('signin')
+          setIsAuthOpen(true)
+        }}
+        onGoHome={() => setCurrentRoute('home')}
+      />
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <AdminAccessDenied
+        onGoBack={() => setCurrentRoute('dashboard')}
+        onSignInAgain={() => {
+          setTargetRouteAfterAuth('admin')
+          setAuthMode('signin')
+          setIsAuthOpen(true)
+        }}
       />
     )
   }
@@ -174,6 +239,12 @@ export const AppRoutes: React.FC = () => {
             <Settings onBack={() => setCurrentRoute('home')} />
           </PageContainer>
         </ProtectedRoute>
+      )
+    case 'admin':
+      return (
+        <AdminProtectedRoute>
+          <AdminDashboard onExitToStudentApp={() => setCurrentRoute('dashboard')} />
+        </AdminProtectedRoute>
       )
     case 'home':
     default:

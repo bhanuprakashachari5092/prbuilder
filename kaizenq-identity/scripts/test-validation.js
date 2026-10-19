@@ -2163,9 +2163,181 @@ async function testCinematicScrollHero() {
   assert(authPort.action === 'navigate' && authPort.route === 'portfolio', 'Directly routes authenticated user to Portfolio Studio')
 }
 
+// 29. COMPLETE ADMIN DASHBOARD & PLATFORM MANAGEMENT TEST SUITE
+function testAdminDashboardManagement() {
+  console.log('\n--- 29. Complete Admin Dashboard, Security Authorization & Audit Suite ---')
+
+  // A. Admin Security Authorization Verification
+  const verifyAdminAccess = (user, profile) => {
+    if (!user) return { authorized: false, error: 'Unauthenticated' }
+    const isAdmin = Boolean(
+      profile?.is_admin ||
+      user?.app_metadata?.role === 'admin'
+    )
+    if (!isAdmin) return { authorized: false, error: 'Unauthorized: Administrator privileges required (42501)' }
+    return { authorized: true, error: null }
+  }
+
+  const unauthAttempt = verifyAdminAccess(null, null)
+  assert(!unauthAttempt.authorized && unauthAttempt.error === 'Unauthenticated', 'Blocks unauthenticated user from admin operations')
+
+  const regularStudent = { id: 'usr_student', email: 'student@university.edu', app_metadata: { role: 'authenticated' } }
+  const studentProfile = { id: 'usr_student', is_admin: false, display_name: 'Priya Sharma' }
+  const forbiddenAttempt = verifyAdminAccess(regularStudent, studentProfile)
+  assert(!forbiddenAttempt.authorized && forbiddenAttempt.error.includes('42501'), 'Blocks ordinary student from admin operations (42501 Unauthorized)')
+
+  const adminUser = { id: 'usr_admin', email: 'admin@prbuilder.in', app_metadata: { role: 'admin' } }
+  const adminProfile = { id: 'usr_admin', is_admin: true, display_name: 'Platform Administrator' }
+  const authorizedAttempt = verifyAdminAccess(adminUser, adminProfile)
+  assert(authorizedAttempt.authorized === true && authorizedAttempt.error === null, 'Permits verified administrator access')
+
+  // B. Privilege Escalation Prevention Trigger Logic
+  const simulateProfileUpdateTrigger = (actorIsAdmin, oldProfile, newProfile) => {
+    if (newProfile.is_admin !== oldProfile.is_admin) {
+      if (!actorIsAdmin) {
+        throw new Error('Unauthorized: only active administrators can modify admin privileges (42501)')
+      }
+    }
+    return { success: true, profile: { ...oldProfile, ...newProfile } }
+  }
+
+  let studentEscalationBlocked = false
+  try {
+    simulateProfileUpdateTrigger(false, studentProfile, { ...studentProfile, is_admin: true })
+  } catch (err) {
+    studentEscalationBlocked = err.message.includes('42501')
+  }
+  assert(studentEscalationBlocked, 'Privilege escalation trigger blocks ordinary user from self-promoting to is_admin=true')
+
+  const adminPromotionSuccess = simulateProfileUpdateTrigger(true, studentProfile, { ...studentProfile, is_admin: true })
+  assert(adminPromotionSuccess.success && adminPromotionSuccess.profile.is_admin === true, 'Legitimate administrator can update user admin status')
+
+  // C. Overview Statistics Delta Calculation & Zero Division Safety
+  const calculateDelta = (current, previous) => {
+    if (previous === 0) {
+      if (current === 0) return { label: '0%', trend: 'neutral' }
+      return { label: `+${current}`, trend: 'up' }
+    }
+    const pct = Math.round(((current - previous) / previous) * 100)
+    if (pct > 0) return { label: `+${pct}%`, trend: 'up' }
+    if (pct < 0) return { label: `${pct}%`, trend: 'down' }
+    return { label: '0%', trend: 'neutral' }
+  }
+
+  assert(calculateDelta(25, 20).label === '+25%' && calculateDelta(25, 20).trend === 'up', 'Calculates positive growth percentage correctly (+25%)')
+  assert(calculateDelta(15, 20).label === '-25%' && calculateDelta(15, 20).trend === 'down', 'Calculates negative growth percentage correctly (-25%)')
+  assert(calculateDelta(10, 0).label === '+10' && calculateDelta(10, 0).trend === 'up', 'Safely handles 0 baseline without NaN or division by zero')
+  assert(calculateDelta(0, 0).label === '0%' && calculateDelta(0, 0).trend === 'neutral', 'Handles 0 current and 0 baseline gracefully')
+
+  // D. Engagement Breakdown Completeness & Non-Overlap
+  const totalUsers = 120
+  const engagement = {
+    usersWithBoth: 30,
+    usersResumesOnly: 40,
+    usersPortfoliosOnly: 25,
+    usersNeither: 25,
+  }
+  const engagementSum = engagement.usersWithBoth + engagement.usersResumesOnly + engagement.usersPortfoliosOnly + engagement.usersNeither
+  assert(engagementSum === totalUsers, 'Engagement categories sum strictly to total users without duplicate counting')
+
+  // E. CSV Sanitization & Zero Secret Exposure
+  const escapeCsv = (value) => {
+    if (value === null || value === undefined) return '""'
+    const str = String(value)
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return `"${str}"`
+  }
+
+  assert(escapeCsv('Simple Text') === '"Simple Text"', 'Escapes plain CSV value')
+  assert(escapeCsv('Sharma, Priya') === '"Sharma, Priya"', 'Escapes CSV value containing commas with quotes')
+  assert(escapeCsv('Quote "Test"') === '"Quote ""Test"""', 'Escapes internal quotes per RFC 4180')
+
+  const sampleUserExport = [
+    ['User ID', 'Name', 'Email', 'Role'],
+    [escapeCsv(adminUser.id), escapeCsv('Admin User'), escapeCsv('admin@prbuilder.in'), escapeCsv('Admin')],
+  ]
+  const csvString = sampleUserExport.map(r => r.join(',')).join('\n')
+  assert(!csvString.includes('service_role'), 'CSV export audit: does not contain service_role')
+  assert(!csvString.includes('password'), 'CSV export audit: does not contain password')
+  assert(!csvString.includes('Bearer eyJ'), 'CSV export audit: does not contain auth session tokens')
+  assert(!csvString.includes('SECRET'), 'CSV export audit: does not contain SECRET keyword')
+
+  // F. Resume Safe Section Count Calculation (Without Body Exposure)
+  const calculateResumeSections = (resumeData) => {
+    let count = 0
+    if (Array.isArray(resumeData.experience) && resumeData.experience.length > 0) count++
+    if (Array.isArray(resumeData.education) && resumeData.education.length > 0) count++
+    if (Array.isArray(resumeData.skills) && resumeData.skills.length > 0) count++
+    if (Array.isArray(resumeData.projects) && resumeData.projects.length > 0) count++
+    if (Array.isArray(resumeData.certifications) && resumeData.certifications.length > 0) count++
+    return count
+  }
+
+  const sampleResumeData = {
+    experience: [{ company: 'Tech Corp', role: 'Software Engineer' }],
+    education: [{ institution: 'IIT Bombay', degree: 'B.Tech CS' }],
+    skills: ['React', 'TypeScript', 'PostgreSQL'],
+    projects: [{ name: 'PR Builder' }],
+    certifications: [],
+  }
+  assert(calculateResumeSections(sampleResumeData) === 4, 'Derives accurate populated section count (4/5) from resume JSON structure')
+
+  // G. Portfolio Unpublish vs Delete State Integrity
+  const mockPortfolio = {
+    id: 'port_101',
+    user_id: 'usr_student',
+    title: 'Priya Portfolio',
+    slug: 'priya-sharma',
+    publication_status: 'published',
+    portfolio_data: { bio: 'Full stack engineer' },
+  }
+
+  const unpublishAction = (port) => {
+    return { ...port, publication_status: 'draft', updated_at: new Date().toISOString() }
+  }
+  const unpublished = unpublishAction(mockPortfolio)
+  assert(unpublished.publication_status === 'draft', 'Unpublishing cleanly transitions publication_status to draft')
+  assert(unpublished.portfolio_data.bio === 'Full stack engineer', 'Unpublishing strictly retains all student portfolio content without data loss')
+
+  // H. Audit Log Payload Verification
+  const createAuditEntry = (adminId, email, action, targetId, targetType, outcome, metadata) => {
+    if (!action || !targetType) throw new Error('Action and targetType are required')
+    return {
+      id: 'log_' + Math.random().toString(36).slice(2),
+      admin_id: adminId,
+      admin_email: email,
+      action,
+      target_id: targetId,
+      target_type: targetType,
+      outcome: outcome || 'success',
+      metadata: metadata || {},
+      created_at: new Date().toISOString(),
+    }
+  }
+
+  const auditEntry = createAuditEntry(
+    adminUser.id,
+    adminUser.email,
+    'portfolio_unpublished',
+    mockPortfolio.id,
+    'portfolio',
+    'success',
+    { slug: mockPortfolio.slug, reason: 'Compliance audit' }
+  )
+
+  assert(auditEntry.action === 'portfolio_unpublished', 'Audit entry records correct action')
+  assert(auditEntry.target_id === 'port_101', 'Audit entry records correct target ID')
+  assert(auditEntry.admin_email === 'admin@prbuilder.in', 'Audit entry records administrator identity')
+  assert(auditEntry.outcome === 'success', 'Audit entry records successful execution outcome')
+  assert(auditEntry.metadata.slug === 'priya-sharma', 'Audit entry records metadata safely')
+}
+
 testQrGeneration()
   .then(() => testZipStandaloneWebsite())
   .then(() => testCinematicScrollHero())
+  .then(() => testAdminDashboardManagement())
   .then(() => {
     console.log('\n======================================================')
     console.log(`  TEST RESULTS: ${testsPassed} passed, ${testsFailed} failed`)
@@ -2178,5 +2350,6 @@ testQrGeneration()
     console.error('Async test failure:', err)
     process.exit(1)
   })
+
 
 

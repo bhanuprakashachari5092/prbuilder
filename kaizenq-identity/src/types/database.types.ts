@@ -338,6 +338,42 @@ export interface Database {
         }
         Relationships: []
       }
+      admin_audit_logs: {
+        Row: {
+          id: string
+          admin_id: string | null
+          admin_email: string | null
+          action: string
+          target_id: string | null
+          target_type: string
+          outcome: 'success' | 'failure' | 'denied'
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          admin_id?: string | null
+          admin_email?: string | null
+          action: string
+          target_id?: string | null
+          target_type: string
+          outcome?: 'success' | 'failure' | 'denied'
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          admin_id?: string | null
+          admin_email?: string | null
+          action?: string
+          target_id?: string | null
+          target_type?: string
+          outcome?: 'success' | 'failure' | 'denied'
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -484,6 +520,98 @@ export interface Database {
           p_claim_id: string
         }
         Returns: Json
+      }
+      get_admin_overview_stats: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      get_admin_growth_analytics: {
+        Args: {
+          p_days?: number
+        }
+        Returns: Json
+      }
+      get_admin_users: {
+        Args: {
+          p_search?: string | null
+          p_role_filter?: string | null
+          p_sort_by?: string | null
+          p_sort_dir?: string | null
+          p_page?: number
+          p_page_size?: number
+        }
+        Returns: Json
+      }
+      get_admin_resumes: {
+        Args: {
+          p_search?: string | null
+          p_template_filter?: string | null
+          p_sort_by?: string | null
+          p_sort_dir?: string | null
+          p_page?: number
+          p_page_size?: number
+        }
+        Returns: Json
+      }
+      get_admin_portfolios: {
+        Args: {
+          p_search?: string | null
+          p_status_filter?: string | null
+          p_theme_filter?: string | null
+          p_sort_by?: string | null
+          p_sort_dir?: string | null
+          p_page?: number
+          p_page_size?: number
+        }
+        Returns: Json
+      }
+      get_admin_audit_logs: {
+        Args: {
+          p_search?: string | null
+          p_action_filter?: string | null
+          p_page?: number
+          p_page_size?: number
+        }
+        Returns: Json
+      }
+      admin_delete_resume: {
+        Args: {
+          p_resume_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      admin_unpublish_portfolio: {
+        Args: {
+          p_portfolio_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      admin_delete_portfolio: {
+        Args: {
+          p_portfolio_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      admin_update_user_role: {
+        Args: {
+          p_user_id: string
+          p_is_admin: boolean
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      admin_log_action: {
+        Args: {
+          p_action: string
+          p_target_id: string
+          p_target_type: string
+          p_outcome?: string
+          p_metadata?: Json
+        }
+        Returns: string
       }
     }
     Enums: {

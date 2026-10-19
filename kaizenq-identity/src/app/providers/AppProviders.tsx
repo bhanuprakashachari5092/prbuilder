@@ -13,6 +13,7 @@ export const VALID_ROUTES = [
   'portfolio-preview',
   'public-portfolio',
   'settings',
+  'admin',
 ] as const
 
 export type ValidRoute = (typeof VALID_ROUTES)[number]
@@ -48,6 +49,11 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
       const pathname = window.location.pathname
       if (pathname.startsWith('/p/')) {
         return 'public-portfolio'
+      }
+
+      // 2b. Check admin route (/admin)
+      if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+        return 'admin'
       }
 
       // 3. Check query param route (?route=...)

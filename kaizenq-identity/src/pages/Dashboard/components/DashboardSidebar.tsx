@@ -15,6 +15,7 @@ import {
 import { PRLogo } from '../../../components/brand/PRLogo.tsx'
 import { cn } from '../../../lib/utils.ts'
 import { useAuth } from '../../../app/providers/AuthContext.tsx'
+import { useApp } from '../../../app/providers/AppContext.ts'
 import type { DashboardTab } from '../types.ts'
 
 export interface DashboardSidebarProps {
@@ -49,6 +50,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   onCloseMobile,
 }) => {
   const { isAdmin } = useAuth()
+  const { setCurrentRoute } = useApp()
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-white border-r border-[#E2E8F0] text-[#111827]">
@@ -108,10 +110,23 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
         {/* Admin Navigation Section */}
         {isAdmin && (
-          <div className="pt-4 mt-3 border-t border-[#E2E8F0]">
+          <div className="pt-4 mt-3 border-t border-[#E2E8F0] space-y-1">
             <div className="px-3 pb-2 text-[10px] font-mono uppercase tracking-wider text-[#2563EB] font-bold">
               Administration
             </div>
+            <button
+              onClick={() => {
+                setCurrentRoute('admin')
+                onCloseMobile?.()
+              }}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all group select-none text-left cursor-pointer bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-500/20 mb-1"
+            >
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-4 h-4 text-white" />
+                <span>Admin Console</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-blue-200 group-hover:translate-x-0.5 transition-transform" />
+            </button>
             <button
               onClick={() => {
                 onSelectTab('admin-domains')
