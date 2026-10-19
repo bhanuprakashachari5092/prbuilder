@@ -1,4 +1,13 @@
 {
+  "name": "pr-builder-root",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix kaizenq-identity run build",
+    "start": "npm --prefix kaizenq-identity run start",
+    "dev": "npm --prefix kaizenq-identity run dev",
+    "test": "npm --prefix kaizenq-identity run test",
+    "preview": "npm --prefix kaizenq-identity run preview"
+  },
   "dependencies": {
     "motion": "^14.0.0",
     "node": "^26.11.1"
