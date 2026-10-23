@@ -31,7 +31,10 @@ export const Home: React.FC<HomeProps> = ({ onOpenAuth, onOpenBuilder }) => {
       <FeatureSection />
 
       {/* 4. How It Works (Three-step linear progression) */}
-      <HowItWorksSection />
+      <HowItWorksSection
+        onOpenBuilder={onOpenBuilder}
+        onOpenAuth={onOpenAuth}
+      />
 
       {/* 5. Curated Templates Gallery */}
       <TemplatesSection onSelectTemplate={() => onOpenBuilder?.()} />

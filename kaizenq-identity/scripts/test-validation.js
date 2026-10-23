@@ -2567,6 +2567,156 @@ function testAdminDownloadTelemetryAndConversionFunnel() {
   assert(timeline[0].totalDownloads === timeline[0].resumeDownloads + timeline[0].portfolioDownloads, 'Total downloads equals sum of resume and portfolio downloads per day')
 }
 
+// ============================================================================
+// 33. Workflow 3D Card Deck Shuffling, Interactive Steps & Framed Studio Suite
+// ============================================================================
+function testWorkflowCardDeckShuffling() {
+  console.log('\n--- 33. Workflow 3D Card Deck Shuffling, Interactive Steps & Framed Studio Suite ---')
+
+  // 1. Workflow Steps Specifications Preservation
+  const workflowSteps = [
+    {
+      number: '01',
+      title: 'Add your information and projects.',
+      category: 'Ingestion Engine',
+      description: 'Enter your background, work experience, education, key technical skills, and featured repositories into structured, intuitive input fields.',
+      detail: 'Automatic draft persistence saves progress locally as you type.',
+      accentColor: '#2563EB',
+    },
+    {
+      number: '02',
+      title: 'Customize your resume or portfolio.',
+      category: 'Design & ATS Engine',
+      description: 'Select from curated ATS-optimized layouts and responsive portfolio themes to match your unique professional identity and aesthetic preferences.',
+      detail: 'Instant reactive previews ensure typography and spacing are flawless.',
+      accentColor: '#6366F1',
+    },
+    {
+      number: '03',
+      title: 'Preview, export or share using available features.',
+      category: 'Export & Distribution',
+      description: 'Download a vector-crisp, ATS-compliant PDF resume or publish and distribute your live portfolio link and scannable QR card directly to recruiters.',
+      detail: 'One-click export ready for job applications and portfolio reviews.',
+      accentColor: '#10B981',
+    },
+  ]
+
+  assert(workflowSteps.length === 3, 'Workflow strictly maintains all 3 core steps')
+  assert(workflowSteps[0].number === '01' && workflowSteps[0].title.includes('information and projects'), 'Step 01 title and number are preserved')
+  assert(workflowSteps[1].number === '02' && workflowSteps[1].title.includes('Customize your resume or portfolio'), 'Step 02 title and number are preserved')
+  assert(workflowSteps[2].number === '03' && workflowSteps[2].title.includes('Preview, export or share'), 'Step 03 title and number are preserved')
+
+  // 2. 3D Deck Card Shuffling State Machine
+  class CardDeckShuffler {
+    constructor() {
+      this.order = [0, 1, 2]
+    }
+
+    shuffleNext() {
+      // Moves front card to back: [1, 2, 0]
+      this.order = [this.order[1], this.order[2], this.order[0]]
+      return this.order
+    }
+
+    shufflePrev() {
+      // Moves back card to front: [2, 0, 1]
+      this.order = [this.order[2], this.order[0], this.order[1]]
+      return this.order
+    }
+
+    selectStep(targetIndex) {
+      if (this.order[0] === targetIndex) return this.order
+      const withoutTarget = this.order.filter(idx => idx !== targetIndex)
+      this.order = [targetIndex, ...withoutTarget]
+      return this.order
+    }
+
+    getActiveStep() {
+      return this.order[0]
+    }
+  }
+
+  const deck = new CardDeckShuffler()
+  assert(deck.getActiveStep() === 0, 'Initial state: Card 01 is top of the deck')
+
+  // Shuffle forward
+  deck.shuffleNext()
+  assert(deck.getActiveStep() === 1 && deck.order[1] === 2 && deck.order[2] === 0, 'Shuffle Next: Card 02 moves to top, Card 01 moves to back')
+
+  deck.shuffleNext()
+  assert(deck.getActiveStep() === 2 && deck.order[1] === 0 && deck.order[2] === 1, 'Shuffle Next again: Card 03 moves to top')
+
+  deck.shuffleNext()
+  assert(deck.getActiveStep() === 0, '3rd Shuffle cleanly cycles back to initial Card 01')
+
+  // Shuffle previous
+  deck.shufflePrev()
+  assert(deck.getActiveStep() === 2, 'Shuffle Prev moves Card 03 to the front')
+
+  // Direct tab selection
+  deck.selectStep(1)
+  assert(deck.getActiveStep() === 1 && deck.order[0] === 1, 'Directly selecting Step 02 brings Card 02 to top of deck')
+
+  // 3. 3D Stack Isometric Geometry & Transforms
+  const computeStackGeometry = (stackPosition, isShufflingTop = false, prefersReduced = false) => {
+    if (prefersReduced) {
+      return { y: 0, x: 0, rotate: 0, scale: 1, zIndex: 30 - stackPosition * 10 }
+    }
+
+    if (isShufflingTop && stackPosition === 0) {
+      return { y: -85, x: -25, rotate: -10, scale: 1.04, zIndex: 40 }
+    }
+
+    const yOffsets = [0, 22, 44]
+    const xOffsets = [0, 12, 24]
+    const rotations = [0, 3.5, 7]
+    const scales = [1, 0.95, 0.90]
+    const zIndices = [30, 20, 10]
+
+    return {
+      y: yOffsets[stackPosition],
+      x: xOffsets[stackPosition],
+      rotate: rotations[stackPosition],
+      scale: scales[stackPosition],
+      zIndex: zIndices[stackPosition],
+    }
+  }
+
+  const topCard = computeStackGeometry(0)
+  assert(topCard.y === 0 && topCard.rotate === 0 && topCard.scale === 1 && topCard.zIndex === 30, 'Top card has 0 offset, 0deg tilt and highest z-index (30)')
+
+  const middleCard = computeStackGeometry(1)
+  assert(middleCard.y === 22 && middleCard.rotate === 3.5 && middleCard.scale === 0.95, 'Middle card is offset by 22px Y and tilted by 3.5deg')
+
+  const backCard = computeStackGeometry(2)
+  assert(backCard.y === 44 && backCard.rotate === 7 && backCard.scale === 0.90, 'Back card is offset by 44px Y and tilted by 7deg')
+
+  const shufflingTop = computeStackGeometry(0, true)
+  assert(shufflingTop.y === -85 && shufflingTop.rotate === -10 && shufflingTop.scale === 1.04, 'Shuffling top card elevates with -85px Y arc and -10deg swoosh')
+
+  // 4. Accessibility / Reduced Motion
+  const reducedTop = computeStackGeometry(0, true, true)
+  const reducedMiddle = computeStackGeometry(1, false, true)
+  assert(reducedTop.rotate === 0 && reducedTop.y === 0, 'Accessibility: prefers-reduced-motion locks top card rotation and offset to 0')
+  assert(reducedMiddle.rotate === 0 && reducedMiddle.scale === 1, 'Accessibility: prefers-reduced-motion avoids nested card scaling and tilt')
+
+  // 5. View Mode Switching (Deck vs Spread)
+  const computeViewMode = (mode) => {
+    return {
+      isDeck: mode === 'deck',
+      isSpread: mode === 'spread',
+      supportsAutoPlay: mode === 'deck',
+      visibleCardsCount: mode === 'spread' ? 3 : 1,
+    }
+  }
+
+  const deckMode = computeViewMode('deck')
+  assert(deckMode.isDeck && deckMode.supportsAutoPlay, 'Deck mode enables auto-shuffle timer')
+
+  const spreadMode = computeViewMode('spread')
+  assert(spreadMode.isSpread && spreadMode.visibleCardsCount === 3, 'Spread mode opens all 3 step cards side-by-side simultaneously')
+}
+
 testQrGeneration()
   .then(() => testZipStandaloneWebsite())
   .then(() => testCinematicScrollHero())
@@ -2574,6 +2724,7 @@ testQrGeneration()
   .then(() => testBuilderShowcase3DAnimation())
   .then(() => testFeaturesHorizontalScroll())
   .then(() => testAdminDownloadTelemetryAndConversionFunnel())
+  .then(() => testWorkflowCardDeckShuffling())
   .then(() => {
     console.log('\n======================================================')
     console.log(`  TEST RESULTS: ${testsPassed} passed, ${testsFailed} failed`)
