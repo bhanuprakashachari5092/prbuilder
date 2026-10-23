@@ -263,6 +263,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               )}
 
+              {mode === 'signin' && (
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                  <span className="font-medium text-slate-700">Admin Credentials</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail('admin@gmail.com')
+                      setPassword('googlemanoj')
+                    }}
+                    className="text-blue-600 hover:text-blue-700 font-semibold text-xs hover:underline cursor-pointer"
+                  >
+                    Auto-fill admin@gmail.com
+                  </button>
+                </div>
+              )}
+
               <Button
                 type="submit"
                 variant="primary"

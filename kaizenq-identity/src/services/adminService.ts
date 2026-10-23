@@ -407,6 +407,21 @@ export const adminService = {
   } = {}): Promise<{ data: PaginatedResult<AdminUserItem> | null; error: Error | null }> {
     const defaultUsers: AdminUserItem[] = [
       {
+        id: 'usr-admin-01',
+        displayName: 'Platform Admin',
+        email: 'admin@gmail.com',
+        headline: 'Lead Platform & Cloud Administrator',
+        avatarPath: null,
+        isAdmin: true,
+        createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastSignInAt: new Date().toISOString(),
+        resumeCount: 5,
+        portfolioCount: 3,
+        publishedPortfolioCount: 2,
+        lastActivity: new Date().toISOString(),
+      },
+      {
         id: 'usr-001',
         displayName: 'Bhanu Prakash',
         email: 'bhanuprakashachari5092@gmail.com',

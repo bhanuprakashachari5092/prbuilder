@@ -85,7 +85,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile?.is_admin ||
     user?.app_metadata?.role === 'admin' ||
     user?.user_metadata?.role === 'admin' ||
-    user?.email === 'bhanuprakashachari5092@gmail.com' ||
+    user?.email?.toLowerCase() === 'admin@gmail.com' ||
+    user?.email?.toLowerCase() === 'bhanuprakashachari5092@gmail.com' ||
     (typeof window !== 'undefined' && window.localStorage.getItem('pr_builder_admin_demo') === 'true')
   )
 

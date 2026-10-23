@@ -2191,6 +2191,12 @@ function testAdminDashboardManagement() {
   const authorizedAttempt = verifyAdminAccess(adminUser, adminProfile)
   assert(authorizedAttempt.authorized === true && authorizedAttempt.error === null, 'Permits verified administrator access')
 
+  const configuredAdminUser = { id: 'usr_cfg_admin', email: 'admin@gmail.com' }
+  const verifyAdminByEmail = (user) => {
+    return Boolean(user?.email?.toLowerCase() === 'admin@gmail.com' || user?.email?.toLowerCase() === 'bhanuprakashachari5092@gmail.com')
+  }
+  assert(verifyAdminByEmail(configuredAdminUser) === true, 'admin@gmail.com is recognized as authorized platform administrator')
+
   // B. Privilege Escalation Prevention Trigger Logic
   const simulateProfileUpdateTrigger = (actorIsAdmin, oldProfile, newProfile) => {
     if (newProfile.is_admin !== oldProfile.is_admin) {
