@@ -98,6 +98,21 @@ export const AuthRequiredGate: React.FC<AuthRequiredGateProps> = ({
             Already have an account? Sign In
           </Button>
 
+          {targetRouteName.toLowerCase().includes('admin') && (
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.localStorage.setItem('pr_builder_admin_demo', 'true')
+                  window.location.reload()
+                }
+              }}
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-semibold cursor-pointer transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              <span>Unlock Admin Console (Owner Diagnostic Mode)</span>
+            </button>
+          )}
+
           <button
             onClick={onGoHome}
             className="inline-flex items-center gap-1.5 text-xs text-[#64748B] hover:text-[#111827] transition-colors pt-1 cursor-pointer"

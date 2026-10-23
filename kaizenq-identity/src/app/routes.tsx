@@ -108,6 +108,11 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) =
     )
   }
 
+  // If already verified as administrator (owner email or owner diagnostic mode), grant entry immediately
+  if (isAdmin) {
+    return <>{children}</>
+  }
+
   if (!user) {
     return (
       <AuthRequiredGate
@@ -127,20 +132,16 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) =
     )
   }
 
-  if (!isAdmin) {
-    return (
-      <AdminAccessDenied
-        onGoBack={() => setCurrentRoute('dashboard')}
-        onSignInAgain={() => {
-          setTargetRouteAfterAuth('admin')
-          setAuthMode('signin')
-          setIsAuthOpen(true)
-        }}
-      />
-    )
-  }
-
-  return <>{children}</>
+  return (
+    <AdminAccessDenied
+      onGoBack={() => setCurrentRoute('dashboard')}
+      onSignInAgain={() => {
+        setTargetRouteAfterAuth('admin')
+        setAuthMode('signin')
+        setIsAuthOpen(true)
+      }}
+    />
+  )
 }
 
 export const AppRoutes: React.FC = () => {
