@@ -36,19 +36,47 @@ export const profileService = {
     }
 
     try {
-      const { data, error } = await supabase
+      // Defensive sanitization: never send null to NOT NULL columns
+      const cleanPayload: Record<string, any> = { ...updates }
+      if (cleanPayload.display_name === null) cleanPayload.display_name = ''
+      if (cleanPayload.headline === null) cleanPayload.headline = ''
+      if (cleanPayload.location === null) cleanPayload.location = ''
+      if (cleanPayload.bio === null) cleanPayload.bio = ''
+      cleanPayload.updated_at = new Date().toISOString()
+
+      // 1. Try standard update first
+      const { data: updateData, error: updateError } = await supabase
         .from('profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
+        .update(cleanPayload)
         .eq('id', userId)
         .select()
-        .single()
+        .maybeSingle()
 
-      if (error) throw error
-      return { data, error: null }
+      if (!updateError && updateData) {
+        return { data: updateData, error: null }
+      }
+
+      // 2. If row does not exist yet, perform upsert to initialize the profile
+      const { data: upsertData, error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          display_name: cleanPayload.display_name || 'Student Builder',
+          headline: cleanPayload.headline || 'Software Engineering Student',
+          location: cleanPayload.location || '',
+          bio: cleanPayload.bio || '',
+          ...cleanPayload,
+        })
+        .select()
+        .maybeSingle()
+
+      if (upsertError) {
+        throw upsertError || updateError
+      }
+
+      return { data: upsertData, error: null }
     } catch (err) {
+      console.error('profileService.updateProfile failed:', err)
       return { data: null, error: err as Error }
     }
   },

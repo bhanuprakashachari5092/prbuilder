@@ -60,3 +60,24 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- 4. Defensive Constraint Relaxation on Optional Profile Columns
+-- Allows empty/null location, bio, and headline without throwing constraint violations
+DO $$
+BEGIN
+  ALTER TABLE public.profiles ALTER COLUMN location DROP NOT NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE public.profiles ALTER COLUMN bio DROP NOT NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE public.profiles ALTER COLUMN headline DROP NOT NULL;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+

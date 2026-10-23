@@ -38,8 +38,9 @@ export const OnboardingModal: React.FC = () => {
 
   // Check if onboarding is needed
   useEffect(() => {
-    if (user && profile) {
-      if (!profile.onboarding_completed) {
+    if (user) {
+      const locallyDone = typeof window !== 'undefined' && localStorage.getItem(`pr_builder_onboarding_done_${user.id}`) === 'true'
+      if (profile && !profile.onboarding_completed && !locallyDone) {
         setIsOpen(true)
         if (profile.display_name) setDisplayName(profile.display_name)
         if (profile.headline) setHeadline(profile.headline)
@@ -73,25 +74,47 @@ export const OnboardingModal: React.FC = () => {
     }
   }
 
+  const handleSkipOrDismiss = () => {
+    if (user) {
+      localStorage.setItem(`pr_builder_onboarding_done_${user.id}`, 'true')
+    }
+    setIsOpen(false)
+    if (selectedTrack === 'resume') {
+      setCurrentRoute('resume')
+    } else if (selectedTrack === 'portfolio') {
+      setCurrentRoute('portfolio')
+    } else {
+      setCurrentRoute('dashboard')
+    }
+  }
+
   const handleComplete = async () => {
     if (!user) return
     setIsSubmitting(true)
     setError(null)
 
+    const cleanDisplayName = displayName.trim() || user.email?.split('@')[0] || 'Student Builder'
+    const cleanHeadline = headline.trim() || 'Software Engineering Student'
+    const cleanLocation = location.trim() || ''
+    const cleanBio = bio.trim() || ''
+
     try {
       const { error: updateError } = await profileService.updateProfile(user.id, {
-        display_name: displayName.trim() || null,
-        headline: headline.trim() || null,
-        location: location.trim() || null,
-        bio: bio.trim() || null,
+        display_name: cleanDisplayName,
+        headline: cleanHeadline,
+        location: cleanLocation,
+        bio: cleanBio,
         onboarding_completed: true,
       })
 
       if (updateError) {
-        throw updateError
+        console.warn('Profile update warning:', updateError)
+        // Mark locally so user is never permanently blocked
+        localStorage.setItem(`pr_builder_onboarding_done_${user.id}`, 'true')
+      } else {
+        await refreshProfile()
       }
 
-      await refreshProfile()
       setIsOpen(false)
 
       // Direct to chosen workspace
@@ -103,7 +126,10 @@ export const OnboardingModal: React.FC = () => {
         setCurrentRoute('dashboard')
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save onboarding details.')
+      console.warn('Onboarding error, proceeding with local fallback:', err)
+      localStorage.setItem(`pr_builder_onboarding_done_${user.id}`, 'true')
+      setIsOpen(false)
+      setCurrentRoute('dashboard')
     } finally {
       setIsSubmitting(false)
     }
@@ -347,7 +373,7 @@ export const OnboardingModal: React.FC = () => {
 
         {/* Footer Actions */}
         <div className="p-6 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
             {step > 1 && (
               <button
                 type="button"
@@ -359,6 +385,14 @@ export const OnboardingModal: React.FC = () => {
                 Back
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleSkipOrDismiss}
+              className="text-xs text-[#94A3B8] hover:text-[#64748B] hover:underline cursor-pointer py-1"
+            >
+              Skip setup for now
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
