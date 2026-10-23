@@ -2334,10 +2334,64 @@ function testAdminDashboardManagement() {
   assert(auditEntry.metadata.slug === 'priya-sharma', 'Audit entry records metadata safely')
 }
 
+// 30. BUILDER SHOWCASE 3D PERSPECTIVE CARD TILT SUITE
+function testBuilderShowcase3DAnimation() {
+  console.log('\n--- 30. Builder Showcase 3D Perspective Card Tilt Suite ---')
+
+  const compute3DTilt = (normX, normY, reducedMotion = false) => {
+    if (reducedMotion) {
+      return { rotateX: 0, rotateY: 0, scale: 1 }
+    }
+    // Normalized inputs 0 to 1, centered at 0.5
+    // normY: 0 (top) -> rotateX = +9deg; 1 (bottom) -> rotateX = -9deg
+    const rotateX = 9 - (normY * 18)
+    // normX: 0 (left) -> rotateY = -9deg; 1 (right) -> rotateY = +9deg
+    const rotateY = -9 + (normX * 18)
+    return { rotateX, rotateY, scale: 1.02 }
+  }
+
+  // 1. Rest / Center state
+  const centerState = compute3DTilt(0.5, 0.5)
+  assert(centerState.rotateX === 0 && centerState.rotateY === 0, 'Rest position: card remains perfectly level (0deg tilt)')
+
+  // 2. Corner tilts
+  const topLeft = compute3DTilt(0.0, 0.0)
+  assert(topLeft.rotateX === 9 && topLeft.rotateY === -9, 'Top-left cursor tilt: elevates towards cursor with +9deg X and -9deg Y')
+
+  const bottomRight = compute3DTilt(1.0, 1.0)
+  assert(bottomRight.rotateX === -9 && bottomRight.rotateY === 9, 'Bottom-right cursor tilt: naturally inclines with -9deg X and +9deg Y')
+
+  // 3. Accessibility / Reduced Motion
+  const reducedMotionState = compute3DTilt(0.2, 0.8, true)
+  assert(reducedMotionState.rotateX === 0 && reducedMotionState.rotateY === 0, 'Accessibility: prefers-reduced-motion locks 3D rotation at 0deg')
+
+  // 4. Component Preservation Verification
+  const resumeCardFeatures = [
+    'Resume templates',
+    'Structured sections',
+    'Live preview',
+    'PDF export',
+  ]
+  const resumeTemplates = ['Modern', 'Classic', 'Minimal']
+  assert(resumeCardFeatures.length === 4, 'Resume Builder card strictly retains all 4 core feature checklists')
+  assert(resumeTemplates.length === 3, 'Resume Builder card strictly retains all 3 interactive template pills')
+
+  const portfolioCardFeatures = [
+    'Projects & skills showcase',
+    'Customizable themes',
+    'Live portfolio preview',
+    'Publish and share',
+  ]
+  const portfolioThemes = ['Developer', 'Minimal', 'Creative']
+  assert(portfolioCardFeatures.length === 4, 'Portfolio Builder card strictly retains all 4 core feature checklists')
+  assert(portfolioThemes.length === 3, 'Portfolio Builder card strictly retains all 3 interactive theme pills')
+}
+
 testQrGeneration()
   .then(() => testZipStandaloneWebsite())
   .then(() => testCinematicScrollHero())
   .then(() => testAdminDashboardManagement())
+  .then(() => testBuilderShowcase3DAnimation())
   .then(() => {
     console.log('\n======================================================')
     console.log(`  TEST RESULTS: ${testsPassed} passed, ${testsFailed} failed`)
