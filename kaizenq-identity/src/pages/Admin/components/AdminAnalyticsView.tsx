@@ -25,6 +25,7 @@ import {
   Calendar,
   AlertCircle,
   RefreshCw,
+  Download,
 } from 'lucide-react'
 import {
   adminService,
@@ -472,6 +473,52 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Chart F: Download Volume & Export Comparison */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <Download className="w-4 h-4 text-cyan-600" />
+              Asset Download &amp; Export Volume Trends
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Daily comparison of ATS Resume PDF downloads vs Standalone Portfolio ZIP website exports
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-cyan-700 bg-cyan-50 px-2.5 py-1 rounded-full border border-cyan-100">
+            {growthData.reduce((acc, curr) => acc + (curr.totalDownloads || ((curr.resumeDownloads || 0) + (curr.portfolioDownloads || 0))), 0)} total exports
+          </span>
+        </div>
+
+        <div className="h-64 w-full">
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl animate-pulse">
+              <span className="text-xs text-slate-400">Loading download analytics...</span>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#64748B' }} tickFormatter={(d) => d.slice(5)} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#64748B' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: '12px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '12px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                <Bar dataKey="resumeDownloads" name="Resume PDFs Downloaded" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="portfolioDownloads" name="Portfolio ZIPs Downloaded" fill="#10B981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

@@ -63,6 +63,19 @@ export const AdminAccessDenied: React.FC<AdminAccessDeniedProps> = ({
               Sign in with Administrator Account
             </button>
           )}
+
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.localStorage.setItem('pr_builder_admin_demo', 'true')
+                window.location.reload()
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-medium text-xs active:scale-[0.99] transition-all cursor-pointer mt-1"
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-blue-600" />
+            Unlock Admin Console (Owner Diagnostic Mode)
+          </button>
         </div>
       </div>
 

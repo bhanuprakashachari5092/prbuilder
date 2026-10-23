@@ -3,6 +3,7 @@ import { Archive, Download, Check, AlertCircle, Loader2 } from 'lucide-react'
 import { Button, type ButtonProps } from '../ui/Button.tsx'
 import type { PortfolioData } from '../../pages/Portfolio/types.ts'
 import { downloadPortfolioZip, hasSufficientPortfolioContent } from '../../services/portfolioExportService.ts'
+import { adminService } from '../../services/adminService.ts'
 
 export interface PortfolioDownloadButtonProps {
   data: PortfolioData
@@ -43,6 +44,10 @@ export const PortfolioDownloadButton: React.FC<PortfolioDownloadButtonProps> = (
 
     if (result.success) {
       setStatus('success')
+      adminService.recordDownloadEvent('portfolio_zip', {
+        title: data.personal?.fullName || 'Portfolio Website',
+        ownerEmail: data.personal?.email || 'student@prbuilder.me',
+      })
       setTimeout(() => {
         setStatus('idle')
         setProgressText('')

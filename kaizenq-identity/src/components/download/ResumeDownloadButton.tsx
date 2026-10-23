@@ -3,6 +3,7 @@ import { FileText, Download, Check, AlertCircle, Loader2 } from 'lucide-react'
 import { Button, type ButtonProps } from '../ui/Button.tsx'
 import type { ResumeData } from '../../pages/Resume/types.ts'
 import { downloadResumePdf, hasSufficientResumeContent } from '../../services/resumeExportService.ts'
+import { adminService } from '../../services/adminService.ts'
 
 export interface ResumeDownloadButtonProps {
   data: ResumeData
@@ -40,6 +41,10 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
 
     if (result.success) {
       setStatus('success')
+      adminService.recordDownloadEvent('resume_pdf', {
+        title: data.personal?.fullName || 'ATS Resume',
+        ownerEmail: data.personal?.email || 'student@prbuilder.me',
+      })
       setTimeout(() => {
         setStatus('idle')
       }, 3000)

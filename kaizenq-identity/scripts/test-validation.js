@@ -2449,12 +2449,131 @@ function testFeaturesHorizontalScroll() {
   assert(sampleHighlights.length === 6, 'All feature specifications and highlights are strictly preserved')
 }
 
+// ============================================================================
+// 32. Admin Download Telemetry, Asset Conversion & Funnel Suite
+// ============================================================================
+function testAdminDownloadTelemetryAndConversionFunnel() {
+  console.log('\n--- 32. Admin Download Telemetry, Asset Conversion & Funnel Suite ---')
+
+  // 1. In-memory Telemetry Recorder Simulator
+  class DownloadTelemetrySimulator {
+    constructor() {
+      this.events = []
+      this.counts = {
+        resume_pdf: 0,
+        portfolio_zip: 0,
+        qr_card: 0,
+      }
+    }
+
+    record(type, metadata = {}) {
+      if (!['resume_pdf', 'portfolio_zip', 'qr_card'].includes(type)) {
+        throw new Error(`Invalid download type: ${type}`)
+      }
+      this.counts[type] = (this.counts[type] || 0) + 1
+      const event = {
+        id: 'dl_' + Math.random().toString(36).slice(2),
+        type,
+        metadata: { ...metadata },
+        timestamp: new Date().toISOString(),
+      }
+      this.events.unshift(event)
+      return event
+    }
+
+    getOverview() {
+      const totalDownloads = this.counts.resume_pdf + this.counts.portfolio_zip + this.counts.qr_card
+      return {
+        totalDownloads,
+        resumePdfs: this.counts.resume_pdf,
+        portfolioZips: this.counts.portfolio_zip,
+        qrCards: this.counts.qr_card,
+      }
+    }
+  }
+
+  const telemetry = new DownloadTelemetrySimulator()
+
+  // Test recording download events
+  const ev1 = telemetry.record('resume_pdf', { template: 'modern', format: 'pdf' })
+  assert(ev1.type === 'resume_pdf' && ev1.metadata.template === 'modern', 'Telemetry records resume PDF export event')
+
+  const ev2 = telemetry.record('portfolio_zip', { theme: 'developer', files: 4 })
+  assert(ev2.type === 'portfolio_zip' && ev2.metadata.theme === 'developer', 'Telemetry records portfolio standalone ZIP export event')
+
+  const ev3 = telemetry.record('qr_card', { format: 'png', target: 'networking' })
+  assert(ev3.type === 'qr_card', 'Telemetry records QR networking card download')
+
+  let invalidCaught = false
+  try {
+    telemetry.record('malicious_executable', {})
+  } catch (err) {
+    invalidCaught = err.message.includes('Invalid download type')
+  }
+  assert(invalidCaught, 'Telemetry simulator rejects arbitrary/invalid download types')
+
+  const overview = telemetry.getOverview()
+  assert(overview.totalDownloads === 3, 'Overview total downloads sums all recorded assets')
+  assert(overview.resumePdfs === 1 && overview.portfolioZips === 1 && overview.qrCards === 1, 'Download counts accurately cataloged per asset category')
+
+  // 2. Conversion Funnel Calculation Logic
+  const calculateConversionFunnel = (signups, resumeCreations, resumeDownloads, portfolioCreations, portfolioDownloads, published) => {
+    const totalCreations = resumeCreations + portfolioCreations
+    const totalDownloads = resumeDownloads + portfolioDownloads
+    const resumeDownloadRate = resumeCreations > 0 ? Math.round((resumeDownloads / resumeCreations) * 100) : 0
+    const portfolioDownloadRate = portfolioCreations > 0 ? Math.round((portfolioDownloads / portfolioCreations) * 100) : 0
+    const overallCreationRate = signups > 0 ? Math.round((totalCreations / signups) * 100) : 0
+    const overallDownloadRate = totalCreations > 0 ? Math.round((totalDownloads / totalCreations) * 100) : 0
+
+    return {
+      signups,
+      totalCreations,
+      totalDownloads,
+      published,
+      resumeDownloadRate,
+      portfolioDownloadRate,
+      overallCreationRate,
+      overallDownloadRate,
+    }
+  }
+
+  const funnel = calculateConversionFunnel(1428, 1180, 942, 856, 532, 482)
+  assert(funnel.resumeDownloadRate === 80, 'Calculates Resume PDF download conversion rate accurately (80%)')
+  assert(funnel.portfolioDownloadRate === 62, 'Calculates Portfolio ZIP export conversion rate accurately (62%)')
+  assert(funnel.overallCreationRate === 143, 'Calculates student asset generation multiple accurately')
+  assert(funnel.totalDownloads === 1474, 'Aggregates combined student downloads count (942 + 532 = 1474)')
+
+  // Zero-division safety
+  const zeroFunnel = calculateConversionFunnel(0, 0, 0, 0, 0, 0)
+  assert(zeroFunnel.resumeDownloadRate === 0 && zeroFunnel.portfolioDownloadRate === 0, 'Zero denominator safely resolves to 0% without NaN or error')
+
+  // 3. Time Series Analytics Integrity
+  const generateDownloadTimeline = (days = 7) => {
+    const points = []
+    for (let i = days - 1; i >= 0; i--) {
+      points.push({
+        dayIndex: i,
+        signups: 10 + i * 2,
+        resumeDownloads: 8 + i,
+        portfolioDownloads: 5 + i,
+        totalDownloads: (8 + i) + (5 + i),
+      })
+    }
+    return points
+  }
+
+  const timeline = generateDownloadTimeline(7)
+  assert(timeline.length === 7, 'Generates 7-day download timeline series')
+  assert(timeline[0].totalDownloads === timeline[0].resumeDownloads + timeline[0].portfolioDownloads, 'Total downloads equals sum of resume and portfolio downloads per day')
+}
+
 testQrGeneration()
   .then(() => testZipStandaloneWebsite())
   .then(() => testCinematicScrollHero())
   .then(() => testAdminDashboardManagement())
   .then(() => testBuilderShowcase3DAnimation())
   .then(() => testFeaturesHorizontalScroll())
+  .then(() => testAdminDownloadTelemetryAndConversionFunnel())
   .then(() => {
     console.log('\n======================================================')
     console.log(`  TEST RESULTS: ${testsPassed} passed, ${testsFailed} failed`)
