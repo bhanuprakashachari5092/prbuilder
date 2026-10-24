@@ -7,6 +7,7 @@ import {
   getSubdomainFromHostname,
   getPlatformDomain,
 } from '../lib/domainUtils.ts'
+import { adminService } from './adminService.ts'
 
 export type PortfolioRow = Database['public']['Tables']['portfolios']['Row']
 
@@ -192,6 +193,12 @@ export const portfolioService = {
         console.warn('Subdomain entry sync note:', domainSyncErr)
       }
 
+      adminService.recordRealAnalyticsEvent('portfolio_published', {
+        slug: cleanSlug,
+        subdomainUrl,
+        publicUrl,
+      }, portfolioId, 'portfolio').catch(() => {})
+
       return { success: true, publicUrl, subdomainUrl, error: null }
     } catch (err) {
       return { success: false, publicUrl: null, subdomainUrl: null, error: err as Error }
@@ -246,6 +253,8 @@ export const portfolioService = {
           // ignore domain disconnect error on fallback
         }
       }
+
+      adminService.recordRealAnalyticsEvent('portfolio_unpublished', {}, portfolioId, 'portfolio').catch(() => {})
 
       return { success: true, error: null }
     } catch (err) {

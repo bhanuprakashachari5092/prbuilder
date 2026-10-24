@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { PRLogo } from '../../components/brand/PRLogo.tsx'
 import { useAuth } from '../../app/providers/AuthContext.tsx'
+import { supabase, isSupabaseConfigured } from '../../lib/supabase.ts'
 import { adminService, type AdminOverviewStats } from '../../services/adminService.ts'
 import type { AdminTab, AdminConfirmationModalState } from './types.ts'
 
@@ -66,6 +67,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
   // Real-time overview stats
   const [stats, setStats] = useState<AdminOverviewStats | null>(null)
   const [isStatsLoading, setIsStatsLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
   // Top header search query across dashboard views
   const [searchQuery, setSearchQuery] = useState('')
@@ -88,12 +90,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
     const res = await adminService.getOverviewStats()
     if (res.data) {
       setStats(res.data)
+      setLastUpdated(new Date())
     }
     setIsStatsLoading(false)
   }, [])
 
   useEffect(() => {
     loadStats()
+
+    if (!isSupabaseConfigured()) return
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+    const triggerDebouncedRefresh = () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        loadStats()
+      }, 1500)
+    }
+
+    // Subscribe to realtime database mutations across core tables
+    const channel = supabase
+      .channel('pr-admin-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, triggerDebouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resumes' }, triggerDebouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolios' }, triggerDebouncedRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'analytics_events' }, triggerDebouncedRefresh)
+      .subscribe()
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      supabase.removeChannel(channel)
+    }
   }, [loadStats])
 
   const handleOpenConfirmation = (state: AdminConfirmationModalState) => {
@@ -259,6 +287,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
 
           <div className="flex items-center gap-2.5">
             {/* Real-time sync indicator & Refresh */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-mono text-slate-500">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Last updated: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            </div>
+
             <button
               onClick={loadStats}
               disabled={isStatsLoading}

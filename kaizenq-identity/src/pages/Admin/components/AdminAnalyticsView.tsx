@@ -498,6 +498,10 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
             <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl animate-pulse">
               <span className="text-xs text-slate-400">Loading download analytics...</span>
             </div>
+          ) : !growthData.length ? (
+            <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl text-slate-400 text-xs">
+              No download export records available for this window
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>

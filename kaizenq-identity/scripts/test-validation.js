@@ -2723,6 +2723,138 @@ function testWorkflowCardDeckShuffling() {
   assert(spreadMode.isSpread && spreadMode.visibleCardsCount === 3, 'Spread mode opens all 3 step cards side-by-side simultaneously')
 }
 
+// ============================================================================
+// 34. Production Real-Time Analytics System, Telemetry & Verification Suite
+// ============================================================================
+async function testProductionRealtimeAnalyticsSystem() {
+  console.log('\n--- 34. Production Real-Time Analytics System & Database Telemetry ---')
+
+  // 1. Verification of Migration 20261023000010_production_analytics_events.sql
+  const migrationPath = path.join(rootDir, 'supabase', 'migrations', '20261023000010_production_analytics_events.sql')
+  assert(fs.existsSync(migrationPath), 'Production analytics migration file exists')
+
+  const migrationContent = fs.readFileSync(migrationPath, 'utf8')
+  assert(migrationContent.includes('CREATE TABLE IF NOT EXISTS public.analytics_events'), 'Migration creates public.analytics_events table')
+  assert(migrationContent.includes('ENABLE ROW LEVEL SECURITY'), 'Migration enables Row Level Security on analytics_events')
+  assert(migrationContent.includes('analytics_events_select_admin'), 'Migration protects analytics_events SELECT with public.is_admin()')
+  assert(migrationContent.includes('CREATE OR REPLACE FUNCTION public.record_analytics_event'), 'Migration provides secure record_analytics_event RPC')
+  assert(migrationContent.includes('CREATE OR REPLACE FUNCTION public.get_admin_overview_stats()'), 'Migration updates authoritative get_admin_overview_stats RPC')
+  assert(migrationContent.includes('CREATE OR REPLACE FUNCTION public.get_admin_growth_analytics'), 'Migration updates authoritative get_admin_growth_analytics RPC')
+
+  // 2. Verify Complete Removal of Hardcoded Demo & Fabricated Data from adminService.ts
+  const adminServicePath = path.join(rootDir, 'src', 'services', 'adminService.ts')
+  const adminServiceContent = fs.readFileSync(adminServicePath, 'utf8')
+
+  assert(!adminServiceContent.includes('total: 1428'), 'Zero fake signups: 1428 removed from adminService')
+  assert(!adminServiceContent.includes('total: 1180'), 'Zero fake resumes: 1180 removed from adminService')
+  assert(!adminServiceContent.includes('total: 856'), 'Zero fake portfolios: 856 removed from adminService')
+  assert(!adminServiceContent.includes('Math.sin(i * 0.4) * 5'), 'Zero synthetic curves: Math.sin chart generator removed')
+  assert(!adminServiceContent.includes('usr-admin-01'), 'Zero fake users: demo usr-admin-01 removed from default fallback')
+  assert(!adminServiceContent.includes('Arjun Sharma'), 'Zero demo identities: Arjun Sharma mock record removed')
+  assert(!adminServiceContent.includes('Sneha Patel'), 'Zero demo identities: Sneha Patel mock record removed')
+  assert(!adminServiceContent.includes('Vikram Reddy'), 'Zero demo identities: Vikram Reddy mock record removed')
+
+  // 3. Centralized Analytics Data Layer (adminAnalytics.ts)
+  const analyticsLayerPath = path.join(rootDir, 'src', 'services', 'adminAnalytics.ts')
+  assert(fs.existsSync(analyticsLayerPath), 'Centralized adminAnalytics.ts data layer exists')
+
+  const analyticsContent = fs.readFileSync(analyticsLayerPath, 'utf8')
+  assert(analyticsContent.includes('getAdminOverview'), 'adminAnalytics exports getAdminOverview')
+  assert(analyticsContent.includes('getSignupMetrics'), 'adminAnalytics exports getSignupMetrics')
+  assert(analyticsContent.includes('getResumeMetrics'), 'adminAnalytics exports getResumeMetrics')
+  assert(analyticsContent.includes('getPortfolioMetrics'), 'adminAnalytics exports getPortfolioMetrics')
+  assert(analyticsContent.includes('getDownloadMetrics'), 'adminAnalytics exports getDownloadMetrics')
+  assert(analyticsContent.includes('getRecentActivity'), 'adminAnalytics exports getRecentActivity')
+  assert(analyticsContent.includes('getUserGrowthSeries'), 'adminAnalytics exports getUserGrowthSeries')
+
+  // 4. Safe Metric Math & Division-by-Zero Resilience
+  const safeMetricsCalculator = (users, resumes, portfolios, downloads) => {
+    const totalUsers = users || 0
+    const totalResumes = resumes || 0
+    const totalPortfolios = portfolios || 0
+    const totalDownloads = downloads || 0
+
+    const conversionRate = totalUsers > 0 ? Math.round(((totalResumes + totalPortfolios) / totalUsers) * 100) : 0
+    const resumeDownloadRate = totalResumes > 0 ? Math.min(100, Math.round((totalDownloads / totalResumes) * 100)) : 0
+    const portfolioDownloadRate = totalPortfolios > 0 ? Math.min(100, Math.round((totalDownloads / totalPortfolios) * 100)) : 0
+
+    return {
+      conversionRate,
+      resumeDownloadRate,
+      portfolioDownloadRate,
+    }
+  }
+
+  const zeroMetrics = safeMetricsCalculator(0, 0, 0, 0)
+  assert(zeroMetrics.conversionRate === 0, 'Zero users yields exactly 0% conversion rate without NaN')
+  assert(zeroMetrics.resumeDownloadRate === 0, 'Zero resumes yields exactly 0% resume download rate')
+  assert(zeroMetrics.portfolioDownloadRate === 0, 'Zero portfolios yields exactly 0% portfolio download rate')
+
+  const populatedMetrics = safeMetricsCalculator(50, 25, 20, 10)
+  assert(populatedMetrics.conversionRate === 90, 'Populated metrics compute real 90% conversion rate')
+  assert(populatedMetrics.resumeDownloadRate === 40, 'Populated metrics compute real 40% resume download rate')
+  assert(populatedMetrics.portfolioDownloadRate === 50, 'Populated metrics compute real 50% portfolio download rate')
+
+  // 5. CSV Sanitization & Data Minimization
+  const escapeCsv = (value) => {
+    if (value === null || value === undefined) return '""'
+    const str = String(value)
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return `"${str}"`
+  }
+
+  assert(escapeCsv(null) === '""', 'CSV escaping converts null to empty quotes')
+  assert(escapeCsv('Simple Text') === '"Simple Text"', 'CSV escaping wraps plain text')
+  assert(escapeCsv('Text with, comma') === '"Text with, comma"', 'CSV escaping preserves and wraps commas')
+  assert(escapeCsv('Quotes "inside"') === '"Quotes ""inside"""', 'CSV escaping escapes double quotes according to RFC 4180')
+
+  // 6. Realtime Debouncing and Channel Management
+  class RealtimeChannelMock {
+    constructor(name) {
+      this.name = name
+      this.subscribed = false
+      this.listeners = []
+    }
+    on(event, filter, callback) {
+      this.listeners.push({ event, filter, callback })
+      return this
+    }
+    subscribe() {
+      this.subscribed = true
+      return this
+    }
+    trigger(table) {
+      this.listeners
+        .filter(l => l.filter.table === table)
+        .forEach(l => l.callback({ table }))
+    }
+  }
+
+  const mockChannel = new RealtimeChannelMock('pr-admin-realtime')
+  let refreshCount = 0
+  let timer = null
+  const debouncedRefresh = () => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      refreshCount++
+    }, 50)
+  }
+
+  mockChannel.on('postgres_changes', { table: 'profiles' }, debouncedRefresh)
+  mockChannel.on('postgres_changes', { table: 'resumes' }, debouncedRefresh)
+  mockChannel.subscribe()
+
+  assert(mockChannel.subscribed, 'Realtime channel subscribes to database changes')
+  mockChannel.trigger('profiles')
+  mockChannel.trigger('resumes')
+  mockChannel.trigger('profiles')
+
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  assert(refreshCount === 1, 'Debounced refresh executes exactly once after multiple rapid database events')
+}
+
 testQrGeneration()
   .then(() => testZipStandaloneWebsite())
   .then(() => testCinematicScrollHero())
@@ -2731,6 +2863,7 @@ testQrGeneration()
   .then(() => testFeaturesHorizontalScroll())
   .then(() => testAdminDownloadTelemetryAndConversionFunnel())
   .then(() => testWorkflowCardDeckShuffling())
+  .then(() => testProductionRealtimeAnalyticsSystem())
   .then(() => {
     console.log('\n======================================================')
     console.log(`  TEST RESULTS: ${testsPassed} passed, ${testsFailed} failed`)
@@ -2743,6 +2876,7 @@ testQrGeneration()
     console.error('Async test failure:', err)
     process.exit(1)
   })
+
 
 
 

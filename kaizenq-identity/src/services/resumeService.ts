@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts'
 import type { Database } from '../types/database.types.ts'
 import type { ResumeData } from '../pages/Resume/types.ts'
+import { adminService } from './adminService.ts'
 
 export type ResumeRow = Database['public']['Tables']['resumes']['Row']
 
@@ -59,6 +60,13 @@ export const resumeService = {
           .single()
 
         if (error) throw error
+
+        adminService.recordRealAnalyticsEvent('resume_updated', {
+          title,
+          selectedTemplate: template,
+          ownerEmail: resumeData.personalInfo?.email || 'student@prbuilder.me',
+        }, data.id, 'resume').catch(() => {})
+
         return { data, error: null }
       } else {
         const { data, error } = await supabase
@@ -73,6 +81,13 @@ export const resumeService = {
           .single()
 
         if (error) throw error
+
+        adminService.recordRealAnalyticsEvent('resume_created', {
+          title,
+          selectedTemplate: template,
+          ownerEmail: resumeData.personalInfo?.email || 'student@prbuilder.me',
+        }, data.id, 'resume').catch(() => {})
+
         return { data, error: null }
       }
     } catch (err) {

@@ -27,15 +27,15 @@ export const AdminReportsView: React.FC<AdminReportsViewProps> = ({ stats }) => 
     setIsExportingUsers(true)
     setStatusMessage(null)
     try {
-      const res = await adminService.getUsers({ page: 1, pageSize: 100 })
-      if (res.data?.items) {
+      const res = await adminService.getUsers({ page: 1, pageSize: 500 })
+      if (res.data?.items && res.data.items.length > 0) {
         adminService.exportUsersCsv(res.data.items)
         setStatusMessage(`Successfully generated Users CSV (${res.data.items.length} records).`)
       } else {
-        throw new Error('No user records retrieved.')
+        setStatusMessage('No user records currently exist in the database (0 records found).')
       }
     } catch (err) {
-      alert(`Export failed: ${(err as Error).message}`)
+      setStatusMessage(`Export failed: ${(err as Error).message}`)
     } finally {
       setIsExportingUsers(false)
     }
@@ -45,15 +45,15 @@ export const AdminReportsView: React.FC<AdminReportsViewProps> = ({ stats }) => 
     setIsExportingResumes(true)
     setStatusMessage(null)
     try {
-      const res = await adminService.getResumes({ page: 1, pageSize: 100 })
-      if (res.data?.items) {
+      const res = await adminService.getResumes({ page: 1, pageSize: 500 })
+      if (res.data?.items && res.data.items.length > 0) {
         adminService.exportResumesCsv(res.data.items)
         setStatusMessage(`Successfully generated Resumes Metadata CSV (${res.data.items.length} records).`)
       } else {
-        throw new Error('No resume records retrieved.')
+        setStatusMessage('No resume records currently exist in the database (0 records found).')
       }
     } catch (err) {
-      alert(`Export failed: ${(err as Error).message}`)
+      setStatusMessage(`Export failed: ${(err as Error).message}`)
     } finally {
       setIsExportingResumes(false)
     }
@@ -63,15 +63,15 @@ export const AdminReportsView: React.FC<AdminReportsViewProps> = ({ stats }) => 
     setIsExportingPortfolios(true)
     setStatusMessage(null)
     try {
-      const res = await adminService.getPortfolios({ page: 1, pageSize: 100 })
-      if (res.data?.items) {
+      const res = await adminService.getPortfolios({ page: 1, pageSize: 500 })
+      if (res.data?.items && res.data.items.length > 0) {
         adminService.exportPortfoliosCsv(res.data.items)
         setStatusMessage(`Successfully generated Portfolios Metadata CSV (${res.data.items.length} records).`)
       } else {
-        throw new Error('No portfolio records retrieved.')
+        setStatusMessage('No portfolio records currently exist in the database (0 records found).')
       }
     } catch (err) {
-      alert(`Export failed: ${(err as Error).message}`)
+      setStatusMessage(`Export failed: ${(err as Error).message}`)
     } finally {
       setIsExportingPortfolios(false)
     }
