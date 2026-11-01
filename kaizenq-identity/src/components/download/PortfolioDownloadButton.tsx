@@ -45,8 +45,8 @@ export const PortfolioDownloadButton: React.FC<PortfolioDownloadButtonProps> = (
     if (result.success) {
       setStatus('success')
       adminService.recordDownloadEvent('portfolio_zip', {
-        title: data.personal?.fullName || 'Portfolio Website',
-        ownerEmail: data.personal?.email || 'student@prbuilder.me',
+        title: data.profile?.fullName || 'Portfolio Website',
+        ownerEmail: data.profile?.email || 'student@prbuilder.me',
       })
       setTimeout(() => {
         setStatus('idle')

@@ -95,6 +95,12 @@ export interface SectionVisibility {
   contact: boolean
 }
 
+export interface PortfolioCustomization {
+  accentColor?: string
+  animationsEnabled?: boolean
+  layoutDensity?: 'compact' | 'normal' | 'relaxed' | 'spacious'
+}
+
 export interface PortfolioData {
   theme: PortfolioThemeId
   profile: PersonalProfile
@@ -108,7 +114,9 @@ export interface PortfolioData {
   sectionVisibility: SectionVisibility
   updatedAt: string
   version: number
+  customization?: PortfolioCustomization
 }
+
 
 export interface PortfolioValidationIssues {
   emailError?: string

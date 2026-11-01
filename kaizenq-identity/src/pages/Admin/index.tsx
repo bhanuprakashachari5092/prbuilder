@@ -16,9 +16,10 @@ import {
   Bell,
   RefreshCw,
   AlertTriangle,
-  ChevronRight,
-  Shield,
   CheckCircle2,
+  CreditCard,
+  Tag,
+  DollarSign,
 } from 'lucide-react'
 import { PRLogo } from '../../components/brand/PRLogo.tsx'
 import { useAuth } from '../../app/providers/AuthContext.tsx'
@@ -31,13 +32,16 @@ import { AdminOverviewView } from './components/AdminOverviewView.tsx'
 import { AdminUsersView } from './components/AdminUsersView.tsx'
 import { AdminResumesView } from './components/AdminResumesView.tsx'
 import { AdminPortfoliosView } from './components/AdminPortfoliosView.tsx'
+import { AdminPaymentsView } from './components/AdminPaymentsView.tsx'
+import { AdminCouponsView } from './components/AdminCouponsView.tsx'
+import { AdminPricingView } from './components/AdminPricingView.tsx'
 import { AdminAnalyticsView } from './components/AdminAnalyticsView.tsx'
 import { AdminReportsView } from './components/AdminReportsView.tsx'
 import { AdminAuditLogsView } from './components/AdminAuditLogsView.tsx'
 import { AdminSettingsView } from './components/AdminSettingsView.tsx'
 
 interface AdminDashboardProps {
-  onExitToStudentApp: () => void
+  onExitToHome?: () => void
 }
 
 interface NavItem {
@@ -49,16 +53,19 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'users', label: 'User Directory', icon: Users },
+  { id: 'users', label: 'User Management', icon: Users },
   { id: 'resumes', label: 'Resume Management', icon: FileText },
   { id: 'portfolios', label: 'Portfolio Management', icon: Globe },
-  { id: 'analytics', label: 'Analytics & Trends', icon: BarChart3 },
-  { id: 'reports', label: 'Reports & Export', icon: FileSpreadsheet },
+  { id: 'payments', label: 'Payments & Revenue', icon: CreditCard },
+  { id: 'coupons', label: 'Coupons & Promos', icon: Tag },
+  { id: 'pricing', label: 'Pricing & Catalog', icon: DollarSign },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+  { id: 'reports', label: 'Reports / Export', icon: FileSpreadsheet },
   { id: 'audit-logs', label: 'Audit Logs', icon: ShieldCheck },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentApp }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToHome }) => {
   const { user, profile, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -71,6 +78,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
 
   // Top header search query across dashboard views
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Cross-entity navigation states
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null)
 
   // Notifications popover
   const [showNotifications, setShowNotifications] = useState(false)
@@ -98,29 +110,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
   useEffect(() => {
     loadStats()
 
-    if (!isSupabaseConfigured()) return
-
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
     const triggerDebouncedRefresh = () => {
       if (debounceTimer) clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         loadStats()
-      }, 1500)
+      }, 500)
     }
 
-    // Subscribe to realtime database mutations across core tables
-    const channel = supabase
-      .channel('pr-admin-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, triggerDebouncedRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'resumes' }, triggerDebouncedRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolios' }, triggerDebouncedRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'analytics_events' }, triggerDebouncedRefresh)
-      .subscribe()
+    const handleRevenueEvent = () => triggerDebouncedRefresh()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pr-builder:revenue-updated', handleRevenueEvent)
+    }
+
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    if (isSupabaseConfigured()) {
+      // Subscribe to realtime database mutations across core tables including payment_orders
+      channel = supabase
+        .channel('pr-admin-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, triggerDebouncedRefresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'resumes' }, triggerDebouncedRefresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolios' }, triggerDebouncedRefresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'analytics_events' }, triggerDebouncedRefresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_orders' }, triggerDebouncedRefresh)
+        .subscribe()
+    }
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer)
-      supabase.removeChannel(channel)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pr-builder:revenue-updated', handleRevenueEvent)
+      }
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
     }
   }, [loadStats])
 
@@ -216,18 +240,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
           })}
         </nav>
 
-        {/* Sidebar Footer: Back to Student Workspace & Admin Badge */}
+        {/* Sidebar Footer: Public Homepage Link & Admin Badge */}
         <div className="p-3 border-t border-slate-100 space-y-2">
-          <button
-            onClick={onExitToStudentApp}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer ${
-              isSidebarCollapsed ? 'justify-center px-0' : ''
-            }`}
-            title="Exit to Student Workspace"
-          >
-            <ExternalLink className="w-4 h-4 text-slate-400 shrink-0" />
-            {!isSidebarCollapsed && <span className="truncate">Student Workspace</span>}
-          </button>
+          {onExitToHome && (
+            <button
+              onClick={onExitToHome}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer ${
+                isSidebarCollapsed ? 'justify-center px-0' : ''
+              }`}
+              title="View Public Homepage"
+            >
+              <ExternalLink className="w-4 h-4 text-slate-400 shrink-0" />
+              {!isSidebarCollapsed && <span className="truncate">Public Homepage</span>}
+            </button>
+          )}
 
           {!isSidebarCollapsed && (
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center gap-2.5">
@@ -273,7 +299,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
             </button>
 
             {/* Quick Search across platform */}
-            <div className="relative w-full hidden sm:block">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (searchQuery.trim() && (activeTab === 'overview' || activeTab === 'analytics' || activeTab === 'settings' || activeTab === 'reports')) {
+                  setActiveTab('users')
+                }
+              }}
+              className="relative w-full hidden sm:block"
+            >
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
@@ -282,7 +316,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
                 placeholder="Platform search (users, resumes, portfolios)..."
                 className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 text-slate-800"
               />
-            </div>
+            </form>
           </div>
 
           <div className="flex items-center gap-2.5">
@@ -371,7 +405,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
             <AdminOverviewView
               stats={stats}
               isLoading={isStatsLoading}
-              onSelectTab={setActiveTab}
+              onSelectTab={(tab) => {
+                setSelectedUserId(null)
+                setSelectedResumeId(null)
+                setSelectedPortfolioId(null)
+                setActiveTab(tab)
+              }}
               onRefresh={loadStats}
             />
           )}
@@ -380,28 +419,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToStudentA
             <AdminUsersView
               onOpenConfirmation={handleOpenConfirmation}
               currentAdminId={user?.id}
+              initialUserId={selectedUserId}
+              globalSearch={searchQuery}
+              onNavigateToResumes={(resumeId) => {
+                if (resumeId) setSelectedResumeId(resumeId)
+                setActiveTab('resumes')
+              }}
+              onNavigateToPortfolios={(portfolioId) => {
+                if (portfolioId) setSelectedPortfolioId(portfolioId)
+                setActiveTab('portfolios')
+              }}
             />
           )}
 
           {activeTab === 'resumes' && (
             <AdminResumesView
               onOpenConfirmation={handleOpenConfirmation}
-              onNavigateToUser={() => setActiveTab('users')}
+              initialResumeId={selectedResumeId}
+              globalSearch={searchQuery}
+              onNavigateToUser={(uid) => {
+                setSelectedUserId(uid)
+                setActiveTab('users')
+              }}
             />
           )}
 
           {activeTab === 'portfolios' && (
             <AdminPortfoliosView
               onOpenConfirmation={handleOpenConfirmation}
-              onNavigateToUser={() => setActiveTab('users')}
+              initialPortfolioId={selectedPortfolioId}
+              globalSearch={searchQuery}
+              onNavigateToUser={(uid) => {
+                setSelectedUserId(uid)
+                setActiveTab('users')
+              }}
             />
           )}
+
+          {activeTab === 'payments' && <AdminPaymentsView />}
+
+          {activeTab === 'coupons' && <AdminCouponsView />}
+
+          {activeTab === 'pricing' && <AdminPricingView />}
 
           {activeTab === 'analytics' && <AdminAnalyticsView stats={stats} />}
 
           {activeTab === 'reports' && <AdminReportsView stats={stats} />}
 
-          {activeTab === 'audit-logs' && <AdminAuditLogsView />}
+          {activeTab === 'audit-logs' && <AdminAuditLogsView globalSearch={searchQuery} />}
 
           {activeTab === 'settings' && <AdminSettingsView />}
         </main>

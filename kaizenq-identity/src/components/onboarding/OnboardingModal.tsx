@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 
 export const OnboardingModal: React.FC = () => {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user, profile, isAdmin, refreshProfile } = useAuth()
   const { setCurrentRoute } = useApp()
 
   const [isOpen, setIsOpen] = useState(false)
@@ -36,8 +36,12 @@ export const OnboardingModal: React.FC = () => {
   // Step 3: Preferred Path
   const [selectedTrack, setSelectedTrack] = useState<'resume' | 'portfolio' | 'both'>('both')
 
-  // Check if onboarding is needed
+  // Check if onboarding is needed (administrators skip student onboarding)
   useEffect(() => {
+    if (isAdmin) {
+      setIsOpen(false)
+      return
+    }
     if (user) {
       const locallyDone = typeof window !== 'undefined' && localStorage.getItem(`pr_builder_onboarding_done_${user.id}`) === 'true'
       if (profile && !profile.onboarding_completed && !locallyDone) {
@@ -50,9 +54,9 @@ export const OnboardingModal: React.FC = () => {
         setIsOpen(false)
       }
     }
-  }, [user, profile])
+  }, [user, profile, isAdmin])
 
-  if (!isOpen || !user) return null
+  if (!isOpen || !user || isAdmin) return null
 
   const handleNextStep = () => {
     setError(null)

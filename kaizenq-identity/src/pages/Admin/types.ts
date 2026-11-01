@@ -7,6 +7,9 @@ export type AdminTab =
   | 'reports'
   | 'audit-logs'
   | 'settings'
+  | 'payments'
+  | 'coupons'
+  | 'pricing'
 
 export interface AdminConfirmationModalState {
   isOpen: boolean

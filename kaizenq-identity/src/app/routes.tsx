@@ -37,7 +37,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   targetRoute,
   targetRouteName,
 }) => {
-  const { user, isLoading } = useAuth()
+  const { user, isAdmin, isLoading } = useAuth()
   const { setIsAuthOpen, setAuthMode, setTargetRouteAfterAuth, setCurrentRoute } = useApp()
 
   useEffect(() => {
@@ -45,8 +45,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       setTargetRouteAfterAuth(targetRoute)
       setAuthMode('signup')
       setIsAuthOpen(true)
+    } else if (!isLoading && user && isAdmin) {
+      // Platform administrators are strictly dedicated to the Admin Console
+      setCurrentRoute('admin')
     }
-  }, [isLoading, user, targetRoute, setTargetRouteAfterAuth, setAuthMode, setIsAuthOpen])
+  }, [isLoading, user, isAdmin, targetRoute, setTargetRouteAfterAuth, setAuthMode, setIsAuthOpen, setCurrentRoute])
 
   if (isLoading) {
     return (
@@ -54,6 +57,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full animate-spin" />
           <p className="text-xs text-[#64748B] font-medium">Verifying authentication session...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If authenticated as an administrator, immediately hand over to admin console
+  if (isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#64748B] font-medium">Routing to Platform Admin Console...</p>
         </div>
       </div>
     )
@@ -244,7 +259,7 @@ export const AppRoutes: React.FC = () => {
     case 'admin':
       return (
         <AdminProtectedRoute>
-          <AdminDashboard onExitToStudentApp={() => setCurrentRoute('dashboard')} />
+          <AdminDashboard onExitToHome={() => setCurrentRoute('home')} />
         </AdminProtectedRoute>
       )
     case 'home':

@@ -11,15 +11,18 @@ import {
   FileDown,
   Globe,
   Sparkles,
+  Sliders,
+  ChevronDown,
 } from 'lucide-react'
 import { Button } from '../../../../components/ui/Button.tsx'
 import { PortfolioDownloadButton } from '../../../../components/download/PortfolioDownloadButton.tsx'
-import type { PortfolioData, PortfolioThemeId } from '../../types.ts'
+import type { PortfolioData, PortfolioThemeId, PortfolioCustomization } from '../../types.ts'
 
 export interface PortfolioToolbarProps {
   data: PortfolioData
   onChangeSlug: (slug: string) => void
   onChangeTheme: (theme: PortfolioThemeId) => void
+  isThemeUnlocked?: (id: PortfolioThemeId) => boolean
   onSaveDraft: () => void
   isSaved: boolean
   lastSavedText: string
@@ -31,12 +34,14 @@ export interface PortfolioToolbarProps {
   onBack?: () => void
   mobileView: 'editor' | 'preview'
   onToggleMobileView: (view: 'editor' | 'preview') => void
+  onChangeCustomization?: (customization: PortfolioCustomization) => void
 }
 
 export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
   data,
   onChangeSlug,
   onChangeTheme,
+  isThemeUnlocked,
   onSaveDraft,
   isSaved,
   lastSavedText,
@@ -48,8 +53,10 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
   onBack,
   mobileView,
   onToggleMobileView,
+  onChangeCustomization,
 }) => {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showStyleMenu, setShowStyleMenu] = useState(false)
 
   const activeTheme = data.theme === 'midnight' ? 'modern' : data.theme || 'modern'
 
@@ -134,19 +141,153 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
               className="bg-transparent text-xs text-[#111827] font-medium focus:outline-none cursor-pointer pr-1"
               aria-label="Select Portfolio Theme"
             >
-              <option value="modern" className="bg-white text-[#111827]">
-                Modern (PR Builder Signature)
-              </option>
               <option value="developer" className="bg-white text-[#111827]">
-                Developer (Terminal & Code)
+                Developer (Free)
               </option>
               <option value="minimal" className="bg-white text-[#111827]">
-                Minimal (Clean Editorial)
+                Minimal (Free)
               </option>
               <option value="creative" className="bg-white text-[#111827]">
-                Creative (Vibrant Gradient)
+                Creative Studio {isThemeUnlocked?.('creative') ? '✓ Unlocked' : '🔒 Pro (₹299)'}
+              </option>
+              <option value="modern" className="bg-white text-[#111827]">
+                Modern Clean {isThemeUnlocked?.('modern') ? '✓ Unlocked' : '🔒 Pro (₹299)'}
               </option>
             </select>
+          </div>
+
+          {/* Theme Customization Popover */}
+          <div className="relative">
+            <button
+              onClick={() => setShowStyleMenu(!showStyleMenu)}
+              className="flex items-center gap-1.5 bg-[#F8FAFC] hover:bg-[#F1F5F9] px-2.5 py-1.5 rounded-xl border border-[#E2E8F0] text-xs font-medium text-[#111827] transition-colors cursor-pointer"
+              title="Customize portfolio accent colors, animation effects, and layout density"
+              aria-label="Customize portfolio styling"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[#2563EB]" />
+              <span className="hidden sm:inline">Customize</span>
+              <ChevronDown className="w-3 h-3 text-[#64748B]" />
+            </button>
+
+            {showStyleMenu && (
+              <div className="absolute right-0 sm:left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#E2E8F0] p-4 z-40 text-xs space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+                  <span className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-[#2563EB]" />
+                    Theme Customization
+                  </span>
+                  <button
+                    onClick={() => setShowStyleMenu(false)}
+                    className="text-[#64748B] hover:text-[#0F172A] text-xs font-semibold cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+
+                {/* Accent Color Palette */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider block">
+                    Accent Color
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                      { label: 'Emerald', color: '#10B981' },
+                      { label: 'Royal Blue', color: '#2563EB' },
+                      { label: 'Cyan', color: '#06B6D4' },
+                      { label: 'Violet', color: '#8B5CF6' },
+                      { label: 'Amber', color: '#F59E0B' },
+                      { label: 'Rose', color: '#F43F5E' },
+                    ].map((c) => (
+                      <button
+                        key={c.color}
+                        onClick={() =>
+                          onChangeCustomization?.({
+                            ...data.customization,
+                            accentColor: c.color,
+                          })
+                        }
+                        style={{ backgroundColor: c.color }}
+                        className={`w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110 flex items-center justify-center ${
+                          (data.customization?.accentColor || '#10B981') === c.color
+                            ? 'ring-2 ring-offset-2 ring-[#2563EB] scale-110'
+                            : ''
+                        }`}
+                        title={c.label}
+                        aria-label={`Select ${c.label} accent color`}
+                      />
+                    ))}
+                    <input
+                      type="color"
+                      value={data.customization?.accentColor || '#10B981'}
+                      onChange={(e) =>
+                        onChangeCustomization?.({
+                          ...data.customization,
+                          accentColor: e.target.value,
+                        })
+                      }
+                      className="w-6 h-6 rounded-md cursor-pointer border-0 p-0"
+                      title="Custom color hex"
+                    />
+                  </div>
+                </div>
+
+                {/* Layout Density */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider block">
+                    Layout Density
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'compact', label: 'Compact' },
+                      { id: 'normal', label: 'Normal' },
+                      { id: 'relaxed', label: 'Spacious' },
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() =>
+                          onChangeCustomization?.({
+                            ...data.customization,
+                            layoutDensity: s.id as 'compact' | 'normal' | 'relaxed',
+                          })
+                        }
+                        className={`px-2 py-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                          (data.customization?.layoutDensity || 'normal') === s.id
+                            ? 'bg-[#EFF6FF] border-[#2563EB] text-[#2563EB] font-bold shadow-xs'
+                            : 'border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#334155]'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Animations Toggle */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] font-semibold text-[#334155]">
+                    Micro-Animations
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={data.customization?.animationsEnabled !== false}
+                      onChange={(e) =>
+                        onChangeCustomization?.({
+                          ...data.customization,
+                          animationsEnabled: e.target.checked,
+                        })
+                      }
+                      className="sr-only peer"
+                    />
+                    <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3.5 after:transition-all peer-checked:bg-[#2563EB]"></div>
+                  </label>
+                </div>
+
+                <div className="pt-1 text-[10px] text-[#64748B] border-t border-[#E2E8F0]">
+                  Applies live to preview and published portfolio.
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

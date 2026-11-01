@@ -68,6 +68,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleBuilderClick = (target: 'resume' | 'portfolio') => {
     setMobileMenuOpen(false)
+    if (isAdmin) {
+      setCurrentRoute('admin')
+      return
+    }
     if (user) {
       setCurrentRoute(target)
     } else {
@@ -78,6 +82,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const handleGetStarted = () => {
     setMobileMenuOpen(false)
+    if (isAdmin) {
+      setCurrentRoute('admin')
+      return
+    }
     if (user) {
       setCurrentRoute('dashboard')
     } else {
@@ -145,18 +153,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action CTAs */}
           <div className="hidden md:flex items-center gap-3">
-            {isAdmin && (
+            {isAdmin ? (
               <Button
-                variant="outline"
+                variant="primary"
                 size="sm"
                 onClick={() => setCurrentRoute('admin')}
-                leftIcon={<Shield className="w-3.5 h-3.5 text-blue-600" />}
-                className="text-xs lg:text-sm border-blue-200 bg-blue-50/70 text-blue-700 hover:bg-blue-100/80 font-semibold"
+                leftIcon={<Shield className="w-3.5 h-3.5 text-white" />}
+                className="text-xs lg:text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm"
               >
                 Admin Console
               </Button>
-            )}
-            {user ? (
+            ) : user ? (
               <Button
                 variant="primary"
                 size="sm"
@@ -238,22 +245,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <div className="pt-3 mt-2 border-t border-[#E2E8F0] flex flex-col gap-2.5">
-                {isAdmin && (
+                {isAdmin ? (
                   <Button
-                    variant="outline"
+                    variant="primary"
                     fullWidth
                     size="sm"
                     onClick={() => {
                       setMobileMenuOpen(false)
                       setCurrentRoute('admin')
                     }}
-                    leftIcon={<Shield className="w-4 h-4 text-blue-600" />}
-                    className="border-blue-200 bg-blue-50/70 text-blue-700 hover:bg-blue-100 font-semibold"
+                    leftIcon={<Shield className="w-4 h-4 text-white" />}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm"
                   >
                     Admin Console
                   </Button>
-                )}
-                {user ? (
+                ) : user ? (
                   <Button
                     variant="primary"
                     fullWidth

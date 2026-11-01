@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react'
 import {
   Sparkles,
@@ -10,7 +10,6 @@ import {
   UserCheck,
   Sliders,
   Share2,
-  CheckCircle2,
   ArrowRight,
   Download,
   Copy,
@@ -19,13 +18,9 @@ import {
   Globe,
   QrCode,
   Lock,
-  RefreshCw,
-  Palette,
-  Eye,
   FileText,
   ChevronRight,
   ChevronLeft,
-  ExternalLink,
 } from 'lucide-react'
 import { Container } from '../ui/Container.tsx'
 import { Button } from '../ui/Button.tsx'
@@ -108,7 +103,7 @@ export interface HowItWorksProps {
   onOpenAuth?: (mode?: 'signin' | 'signup') => void
 }
 
-export const HowItWorks: React.FC<HowItWorksProps> = ({ onOpenBuilder, onOpenAuth }) => {
+export const HowItWorks: React.FC<HowItWorksProps> = ({ onOpenBuilder }) => {
   const { setCurrentRoute } = useApp()
   const prefersReduced = useReducedMotion()
 
@@ -391,7 +386,6 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({ onOpenBuilder, onOpenAut
                   const step = WORKFLOW_STEPS[stepIndex]
                   const isTop = stackPosition === 0
                   const isMiddle = stackPosition === 1
-                  const isBack = stackPosition === 2
 
                   // 3D Isometric offsets and tilts
                   let yOffset = isTop ? 0 : isMiddle ? 22 : 44
@@ -814,7 +808,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({ onOpenBuilder, onOpenAut
                                 </span>
                               </div>
                               <span className="text-xs font-semibold text-white block">
-                                Alex_Resume.pdf
+                                {pdfReady ? 'Alex_Resume.pdf' : 'Rendering PDF...'}
                               </span>
                               <span className="text-[11px] text-[#94A3B8]">
                                 184 KB • 100% Crisp

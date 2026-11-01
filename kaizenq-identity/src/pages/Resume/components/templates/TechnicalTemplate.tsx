@@ -36,18 +36,36 @@ export const TechnicalTemplate: React.FC<TechnicalTemplateProps> = ({ data }) =>
     return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
   }
 
+  const customFont =
+    data.customization?.fontFamily === 'sans'
+      ? 'font-sans'
+      : data.customization?.fontFamily === 'serif'
+      ? 'font-serif'
+      : 'font-mono'
+  const customSpacing =
+    data.customization?.spacing === 'compact'
+      ? 'leading-snug'
+      : data.customization?.spacing === 'relaxed'
+      ? 'leading-loose'
+      : 'leading-relaxed'
+  const customAccent = data.customization?.accentColor || '#111827'
+
   return (
     <article
-      className="resume-sheet w-full bg-white text-gray-900 font-sans leading-relaxed text-[10.5pt] sm:text-[11pt] select-text"
+      className={`resume-sheet w-full bg-white text-gray-900 ${customFont} ${customSpacing} text-[10.5pt] sm:text-[11pt] select-text`}
       aria-label="Technical ATS Resume"
     >
       {/* 1. Header: Technical Developer Lockup */}
-      <header className="pb-3 mb-4 border-b-2 border-gray-900">
+      <header
+        className="pb-3 mb-4 border-b-2"
+        style={{ borderColor: customAccent }}
+      >
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-950 font-mono">
               {personalInfo.fullName || 'Your Name'}
             </h1>
+
             {personalInfo.title && (
               <p className="text-sm font-semibold text-gray-800 mt-0.5 tracking-wide">
                 {personalInfo.title}

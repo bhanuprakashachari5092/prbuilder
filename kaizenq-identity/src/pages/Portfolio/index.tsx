@@ -9,10 +9,14 @@ import { PortfolioPreviewFrame } from './components/builder/PortfolioPreviewFram
 import { ResumeImportModal } from './components/builder/ResumeImportModal.tsx'
 import { DraftMigrationModal } from '../../components/auth/DraftMigrationModal.tsx'
 import { PortfolioCompletionModal } from '../../components/portfolio/PortfolioCompletionModal.tsx'
+import { CheckoutModal } from '../../components/payment/CheckoutModal.tsx'
+import { PremiumUpgradeModal } from '../../components/payment/PremiumUpgradeModal.tsx'
+import { PortfolioPricingSection } from './components/builder/PortfolioPricingSection.tsx'
 import { useAuth } from '../../app/providers/AuthContext.tsx'
 import { useApp } from '../../app/providers/AppContext.ts'
+import { useEntitlements } from '../../hooks/useEntitlements.ts'
 import { portfolioService, type PortfolioRow } from '../../services/portfolioService.ts'
-import { Cloud, HardDrive, AlertTriangle, X } from 'lucide-react'
+import { Cloud, HardDrive, AlertTriangle, X, CheckCircle2 } from 'lucide-react'
 
 export interface PortfolioProps {
   onBack?: () => void
@@ -23,7 +27,9 @@ type SaveState = 'saving' | 'saved_cloud' | 'saved_local' | 'offline' | 'error'
 
 export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }) => {
   const { user, isConfigured } = useAuth()
-  const { setIsAuthOpen, setAuthMode } = useApp()
+  const { setIsAuthOpen, setAuthMode, setCurrentRoute } = useApp()
+  const entitlements = useEntitlements()
+  const { isThemeUnlocked, refreshEntitlements } = entitlements
 
   // Initialize portfolio state safely from localStorage
   const [portfolioData, setPortfolioData] = useState<PortfolioData>(() => {
@@ -39,6 +45,27 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
   const [isMigrationModalOpen, setIsMigrationModalOpen] = useState<boolean>(false)
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false)
   const [isCompletionModalOpen, setIsCompletionModalOpen] = useState<boolean>(false)
+  const [unlockedSuccessMsg, setUnlockedSuccessMsg] = useState<string | null>(null)
+  const [upgradeModal, setUpgradeModal] = useState<{
+    isOpen: boolean
+    itemId: PortfolioThemeId
+  }>({
+    isOpen: false,
+    itemId: 'creative',
+  })
+  const [checkoutModal, setCheckoutModal] = useState<{
+    isOpen: boolean
+    productId: string
+    productTitle: string
+    pricePaise: number
+    couponCode?: string
+    targetTheme?: PortfolioThemeId
+  }>({
+    isOpen: false,
+    productId: '',
+    productTitle: '',
+    pricePaise: 29900,
+  })
 
   // Tracking pending updates and async request sequence to avoid stale overwrites
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -210,8 +237,15 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
     }
   }
 
-  // Theme switch
+  // Theme switch (preserves all data; gates Pro themes behind PremiumUpgradeModal)
   const handleChangeTheme = (theme: PortfolioThemeId) => {
+    if (!isThemeUnlocked(theme)) {
+      setUpgradeModal({
+        isOpen: true,
+        itemId: theme,
+      })
+      return
+    }
     handleDataChange({
       ...portfolioData,
       theme,
@@ -271,6 +305,7 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
         data={portfolioData}
         onChangeSlug={handleChangeSlug}
         onChangeTheme={handleChangeTheme}
+        isThemeUnlocked={isThemeUnlocked}
         onSaveDraft={handleManualSave}
         isSaved={isSaved}
         lastSavedText={lastSavedText}
@@ -282,16 +317,60 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
         onBack={onBack}
         mobileView={mobileView}
         onToggleMobileView={setMobileView}
+        onChangeCustomization={(customization) =>
+          handleDataChange({
+            ...portfolioData,
+            customization,
+          })
+        }
       />
 
-      {/* 2. Responsive Split Workspace */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      {/* Unlocked Entitlement Success Feedback Banner */}
+      {unlockedSuccessMsg && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-md animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+            <span>{unlockedSuccessMsg}</span>
+          </div>
+          <button
+            onClick={() => setUnlockedSuccessMsg(null)}
+            className="p-1 hover:bg-white/20 rounded-lg transition-colors cursor-pointer"
+            aria-label="Dismiss banner"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* 2. Top Pricing & Themes Section */}
+      <PortfolioPricingSection
+        currentTheme={portfolioData.theme}
+        onSelectTheme={handleChangeTheme}
+        entitlements={entitlements}
+        onProceedToCheckout={(productId, amountPaise, title, couponCode) => {
+          setCheckoutModal({
+            isOpen: true,
+            productId,
+            productTitle: title,
+            pricePaise: amountPaise,
+            couponCode,
+            targetTheme: productId.includes('theme')
+              ? (productId.replace('pro-theme-', '') as PortfolioThemeId)
+              : undefined,
+          })
+        }}
+        onNavigateToDomainManager={() => {
+          setCurrentRoute('publish')
+        }}
+      />
+
+      {/* 3. Responsive Split Workspace */}
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Left Column: Form Editor */}
         <div
           className={`w-full lg:w-[48%] xl:w-[45%] flex flex-col border-r border-[#E2E8F0] bg-white overflow-y-auto ${
             mobileView === 'preview' ? 'hidden lg:flex' : 'flex'
           }`}
-          style={{ maxHeight: 'calc(100vh - 61px)' }}
         >
           <div className="p-4 sm:p-6 space-y-4">
             {/* Storage status badge */}
@@ -325,10 +404,9 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
 
         {/* Right Column: Live Portfolio Preview Frame */}
         <div
-          className={`w-full lg:w-[52%] xl:w-[55%] flex-1 bg-[#F1F5F9] overflow-hidden ${
+          className={`w-full lg:w-[52%] xl:w-[55%] flex-1 bg-[#F1F5F9] overflow-hidden flex flex-col ${
             mobileView === 'editor' ? 'hidden lg:flex flex-col' : 'flex flex-col'
           }`}
-          style={{ maxHeight: 'calc(100vh - 61px)' }}
         >
           <PortfolioPreviewFrame
             data={portfolioData}
@@ -417,6 +495,55 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
           setAuthMode('signup')
         }}
         onSlugChange={handleChangeSlug}
+      />
+
+      {/* 7. Premium Upgrade Modal for Pro Portfolio Themes */}
+      <PremiumUpgradeModal
+        isOpen={upgradeModal.isOpen}
+        itemType="portfolio_theme"
+        itemId={upgradeModal.itemId}
+        isOwned={isThemeUnlocked(upgradeModal.itemId)}
+        onClose={() => setUpgradeModal((prev) => ({ ...prev, isOpen: false }))}
+        onApplyOwned={() => {
+          handleDataChange({
+            ...portfolioData,
+            theme: upgradeModal.itemId,
+          })
+          setUpgradeModal((prev) => ({ ...prev, isOpen: false }))
+        }}
+        onProceedToCheckout={(productId, pricePaise, title, couponCode) => {
+          setUpgradeModal((prev) => ({ ...prev, isOpen: false }))
+          setCheckoutModal({
+            isOpen: true,
+            productId,
+            productTitle: title,
+            pricePaise,
+            couponCode,
+            targetTheme: upgradeModal.itemId,
+          })
+        }}
+      />
+
+      {/* 8. UPI Checkout Modal for Pro Portfolio Themes */}
+      <CheckoutModal
+        isOpen={checkoutModal.isOpen}
+        productId={checkoutModal.productId}
+        productTitle={checkoutModal.productTitle}
+        productCategory={checkoutModal.productId.startsWith('pro-all-access') ? 'bundle' : 'portfolio_theme'}
+        pricePaise={checkoutModal.pricePaise}
+        initialCouponCode={checkoutModal.couponCode}
+        onClose={() => setCheckoutModal((prev) => ({ ...prev, isOpen: false }))}
+        onSuccess={async () => {
+          await refreshEntitlements()
+          if (checkoutModal.targetTheme) {
+            handleDataChange({
+              ...portfolioData,
+              theme: checkoutModal.targetTheme,
+            })
+            setUnlockedSuccessMsg(`Premium Theme Unlocked! Your portfolio is now active in ${checkoutModal.productTitle}.`)
+            setTimeout(() => setUnlockedSuccessMsg(null), 6000)
+          }
+        }}
       />
     </div>
   )

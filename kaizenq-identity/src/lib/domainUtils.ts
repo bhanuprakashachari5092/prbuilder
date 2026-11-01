@@ -220,3 +220,42 @@ export function getApexUrl(): string {
 
   return `https://${getPlatformDomain()}`
 }
+
+/**
+ * Detects whether a hostname represents an incoming custom domain
+ * (e.g. "example.com" or "portfolio.mybrand.dev") rather than the main PR Builder
+ * platform app, platform subdomains, Netlify preview URLs, or local development.
+ */
+export function isCustomDomainHost(hostname?: string): boolean {
+  if (typeof window === 'undefined' && !hostname) return false
+  const rawHost = (hostname || (typeof window !== 'undefined' ? window.location.hostname : '') || '')
+    .toLowerCase()
+    .trim()
+  if (!rawHost) return false
+  const host = rawHost.replace(/:\d+$/, '')
+
+  // 1. Localhost and local loopback addresses
+  if (host === 'localhost' || host.endsWith('.localhost') || /^(\d{1,3}\.){3}\d{1,3}$/.test(host)) {
+    return false
+  }
+
+  // 2. Netlify preview and deploy URLs
+  if (host.endsWith('.netlify.app')) {
+    return false
+  }
+
+  // 3. Platform domain (e.g. prbuilder.in, www.prbuilder.in, user.prbuilder.in)
+  const platform = getPlatformDomain()
+  if (host === platform || host.endsWith(`.${platform}`)) {
+    return false
+  }
+
+  // 4. Secondary staging or KaizenQ domains
+  if (host === 'identity.kaizenq.me' || host.endsWith('.identity.kaizenq.me')) {
+    return false
+  }
+
+  // Any other valid hostname arriving at our application is a connected custom domain
+  return true
+}
+

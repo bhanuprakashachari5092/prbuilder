@@ -9,15 +9,18 @@ import {
   Edit3,
   Printer,
   Sparkles,
+  Palette,
+  ChevronDown,
 } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { ResumeDownloadButton } from '../../../components/download/ResumeDownloadButton.tsx'
-import type { ResumeData, ResumeTemplateId } from '../types.ts'
+import type { ResumeData, ResumeTemplateId, ResumeCustomization } from '../types.ts'
 
 export interface ResumeToolbarProps {
   data: ResumeData
   onChangeTitle: (title: string) => void
   onChangeTemplate: (template: ResumeTemplateId) => void
+  isTemplateUnlocked?: (id: ResumeTemplateId) => boolean
   onSaveDraft: () => void
   isSaved: boolean
   lastSavedText: string
@@ -27,12 +30,14 @@ export interface ResumeToolbarProps {
   onBack?: () => void
   mobileView: 'editor' | 'preview'
   onToggleMobileView: (view: 'editor' | 'preview') => void
+  onChangeCustomization?: (customization: ResumeCustomization) => void
 }
 
 export const ResumeToolbar: React.FC<ResumeToolbarProps> = ({
   data,
   onChangeTitle,
   onChangeTemplate,
+  isTemplateUnlocked,
   onSaveDraft,
   isSaved,
   lastSavedText,
@@ -42,8 +47,10 @@ export const ResumeToolbar: React.FC<ResumeToolbarProps> = ({
   onBack,
   mobileView,
   onToggleMobileView,
+  onChangeCustomization,
 }) => {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showStyleMenu, setShowStyleMenu] = useState(false)
 
   return (
     <div className="bg-white border-b border-[#E2E8F0] px-4 sm:px-6 py-3.5 no-print sticky top-0 z-30 text-[#111827]">
@@ -122,19 +129,163 @@ export const ResumeToolbar: React.FC<ResumeToolbarProps> = ({
               className="bg-transparent text-xs text-[#111827] font-medium focus:outline-none cursor-pointer pr-1"
               aria-label="Select Resume Template"
             >
-              <option value="modern-professional" className="bg-white text-[#111827]">
-                Modern Professional
-              </option>
               <option value="classic-ats" className="bg-white text-[#111827]">
-                Classic ATS (Single-Column)
-              </option>
-              <option value="technical" className="bg-white text-[#111827]">
-                Technical Developer
+                Classic ATS (Free)
               </option>
               <option value="minimal" className="bg-white text-[#111827]">
-                Minimal Editorial
+                Minimal Editorial (Free)
+              </option>
+              <option value="modern-professional" className="bg-white text-[#111827]">
+                Modern Professional {isTemplateUnlocked?.('modern-professional') ? '✓ Unlocked' : '🔒 Pro (₹199)'}
+              </option>
+              <option value="technical" className="bg-white text-[#111827]">
+                Technical Developer {isTemplateUnlocked?.('technical') ? '✓ Unlocked' : '🔒 Pro (₹199)'}
               </option>
             </select>
+          </div>
+
+          {/* Style & Typography Customization Popover */}
+          <div className="relative">
+            <button
+              onClick={() => setShowStyleMenu(!showStyleMenu)}
+              className="flex items-center gap-1.5 bg-[#F8FAFC] hover:bg-[#F1F5F9] px-2.5 py-1.5 rounded-xl border border-[#E2E8F0] text-xs font-medium text-[#111827] transition-colors cursor-pointer"
+              title="Customize resume fonts, accent colors, and layout spacing"
+              aria-label="Customize resume appearance"
+            >
+              <Palette className="w-3.5 h-3.5 text-[#2563EB]" />
+              <span className="hidden sm:inline">Design</span>
+              <ChevronDown className="w-3 h-3 text-[#64748B]" />
+            </button>
+
+            {showStyleMenu && (
+              <div className="absolute right-0 sm:left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#E2E8F0] p-4 z-40 text-xs space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+                  <span className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-[#2563EB]" />
+                    Resume Styling
+                  </span>
+                  <button
+                    onClick={() => setShowStyleMenu(false)}
+                    className="text-[#64748B] hover:text-[#0F172A] text-xs font-semibold cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+
+                {/* Typography / Font */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider block">
+                    Typography
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'sans', label: 'Sans (Inter)' },
+                      { id: 'serif', label: 'Serif (Classic)' },
+                      { id: 'mono', label: 'Mono (Tech)' },
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() =>
+                          onChangeCustomization?.({
+                            ...data.customization,
+                            fontFamily: f.id as 'sans' | 'serif' | 'mono',
+                          })
+                        }
+                        className={`px-2 py-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                          (data.customization?.fontFamily || 'sans') === f.id
+                            ? 'bg-[#EFF6FF] border-[#2563EB] text-[#2563EB] font-bold shadow-xs'
+                            : 'border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#334155]'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Accent Color */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider block">
+                    Accent Color
+                  </label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {[
+                      { label: 'Slate', color: '#0F172A' },
+                      { label: 'Navy', color: '#1E3A8A' },
+                      { label: 'Royal', color: '#2563EB' },
+                      { label: 'Emerald', color: '#047857' },
+                      { label: 'Crimson', color: '#991B1B' },
+                      { label: 'Violet', color: '#7C3AED' },
+                    ].map((c) => (
+                      <button
+                        key={c.color}
+                        onClick={() =>
+                          onChangeCustomization?.({
+                            ...data.customization,
+                            accentColor: c.color,
+                          })
+                        }
+                        style={{ backgroundColor: c.color }}
+                        className={`w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110 flex items-center justify-center ${
+                          (data.customization?.accentColor || '#0F172A') === c.color
+                            ? 'ring-2 ring-offset-2 ring-[#2563EB] scale-110'
+                            : ''
+                        }`}
+                        title={c.label}
+                        aria-label={`Select ${c.label} color`}
+                      />
+                    ))}
+                    <input
+                      type="color"
+                      value={data.customization?.accentColor || '#0F172A'}
+                      onChange={(e) =>
+                        onChangeCustomization?.({
+                          ...data.customization,
+                          accentColor: e.target.value,
+                        })
+                      }
+                      className="w-6 h-6 rounded-md cursor-pointer border-0 p-0"
+                      title="Custom color hex"
+                    />
+                  </div>
+                </div>
+
+                {/* Layout Density / Spacing */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider block">
+                    Layout Density & Spacing
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'compact', label: 'Compact' },
+                      { id: 'normal', label: 'Normal' },
+                      { id: 'relaxed', label: 'Relaxed' },
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() =>
+                          onChangeCustomization?.({
+                            ...data.customization,
+                            spacing: s.id as 'compact' | 'normal' | 'relaxed',
+                          })
+                        }
+                        className={`px-2 py-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                          (data.customization?.spacing || 'normal') === s.id
+                            ? 'bg-[#EFF6FF] border-[#2563EB] text-[#2563EB] font-bold shadow-xs'
+                            : 'border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#334155]'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-1 text-[10px] text-[#64748B] border-t border-[#E2E8F0]">
+                  Applies instantly to preview and PDF export.
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

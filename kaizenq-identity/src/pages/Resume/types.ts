@@ -82,6 +82,12 @@ export interface SectionVisibility {
   additional?: boolean
 }
 
+export interface ResumeCustomization {
+  fontFamily?: 'sans' | 'serif' | 'mono'
+  accentColor?: string
+  spacing?: 'compact' | 'normal' | 'relaxed'
+}
+
 export interface ResumeData {
   version: number
   id: string
@@ -96,7 +102,9 @@ export interface ResumeData {
   certifications: CertificationEntry[]
   additional: AdditionalInfo
   visibleSections?: SectionVisibility
+  customization?: ResumeCustomization
 }
+
 
 export interface ValidationIssues {
   emailError?: string

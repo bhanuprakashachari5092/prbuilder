@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { AppProviders } from './providers/AppProviders.tsx'
 import { useApp } from './providers/AppContext.ts'
+import { useAuth } from './providers/AuthContext.tsx'
 import { AppRoutes } from './routes.tsx'
 import { AuthModal } from '../pages/Auth/index.tsx'
 import { OnboardingModal } from '../components/onboarding/OnboardingModal.tsx'
@@ -9,6 +10,7 @@ import { LogoIntro } from '../components/brand/LogoIntro.tsx'
 
 const MainAppContent: React.FC = () => {
   const {
+    currentRoute,
     isAuthOpen,
     setIsAuthOpen,
     authMode,
@@ -16,6 +18,23 @@ const MainAppContent: React.FC = () => {
     targetRouteAfterAuth,
     setTargetRouteAfterAuth,
   } = useApp()
+  const { user, isAdmin } = useAuth()
+
+  // Dedicated admin routing guard: Admin credentials are strictly for the Admin Console
+  useEffect(() => {
+    if (
+      isAdmin &&
+      (currentRoute === 'dashboard' ||
+        currentRoute === 'publish' ||
+        currentRoute === 'builder' ||
+        currentRoute === 'resume' ||
+        currentRoute === 'portfolio' ||
+        currentRoute === 'portfolio-preview')
+    ) {
+      setCurrentRoute('admin')
+    }
+  }, [isAdmin, currentRoute, setCurrentRoute])
+
   const [showIntro, setShowIntro] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
@@ -42,7 +61,10 @@ const MainAppContent: React.FC = () => {
         initialMode={authMode}
         onClose={() => setIsAuthOpen(false)}
         onSuccess={() => {
-          if (targetRouteAfterAuth) {
+          if (isAdmin || user?.email?.toLowerCase() === 'admin@gmail.com') {
+            setCurrentRoute('admin')
+            setTargetRouteAfterAuth(null)
+          } else if (targetRouteAfterAuth) {
             setCurrentRoute(targetRouteAfterAuth)
             setTargetRouteAfterAuth(null)
           } else {

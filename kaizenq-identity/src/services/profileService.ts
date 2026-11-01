@@ -1,8 +1,8 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts'
-import type { Database } from '../types/database.types.ts'
+import type { ProfileRow, ProfileInsert, ProfileUpdate } from '../types/database.types.ts'
 
-export type Profile = Database['public']['Tables']['profiles']['Row']
-export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+export type Profile = ProfileRow
+export type { ProfileInsert, ProfileUpdate }
 
 export const profileService = {
   /**
@@ -37,12 +37,14 @@ export const profileService = {
 
     try {
       // Defensive sanitization: never send null to NOT NULL columns
-      const cleanPayload: Record<string, any> = { ...updates }
+      const cleanPayload: ProfileUpdate = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+      }
       if (cleanPayload.display_name === null) cleanPayload.display_name = ''
       if (cleanPayload.headline === null) cleanPayload.headline = ''
       if (cleanPayload.location === null) cleanPayload.location = ''
       if (cleanPayload.bio === null) cleanPayload.bio = ''
-      cleanPayload.updated_at = new Date().toISOString()
 
       // 1. Try standard update first
       const { data: updateData, error: updateError } = await supabase
@@ -57,16 +59,20 @@ export const profileService = {
       }
 
       // 2. If row does not exist yet, perform upsert to initialize the profile
+      const insertPayload: ProfileInsert = {
+        id: userId,
+        display_name: cleanPayload.display_name || 'Student Builder',
+        headline: cleanPayload.headline || 'Software Engineering Student',
+        location: cleanPayload.location || '',
+        bio: cleanPayload.bio || '',
+        avatar_path: cleanPayload.avatar_path,
+        onboarding_completed: cleanPayload.onboarding_completed ?? false,
+        updated_at: cleanPayload.updated_at || new Date().toISOString(),
+      }
+
       const { data: upsertData, error: upsertError } = await supabase
         .from('profiles')
-        .upsert({
-          id: userId,
-          display_name: cleanPayload.display_name || 'Student Builder',
-          headline: cleanPayload.headline || 'Software Engineering Student',
-          location: cleanPayload.location || '',
-          bio: cleanPayload.bio || '',
-          ...cleanPayload,
-        })
+        .upsert(insertPayload)
         .select()
         .maybeSingle()
 

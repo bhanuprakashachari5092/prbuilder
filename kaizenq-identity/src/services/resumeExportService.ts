@@ -7,8 +7,9 @@
  * producing selectable, search-friendly ATS documents across multiple pages.
  */
 
+import { jsPDF } from 'jspdf'
 import type { ResumeData } from '../pages/Resume/types.ts'
-import { sanitizeFilename, escapeHtml, sanitizeUrl } from '../lib/downloadUtils.ts'
+import { sanitizeFilename, escapeHtml, sanitizeUrl, downloadBlob } from '../lib/downloadUtils.ts'
 
 /**
  * Checks whether the resume data contains sufficient content to generate a meaningful PDF.
@@ -419,22 +420,433 @@ export function generateResumePrintHtml(data: ResumeData): string {
 }
 
 /**
- * Executes a clean browser print-to-PDF dispatch.
- * Sets the document title to the requested filename so Chrome/Edge/Firefox
- * default to the correct PDF filename in the "Save as PDF" dialog.
+ * Generates an ATS-compliant, selectable-text vector PDF document using jsPDF.
+ * Output is 100% client-side with zero external API calls and zero print dialog requirements.
  */
-export async function downloadResumePdf(
-  data: ResumeData,
-  _options?: { preferDirect?: boolean },
-): Promise<{ success: boolean; filename: string; error?: string }> {
-  if (!hasSufficientResumeContent(data)) {
-    return {
-      success: false,
-      filename: 'resume.pdf',
-      error: 'Your resume needs at least your name and an education, experience, or skills section before exporting.',
+export function generateResumePdfDoc(data: ResumeData): jsPDF {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+  const pageWidth = 210
+  const pageHeight = 297
+  const margin = 14
+  const contentWidth = pageWidth - margin * 2
+  const maxY = pageHeight - 16
+  let y = margin
+
+  const template = data.template || 'classic-ats'
+  const isModern = template === 'modern' || template === 'modern-professional'
+  const isTechnical = template === 'technical'
+  const isMinimal = template === 'minimal'
+  const fontMain = isTechnical ? 'courier' : isModern || isMinimal ? 'helvetica' : 'times'
+
+  // Curated harmonious color palettes
+  const primaryColor = isModern ? [30, 58, 138] : isTechnical ? [6, 95, 70] : [17, 24, 39]
+  const accentColor = isModern ? [37, 99, 235] : isTechnical ? [5, 150, 105] : [55, 65, 81]
+  const ruleColor = isModern ? [191, 219, 254] : isTechnical ? [167, 243, 208] : isMinimal ? [228, 228, 231] : [209, 213, 219]
+  const darkTextColor = [17, 24, 39]
+  const mutedTextColor = [75, 85, 99]
+
+  function ensureSpace(needed: number) {
+    if (y + needed > maxY) {
+      doc.addPage()
+      y = margin
     }
   }
 
+  function addSectionHeader(title: string) {
+    ensureSpace(14)
+    y += 3
+    doc.setFont(fontMain, 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+    doc.text(title.toUpperCase(), margin, y)
+    y += 1.5
+    doc.setDrawColor(ruleColor[0], ruleColor[1], ruleColor[2])
+    doc.setLineWidth(0.4)
+    doc.line(margin, y, margin + contentWidth, y)
+    y += 4
+  }
+
+  // --- 1. HEADER ---
+  const fullName = data.personalInfo?.fullName?.trim() || 'Professional Resume'
+  const title = data.personalInfo?.title?.trim() || ''
+
+  doc.setFont(fontMain, 'bold')
+  doc.setFontSize(18)
+  doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+
+  if (!isModern && !isTechnical && !isMinimal) {
+    doc.text(fullName.toUpperCase(), pageWidth / 2, y, { align: 'center' })
+  } else {
+    doc.text(fullName.toUpperCase(), margin, y)
+  }
+  y += 5.5
+
+  if (title) {
+    doc.setFont(fontMain, isMinimal ? 'normal' : 'bold')
+    doc.setFontSize(10.5)
+    doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
+    if (!isModern && !isTechnical && !isMinimal) {
+      doc.text(title, pageWidth / 2, y, { align: 'center' })
+    } else {
+      doc.text(title, margin, y)
+    }
+    y += 5
+  }
+
+  // Contact info
+  const contacts: string[] = []
+  if (data.personalInfo?.email) contacts.push(data.personalInfo.email)
+  if (data.personalInfo?.phone) contacts.push(data.personalInfo.phone)
+  if (data.personalInfo?.location) contacts.push(data.personalInfo.location)
+  if (data.personalInfo?.linkedinUrl) contacts.push(data.personalInfo.linkedinUrl.replace(/^https?:\/\/(www\.)?/, ''))
+  if (data.personalInfo?.githubUrl) contacts.push(data.personalInfo.githubUrl.replace(/^https?:\/\/(www\.)?/, ''))
+  if (data.personalInfo?.portfolioUrl) contacts.push(data.personalInfo.portfolioUrl.replace(/^https?:\/\/(www\.)?/, ''))
+
+  if (contacts.length > 0) {
+    doc.setFont(fontMain, 'normal')
+    doc.setFontSize(8.5)
+    doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+    const contactText = contacts.join('  •  ')
+    const contactLines = doc.splitTextToSize(contactText, contentWidth)
+    if (!isModern && !isTechnical && !isMinimal) {
+      contactLines.forEach((line: string) => {
+        doc.text(line, pageWidth / 2, y, { align: 'center' })
+        y += 4
+      })
+    } else {
+      contactLines.forEach((line: string) => {
+        doc.text(line, margin, y)
+        y += 4
+      })
+    }
+  }
+
+  y += 1.5
+  doc.setDrawColor(ruleColor[0], ruleColor[1], ruleColor[2])
+  doc.setLineWidth(0.6)
+  doc.line(margin, y, margin + contentWidth, y)
+  y += 4
+
+  // --- 2. SUMMARY ---
+  const showSummary = data.visibleSections?.summary !== false && Boolean(data.personalInfo?.summary?.trim())
+  if (showSummary && data.personalInfo?.summary) {
+    addSectionHeader('Professional Summary')
+    doc.setFont(fontMain, 'normal')
+    doc.setFontSize(9.5)
+    doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+    const sumLines = doc.splitTextToSize(data.personalInfo.summary.trim(), contentWidth)
+    sumLines.forEach((line: string) => {
+      ensureSpace(4.5)
+      doc.text(line, margin, y)
+      y += 4.5
+    })
+    y += 1.5
+  }
+
+  // --- 3. EXPERIENCE ---
+  const showExperience = data.visibleSections?.experience !== false && Array.isArray(data.experience) && data.experience.length > 0
+  if (showExperience && data.experience) {
+    addSectionHeader('Experience')
+    data.experience.forEach((exp) => {
+      ensureSpace(14)
+      doc.setFont(fontMain, 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+      doc.text(exp.role || 'Position', margin, y)
+
+      const dates = [exp.startDate, exp.endDate].filter(Boolean).join(' — ')
+      if (dates) {
+        doc.setFont(fontMain, 'normal')
+        doc.setFontSize(8.5)
+        doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+        doc.text(dates, margin + contentWidth, y, { align: 'right' })
+      }
+      y += 4.5
+
+      if (exp.organization) {
+        doc.setFont(fontMain, 'italic')
+        doc.setFontSize(9)
+        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
+        doc.text(exp.organization, margin, y)
+        y += 4
+      }
+
+      if (Array.isArray(exp.bullets) && exp.bullets.length > 0) {
+        doc.setFont(fontMain, 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+        exp.bullets.forEach((b) => {
+          if (!b.trim()) return
+          const bLines = doc.splitTextToSize(b.trim(), contentWidth - 5)
+          ensureSpace(bLines.length * 4.2 + 2)
+          doc.text('•', margin + 1, y)
+          bLines.forEach((line: string) => {
+            doc.text(line, margin + 5, y)
+            y += 4.2
+          })
+        })
+      }
+      y += 2
+    })
+  }
+
+  // --- 4. EDUCATION ---
+  const showEducation = data.visibleSections?.education !== false && Array.isArray(data.education) && data.education.length > 0
+  if (showEducation && data.education) {
+    addSectionHeader('Education')
+    data.education.forEach((edu) => {
+      ensureSpace(12)
+      doc.setFont(fontMain, 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+      doc.text(edu.institution || 'University', margin, y)
+
+      const dates = [edu.startDate, edu.endDate].filter(Boolean).join(' — ')
+      if (dates) {
+        doc.setFont(fontMain, 'normal')
+        doc.setFontSize(8.5)
+        doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+        doc.text(dates, margin + contentWidth, y, { align: 'right' })
+      }
+      y += 4.5
+
+      const degreeLine = [edu.degree, edu.fieldOfStudy].filter(Boolean).join(' in ')
+      if (degreeLine) {
+        doc.setFont(fontMain, 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+        doc.text(degreeLine, margin, y)
+        if (edu.grade) {
+          doc.setFont(fontMain, 'italic')
+          doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+          const offset = doc.getTextWidth(degreeLine) + 2
+          if (margin + offset < margin + contentWidth - 10) {
+            doc.text(` — Grade: ${edu.grade}`, margin + offset, y)
+          }
+        }
+        y += 4.5
+      }
+      y += 1.5
+    })
+  }
+
+  // --- 5. SKILLS ---
+  const showSkills = data.visibleSections?.skills !== false && data.skills && (
+    (data.skills.languages && data.skills.languages.length > 0) ||
+    (data.skills.frameworks && data.skills.frameworks.length > 0) ||
+    (data.skills.tools && data.skills.tools.length > 0) ||
+    (data.skills.softSkills && data.skills.softSkills.length > 0)
+  )
+  if (showSkills && data.skills) {
+    addSectionHeader('Technical Skills')
+    const skillCategories = [
+      { label: 'Languages', items: data.skills.languages },
+      { label: 'Frameworks & Libraries', items: data.skills.frameworks },
+      { label: 'Tools & Platforms', items: data.skills.tools },
+      { label: 'Core Competencies', items: data.skills.softSkills },
+    ]
+
+    skillCategories.forEach((cat) => {
+      if (!cat.items || cat.items.length === 0) return
+      ensureSpace(5)
+      doc.setFont(fontMain, 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+      const labelText = `${cat.label}: `
+      const labelWidth = doc.getTextWidth(labelText)
+      doc.text(labelText, margin, y)
+
+      doc.setFont(fontMain, 'normal')
+      doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+      const itemsText = cat.items.join(', ')
+      const itemLines = doc.splitTextToSize(itemsText, contentWidth - labelWidth)
+
+      if (itemLines.length === 1) {
+        doc.text(itemLines[0], margin + labelWidth, y)
+        y += 4.5
+      } else {
+        doc.text(itemLines[0], margin + labelWidth, y)
+        y += 4.2
+        for (let i = 1; i < itemLines.length; i++) {
+          ensureSpace(4.2)
+          doc.text(itemLines[i], margin + 4, y)
+          y += 4.2
+        }
+        y += 0.5
+      }
+    })
+    y += 1.5
+  }
+
+  // --- 6. PROJECTS ---
+  const showProjects = data.visibleSections?.projects !== false && Array.isArray(data.projects) && data.projects.length > 0
+  if (showProjects && data.projects) {
+    addSectionHeader('Projects')
+    data.projects.forEach((proj) => {
+      ensureSpace(12)
+      doc.setFont(fontMain, 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+      doc.text(proj.name || 'Project', margin, y)
+
+      const url = proj.projectUrl || proj.githubUrl
+      if (url) {
+        doc.setFont(fontMain, 'normal')
+        doc.setFontSize(8)
+        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2])
+        const cleanUrl = url.replace(/^https?:\/\/(www\.)?/, '')
+        doc.text(cleanUrl, margin + contentWidth, y, { align: 'right' })
+      }
+      y += 4.2
+
+      if (proj.description) {
+        doc.setFont(fontMain, 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+        const dLines = doc.splitTextToSize(proj.description.trim(), contentWidth)
+        dLines.forEach((line: string) => {
+          ensureSpace(4.2)
+          doc.text(line, margin, y)
+          y += 4.2
+        })
+      }
+
+      if (Array.isArray(proj.technologies) && proj.technologies.length > 0) {
+        ensureSpace(4)
+        doc.setFont(fontMain, 'italic')
+        doc.setFontSize(8.5)
+        doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+        doc.text(`Technologies: ${proj.technologies.join(', ')}`, margin, y)
+        y += 4.2
+      }
+      y += 1.5
+    })
+  }
+
+  // --- 7. CERTIFICATIONS ---
+  const showCertifications = data.visibleSections?.certifications !== false && Array.isArray(data.certifications) && data.certifications.length > 0
+  if (showCertifications && data.certifications) {
+    addSectionHeader('Certifications')
+    data.certifications.forEach((cert) => {
+      ensureSpace(8)
+      doc.setFont(fontMain, 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+      doc.text(cert.name || 'Certification', margin, y)
+
+      if (cert.issueDate) {
+        doc.setFont(fontMain, 'normal')
+        doc.setFontSize(8.5)
+        doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+        doc.text(cert.issueDate, margin + contentWidth, y, { align: 'right' })
+      }
+      y += 4
+
+      if (cert.issuer) {
+        doc.setFont(fontMain, 'italic')
+        doc.setFontSize(8.5)
+        doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+        doc.text(cert.issuer, margin, y)
+        y += 4
+      }
+      y += 1
+    })
+  }
+
+  // --- 8. ADDITIONAL INFORMATION ---
+  const showAdditional = data.visibleSections?.additional !== false && data.additional && (
+    (data.additional.achievements && data.additional.achievements.length > 0) ||
+    (data.additional.coursework && data.additional.coursework.length > 0) ||
+    (data.additional.languages && data.additional.languages.length > 0)
+  )
+  if (showAdditional && data.additional) {
+    addSectionHeader('Additional Information')
+    if (data.additional.achievements && data.additional.achievements.length > 0) {
+      data.additional.achievements.forEach((ach) => {
+        const aLines = doc.splitTextToSize(ach, contentWidth - 5)
+        ensureSpace(aLines.length * 4.2 + 2)
+        doc.setFont(fontMain, 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+        doc.text('•', margin + 1, y)
+        aLines.forEach((line: string) => {
+          doc.text(line, margin + 5, y)
+          y += 4.2
+        })
+      })
+    }
+    if (data.additional.coursework && data.additional.coursework.length > 0) {
+      ensureSpace(4.5)
+      doc.setFont(fontMain, 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+      doc.text('Relevant Coursework: ', margin, y)
+      const cWidth = doc.getTextWidth('Relevant Coursework: ')
+      doc.setFont(fontMain, 'normal')
+      doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+      doc.text(data.additional.coursework.join(', '), margin + cWidth, y)
+      y += 4.5
+    }
+    if (data.additional.languages && data.additional.languages.length > 0) {
+      ensureSpace(4.5)
+      doc.setFont(fontMain, 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(darkTextColor[0], darkTextColor[1], darkTextColor[2])
+      doc.text('Languages: ', margin, y)
+      const lWidth = doc.getTextWidth('Languages: ')
+      doc.setFont(fontMain, 'normal')
+      doc.setTextColor(mutedTextColor[0], mutedTextColor[1], mutedTextColor[2])
+      doc.text(data.additional.languages.join(', '), margin + lWidth, y)
+      y += 4.5
+    }
+  }
+
+  // --- 9. FOOTER ---
+  const totalPages = doc.getNumberOfPages()
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    doc.setFont(fontMain, 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(150, 150, 150)
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, 291, { align: 'center' })
+  }
+
+  return doc
+}
+
+/**
+ * Generates an ATS resume PDF as a Blob object for direct browser downloading.
+ */
+export async function generateResumePdfBlob(data: ResumeData): Promise<Blob> {
+  const doc = generateResumePdfDoc(data)
+  const arrayBuffer = doc.output('arraybuffer')
+  return new Blob([arrayBuffer], { type: 'application/pdf' })
+}
+
+/**
+ * Downloads a resume PDF directly into the user's Downloads folder without opening the system print dialog.
+ */
+export async function downloadResumePdfDirect(
+  data: ResumeData,
+  customFilename?: string,
+): Promise<{ success: boolean; filename: string; error?: string }> {
+  try {
+    const filename = customFilename || getResumePdfFilename(data)
+    const blob = await generateResumePdfBlob(data)
+    downloadBlob(blob, filename)
+    return { success: true, filename }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Direct PDF download failed.'
+    return { success: false, filename: 'resume.pdf', error: msg }
+  }
+}
+
+/**
+ * Dispatches browser print-to-PDF dialog.
+ */
+export async function printResumePdf(
+  data: ResumeData,
+): Promise<{ success: boolean; filename: string; error?: string }> {
   const filename = getResumePdfFilename(data)
   const targetDocTitle = filename.replace(/\.pdf$/, '')
 
@@ -447,7 +859,6 @@ export async function downloadResumePdf(
       window.print()
       return { success: true, filename }
     } finally {
-      // Restore title after print dialog closes
       setTimeout(() => {
         document.title = originalTitle
       }, 1000)
@@ -478,7 +889,6 @@ export async function downloadResumePdf(
     doc.write(html)
     doc.close()
 
-    // Wait briefly for font & layout rendering
     await new Promise((resolve) => setTimeout(resolve, 350))
 
     if (iframe.contentWindow) {
@@ -486,7 +896,6 @@ export async function downloadResumePdf(
       iframe.contentWindow.print()
     }
 
-    // Clean up iframe
     setTimeout(() => {
       if (document.body.contains(iframe)) {
         document.body.removeChild(iframe)
@@ -499,3 +908,30 @@ export async function downloadResumePdf(
     return { success: false, filename, error: message }
   }
 }
+
+/**
+ * Master Resume Export Dispatcher
+ * Default: Directly downloads vector ATS PDF file via jsPDF blob.
+ * Fallback / Mode: Launches browser print dialog if mode === 'print'.
+ */
+export async function downloadResumePdf(
+  data: ResumeData,
+  options?: { mode?: 'direct' | 'print'; preferDirect?: boolean },
+): Promise<{ success: boolean; filename: string; error?: string }> {
+  const mode = options?.mode || (options?.preferDirect === false ? 'print' : 'direct')
+
+  if (mode === 'print') {
+    return printResumePdf(data)
+  }
+
+  // Default: Direct vector PDF download
+  const directResult = await downloadResumePdfDirect(data)
+  if (directResult.success) {
+    return directResult
+  }
+
+  // Fallback to browser print if direct download encountered an unexpected issue
+  console.warn('Direct PDF download failed, falling back to browser print:', directResult.error)
+  return printResumePdf(data)
+}
+

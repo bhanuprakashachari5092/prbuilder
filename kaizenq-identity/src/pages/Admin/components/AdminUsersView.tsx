@@ -16,24 +16,32 @@ import {
   RefreshCw,
   ExternalLink,
 } from 'lucide-react'
-import { adminService, type AdminUserItem, type PaginatedResult } from '../../../services/adminService.ts'
+import { adminService, type AdminUserItem, type PaginatedResult, type AdminUserAssets } from '../../../services/adminService.ts'
 import type { AdminConfirmationModalState } from '../types.ts'
 
 interface AdminUsersViewProps {
   onOpenConfirmation: (state: AdminConfirmationModalState) => void
   currentAdminId?: string
+  initialUserId?: string | null
+  globalSearch?: string
+  onNavigateToResumes?: (resumeId?: string) => void
+  onNavigateToPortfolios?: (portfolioId?: string) => void
 }
 
 export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
   onOpenConfirmation,
   currentAdminId,
+  initialUserId,
+  globalSearch,
+  onNavigateToResumes,
+  onNavigateToPortfolios,
 }) => {
   const [data, setData] = useState<PaginatedResult<AdminUserItem> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Filters & search
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(globalSearch || '')
   const [roleFilter, setRoleFilter] = useState('all')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -42,6 +50,8 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
 
   // Profile Detail Drawer State
   const [selectedUser, setSelectedUser] = useState<AdminUserItem | null>(null)
+  const [userAssets, setUserAssets] = useState<AdminUserAssets | null>(null)
+  const [isAssetsLoading, setIsAssetsLoading] = useState(false)
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true)
@@ -64,8 +74,46 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
   }, [searchTerm, roleFilter, sortBy, sortDir, currentPage])
 
   useEffect(() => {
+    if (globalSearch !== undefined && globalSearch !== searchTerm) {
+      setSearchTerm(globalSearch)
+      setCurrentPage(1)
+    }
+  }, [globalSearch])
+
+  useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
+
+  // Auto-select user when initialUserId is passed
+  useEffect(() => {
+    if (initialUserId && data?.items) {
+      const match = data.items.find((u) => u.id === initialUserId)
+      if (match) {
+        setSelectedUser(match)
+      }
+    }
+  }, [initialUserId, data?.items])
+
+  // Fetch user specific resume and portfolio assets when drawer opens
+  useEffect(() => {
+    if (!selectedUser) {
+      setUserAssets(null)
+      return
+    }
+
+    let active = true
+    setIsAssetsLoading(true)
+    adminService.getUserAssets(selectedUser.id).then((res) => {
+      if (active) {
+        setUserAssets(res.data)
+        setIsAssetsLoading(false)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [selectedUser])
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -432,7 +480,7 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                 <h4 className="font-semibold text-slate-900 uppercase tracking-wider text-[11px] mb-3">
                   Studio Assets &amp; Activity
                 </h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
                     <div className="flex items-center gap-2 text-slate-500 mb-1">
                       <FileText className="w-3.5 h-3.5 text-blue-600" />
@@ -451,6 +499,96 @@ export const AdminUsersView: React.FC<AdminUsersViewProps> = ({
                     <span className="text-[10px] text-emerald-600 font-medium">
                       {selectedUser.publishedPortfolioCount} published live
                     </span>
+                  </div>
+                </div>
+
+                {/* Detailed Assets Records Breakdown */}
+                <div className="space-y-3">
+                  {/* User's Resumes */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-800 text-[11px] flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        User Resume Documents
+                      </span>
+                      {onNavigateToResumes && (
+                        <button
+                          onClick={() => onNavigateToResumes()}
+                          className="text-[10px] text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          View in Resumes
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    {isAssetsLoading ? (
+                      <div className="py-2 text-slate-400 text-center animate-pulse">Loading documents...</div>
+                    ) : !userAssets?.resumes.length ? (
+                      <p className="text-slate-400 text-[11px] py-1 italic">No resumes created yet by this user.</p>
+                    ) : (
+                      <div className="divide-y divide-slate-100 max-h-32 overflow-y-auto">
+                        {userAssets.resumes.map((res) => (
+                          <div key={res.id} className="py-1.5 flex items-center justify-between text-[11px]">
+                            <div className="truncate pr-2">
+                              <span className="font-medium text-slate-800 block truncate">{res.title}</span>
+                              <span className="text-[10px] text-slate-400">{res.template} • {new Date(res.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            {onNavigateToResumes && (
+                              <button
+                                onClick={() => onNavigateToResumes(res.id)}
+                                className="px-2 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 text-[10px] font-medium shrink-0 cursor-pointer"
+                              >
+                                Inspect
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* User's Portfolios */}
+                  <div className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-800 text-[11px] flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-emerald-600" />
+                        User Portfolio Websites
+                      </span>
+                      {onNavigateToPortfolios && (
+                        <button
+                          onClick={() => onNavigateToPortfolios()}
+                          className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          View in Portfolios
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    {isAssetsLoading ? (
+                      <div className="py-2 text-slate-400 text-center animate-pulse">Loading websites...</div>
+                    ) : !userAssets?.portfolios.length ? (
+                      <p className="text-slate-400 text-[11px] py-1 italic">No portfolios created yet by this user.</p>
+                    ) : (
+                      <div className="divide-y divide-slate-100 max-h-32 overflow-y-auto">
+                        {userAssets.portfolios.map((port) => (
+                          <div key={port.id} className="py-1.5 flex items-center justify-between text-[11px]">
+                            <div className="truncate pr-2">
+                              <span className="font-medium text-slate-800 block truncate">{port.title || 'Untitled Portfolio'}</span>
+                              <span className="text-[10px] text-slate-400">
+                                {port.slug ? `/${port.slug}` : 'draft'} • {port.theme}
+                              </span>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold shrink-0 ${
+                              port.status === 'published' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {port.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

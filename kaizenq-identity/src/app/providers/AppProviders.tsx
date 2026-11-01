@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { AppContext } from './AppContext.ts'
 import { AuthProvider } from './AuthContext.tsx'
-import { getSubdomainFromHostname } from '../../lib/domainUtils.ts'
+import { getSubdomainFromHostname, isCustomDomainHost } from '../../lib/domainUtils.ts'
 
 export const VALID_ROUTES = [
   'home',
@@ -42,6 +42,11 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
       // 1. Check if accessed via platform subdomain (e.g. username.prbuilder.in or username.localhost)
       const hostnameSubdomain = getSubdomainFromHostname(window.location.hostname)
       if (hostnameSubdomain) {
+        return 'public-portfolio'
+      }
+
+      // 1b. Check if accessed via connected custom domain (e.g. example.com or portfolio.example.com)
+      if (isCustomDomainHost(window.location.hostname)) {
         return 'public-portfolio'
       }
 

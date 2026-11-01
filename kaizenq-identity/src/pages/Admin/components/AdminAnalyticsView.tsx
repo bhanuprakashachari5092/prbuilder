@@ -22,7 +22,6 @@ import {
   Globe,
   PieChart as PieIcon,
   Activity,
-  Calendar,
   AlertCircle,
   RefreshCw,
   Download,
@@ -41,6 +40,7 @@ const ENGAGEMENT_COLORS = ['#2563EB', '#6366F1', '#10B981', '#94A3B8']
 
 export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats }) => {
   const [daysWindow, setDaysWindow] = useState<number>(30)
+  const [groupingMode, setGroupingMode] = useState<'daily' | 'weekly' | 'monthly'>('daily')
   const [growthData, setGrowthData] = useState<GrowthDataPoint[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +60,58 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
   useEffect(() => {
     fetchAnalytics()
   }, [fetchAnalytics])
+
+  // Aggregation of time series by day, week, or month
+  const aggregatedData = React.useMemo(() => {
+    if (groupingMode === 'daily') return growthData
+    if (groupingMode === 'monthly') {
+      const map = new Map<string, GrowthDataPoint>()
+      growthData.forEach((pt) => {
+        const key = pt.date.slice(0, 7)
+        const existing = map.get(key) || {
+          date: key,
+          newUsers: 0,
+          resumesCreated: 0,
+          portfoliosCreated: 0,
+          publishedPortfolios: 0,
+          draftPortfolios: 0,
+          resumeDownloads: 0,
+          portfolioDownloads: 0,
+          totalDownloads: 0,
+        }
+        map.set(key, {
+          date: key,
+          newUsers: existing.newUsers + pt.newUsers,
+          resumesCreated: existing.resumesCreated + pt.resumesCreated,
+          portfoliosCreated: existing.portfoliosCreated + pt.portfoliosCreated,
+          publishedPortfolios: existing.publishedPortfolios + pt.publishedPortfolios,
+          draftPortfolios: existing.draftPortfolios + pt.draftPortfolios,
+          resumeDownloads: (existing.resumeDownloads || 0) + (pt.resumeDownloads || 0),
+          portfolioDownloads: (existing.portfolioDownloads || 0) + (pt.portfolioDownloads || 0),
+          totalDownloads: (existing.totalDownloads || 0) + (pt.totalDownloads || 0),
+        })
+      })
+      return Array.from(map.values())
+    }
+    // weekly
+    const list: GrowthDataPoint[] = []
+    for (let i = 0; i < growthData.length; i += 7) {
+      const slice = growthData.slice(i, i + 7)
+      const label = slice[0]?.date ? `Wk ${slice[0].date.slice(5)}` : `Wk ${Math.floor(i / 7) + 1}`
+      list.push({
+        date: label,
+        newUsers: slice.reduce((a, b) => a + b.newUsers, 0),
+        resumesCreated: slice.reduce((a, b) => a + b.resumesCreated, 0),
+        portfoliosCreated: slice.reduce((a, b) => a + b.portfoliosCreated, 0),
+        publishedPortfolios: slice.reduce((a, b) => a + b.publishedPortfolios, 0),
+        draftPortfolios: slice.reduce((a, b) => a + b.draftPortfolios, 0),
+        resumeDownloads: slice.reduce((a, b) => a + (b.resumeDownloads || 0), 0),
+        portfolioDownloads: slice.reduce((a, b) => a + (b.portfolioDownloads || 0), 0),
+        totalDownloads: slice.reduce((a, b) => a + (b.totalDownloads || 0), 0),
+      })
+    }
+    return list
+  }, [growthData, groupingMode])
 
   // Prepare engagement data for Pie Chart
   const engagementData = stats
@@ -84,7 +136,36 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Daily / Weekly / Monthly Grouping Filter */}
+          <div className="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 text-xs font-medium">
+            <button
+              onClick={() => setGroupingMode('daily')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                groupingMode === 'daily' ? 'bg-white text-indigo-600 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Daily
+            </button>
+            <button
+              onClick={() => setGroupingMode('weekly')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                groupingMode === 'weekly' ? 'bg-white text-indigo-600 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => setGroupingMode('monthly')}
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                groupingMode === 'monthly' ? 'bg-white text-indigo-600 shadow-xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Monthly
+            </button>
+          </div>
+
+          {/* Date Window Filter */}
           <div className="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 text-xs font-medium">
             <button
               onClick={() => setDaysWindow(7)}
@@ -159,7 +240,7 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
             </p>
           </div>
           <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100">
-            {growthData.reduce((acc, curr) => acc + curr.newUsers, 0)} new registrations
+            {aggregatedData.reduce((acc, curr) => acc + curr.newUsers, 0)} new registrations ({groupingMode})
           </span>
         </div>
 
@@ -168,13 +249,13 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
             <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl animate-pulse">
               <span className="text-xs text-slate-400">Loading registration metrics...</span>
             </div>
-          ) : !growthData.length ? (
+          ) : !aggregatedData.length ? (
             <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl text-slate-400 text-xs">
               No historical registration records available for this window
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={aggregatedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563EB" stopOpacity={0.25} />
@@ -234,7 +315,7 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
               </p>
             </div>
             <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100">
-              {growthData.reduce((acc, curr) => acc + curr.resumesCreated, 0)} resumes
+              {aggregatedData.reduce((acc, curr) => acc + curr.resumesCreated, 0)} resumes ({groupingMode})
             </span>
           </div>
 
@@ -243,13 +324,13 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
               <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl animate-pulse">
                 <span className="text-xs text-slate-400">Loading resume metrics...</span>
               </div>
-            ) : !growthData.length ? (
+            ) : !aggregatedData.length ? (
               <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl text-slate-400 text-xs">
                 No resume creation data available
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={aggregatedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis
                     dataKey="date"
@@ -292,7 +373,7 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
               </p>
             </div>
             <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-              {growthData.reduce((acc, curr) => acc + curr.portfoliosCreated, 0)} total
+              {aggregatedData.reduce((acc, curr) => acc + curr.portfoliosCreated, 0)} total
             </span>
           </div>
 
@@ -301,13 +382,13 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
               <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl animate-pulse">
                 <span className="text-xs text-slate-400">Loading portfolio metrics...</span>
               </div>
-            ) : !growthData.length ? (
+            ) : !aggregatedData.length ? (
               <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl text-slate-400 text-xs">
                 No portfolio creation data available
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={aggregatedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis
                     dataKey="date"
@@ -361,13 +442,13 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
               <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl animate-pulse">
                 <span className="text-xs text-slate-400">Loading activity metrics...</span>
               </div>
-            ) : !growthData.length ? (
+            ) : !aggregatedData.length ? (
               <div className="h-full flex items-center justify-center bg-slate-50/50 rounded-xl text-slate-400 text-xs">
                 No activity trend data available
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <LineChart data={aggregatedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis
                     dataKey="date"
@@ -404,6 +485,14 @@ export const AdminAnalyticsView: React.FC<AdminAnalyticsViewProps> = ({ stats })
                     dataKey="portfoliosCreated"
                     name="Portfolios"
                     stroke="#10B981"
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="totalDownloads"
+                    name="PDF/ZIP Downloads"
+                    stroke="#06B6D4"
                     strokeWidth={2}
                     dot={{ r: 2 }}
                   />

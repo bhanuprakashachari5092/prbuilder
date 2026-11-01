@@ -36,16 +36,34 @@ export const ClassicAtsTemplate: React.FC<TemplateProps> = ({ data }) => {
     return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
   }
 
+  const customFont =
+    data.customization?.fontFamily === 'sans'
+      ? 'font-sans'
+      : data.customization?.fontFamily === 'mono'
+      ? 'font-mono'
+      : 'font-serif'
+  const customSpacing =
+    data.customization?.spacing === 'compact'
+      ? 'leading-snug'
+      : data.customization?.spacing === 'relaxed'
+      ? 'leading-loose'
+      : 'leading-relaxed'
+  const customAccent = data.customization?.accentColor || '#1F2937'
+
   return (
     <article
-      className="resume-sheet w-full bg-white text-gray-900 font-serif leading-relaxed text-[11pt] sm:text-[12pt] select-text"
+      className={`resume-sheet w-full bg-white text-gray-900 ${customFont} ${customSpacing} text-[11pt] sm:text-[12pt] select-text`}
       aria-label="Classic ATS Resume"
     >
       {/* 1. Header: Name, Title & Contact Info */}
-      <header className="text-center pb-4 mb-4 border-b-2 border-gray-800">
+      <header
+        className="text-center pb-4 mb-4 border-b-2"
+        style={{ borderColor: customAccent }}
+      >
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-950 uppercase font-sans">
           {personalInfo.fullName || 'Your Name'}
         </h1>
+
 
         {personalInfo.title && (
           <p className="text-sm sm:text-base font-semibold text-gray-800 mt-1 font-sans">

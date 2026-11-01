@@ -36,16 +36,34 @@ export const MinimalTemplate: React.FC<MinimalTemplateProps> = ({ data }) => {
     return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
   }
 
+  const customFont =
+    data.customization?.fontFamily === 'serif'
+      ? 'font-serif'
+      : data.customization?.fontFamily === 'mono'
+      ? 'font-mono'
+      : 'font-sans'
+  const customSpacing =
+    data.customization?.spacing === 'compact'
+      ? 'leading-snug'
+      : data.customization?.spacing === 'relaxed'
+      ? 'leading-loose'
+      : 'leading-relaxed'
+  const customAccent = data.customization?.accentColor || '#E5E7EB'
+
   return (
     <article
-      className="resume-sheet w-full bg-white text-gray-900 font-sans leading-relaxed text-[11pt] select-text"
+      className={`resume-sheet w-full bg-white text-gray-900 ${customFont} ${customSpacing} text-[11pt] select-text`}
       aria-label="Minimal ATS Resume"
     >
       {/* 1. Header: Elegant Minimalist Centered Layout */}
-      <header className="text-center pb-5 mb-5 border-b border-gray-200">
+      <header
+        className="text-center pb-5 mb-5 border-b"
+        style={{ borderColor: customAccent }}
+      >
         <h1 className="text-3xl font-light tracking-tight text-gray-950 uppercase font-sans">
           {personalInfo.fullName || 'Your Name'}
         </h1>
+
 
         {personalInfo.title && (
           <p className="text-xs uppercase tracking-widest text-gray-600 font-medium mt-1">

@@ -38,24 +38,45 @@ export const ModernProfessionalTemplate: React.FC<ModernProfessionalTemplateProp
     return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
   }
 
+  const customFont =
+    data.customization?.fontFamily === 'serif'
+      ? 'font-serif'
+      : data.customization?.fontFamily === 'mono'
+      ? 'font-mono'
+      : 'font-sans'
+  const customSpacing =
+    data.customization?.spacing === 'compact'
+      ? 'leading-snug'
+      : data.customization?.spacing === 'relaxed'
+      ? 'leading-loose'
+      : 'leading-relaxed'
+  const customAccent = data.customization?.accentColor || '#1E3A8A'
+
   return (
     <article
-      className="resume-sheet w-full bg-white text-gray-900 font-sans leading-relaxed text-[11pt] sm:text-[11.5pt] select-text"
+      className={`resume-sheet w-full bg-white text-gray-900 ${customFont} ${customSpacing} text-[11pt] sm:text-[11.5pt] select-text`}
       aria-label="Modern Professional Resume"
     >
-      {/* 1. Header with Restrained Brand Blue Accent Border */}
-      <header className="pb-4 mb-5 border-b-2 border-[#1E3A8A]/30">
+      {/* 1. Header with Restrained Brand Accent Border */}
+      <header
+        className="pb-4 mb-5 border-b-2"
+        style={{ borderColor: customAccent }}
+      >
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F172A]">
               {personalInfo.fullName || 'Your Name'}
             </h1>
             {personalInfo.title && (
-              <p className="text-sm sm:text-base font-semibold text-[#1E3A8A] mt-0.5 tracking-wide">
+              <p
+                className="text-sm sm:text-base font-semibold mt-0.5 tracking-wide"
+                style={{ color: customAccent }}
+              >
                 {personalInfo.title}
               </p>
             )}
           </div>
+
 
           <span className="text-[10px] uppercase font-mono tracking-wider text-gray-500 border border-gray-200 px-2 py-0.5 rounded self-start sm:self-auto">
             ATS FORMATTED

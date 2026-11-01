@@ -7,9 +7,13 @@ import { ResumeValidationBar } from './components/ResumeValidationBar.tsx'
 import { ResumeEditor } from './components/ResumeEditor.tsx'
 import { ResumePreview } from './components/ResumePreview.tsx'
 import { PdfInstructionsModal } from './components/PdfInstructionsModal.tsx'
+import { CheckoutModal } from '../../components/payment/CheckoutModal.tsx'
+import { PremiumUpgradeModal } from '../../components/payment/PremiumUpgradeModal.tsx'
 import { useAuth } from '../../app/providers/AuthContext.tsx'
+import { useEntitlements } from '../../hooks/useEntitlements.ts'
 import { resumeService } from '../../services/resumeService.ts'
-import { Cloud, HardDrive, AlertTriangle, X } from 'lucide-react'
+import { ResumePricingSection } from './components/ResumePricingSection.tsx'
+import { Cloud, HardDrive, AlertTriangle, X, CheckCircle2 } from 'lucide-react'
 
 export interface ResumeProps {
   onBack?: () => void
@@ -19,6 +23,8 @@ type SaveState = 'saving' | 'saved_cloud' | 'saved_local' | 'offline' | 'error'
 
 export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
   const { user, isConfigured } = useAuth()
+  const entitlements = useEntitlements()
+  const { isTemplateUnlocked, refreshEntitlements } = entitlements
 
   // Initial state loaded safely from localStorage or sample fallback
   const [resumeData, setResumeData] = useState<ResumeData>(() => {
@@ -31,6 +37,27 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor')
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false)
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false)
+  const [unlockedSuccessMsg, setUnlockedSuccessMsg] = useState<string | null>(null)
+  const [upgradeModal, setUpgradeModal] = useState<{
+    isOpen: boolean
+    itemId: ResumeTemplateId
+  }>({
+    isOpen: false,
+    itemId: 'modern-professional',
+  })
+  const [checkoutModal, setCheckoutModal] = useState<{
+    isOpen: boolean
+    productId: string
+    productTitle: string
+    pricePaise: number
+    couponCode?: string
+    targetTemplate?: ResumeTemplateId
+  }>({
+    isOpen: false,
+    productId: '',
+    productTitle: '',
+    pricePaise: 19900,
+  })
 
   // Tracking pending updates and async request sequence to avoid stale overwrites
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -163,8 +190,15 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
     persistData(resumeData)
   }
 
-  // Template switch (preserves all data)
+  // Template switch (preserves all data; gates Pro templates behind PremiumUpgradeModal)
   const handleChangeTemplate = (template: ResumeTemplateId) => {
+    if (!isTemplateUnlocked(template)) {
+      setUpgradeModal({
+        isOpen: true,
+        itemId: template,
+      })
+      return
+    }
     handleDataChange({
       ...resumeData,
       template,
@@ -223,6 +257,7 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
         data={resumeData}
         onChangeTitle={handleChangeTitle}
         onChangeTemplate={handleChangeTemplate}
+        isTemplateUnlocked={isTemplateUnlocked}
         onSaveDraft={handleManualSave}
         isSaved={isSaved}
         lastSavedText={lastSavedText}
@@ -232,16 +267,57 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
         onBack={onBack}
         mobileView={mobileView}
         onToggleMobileView={setMobileView}
+        onChangeCustomization={(customization) =>
+          handleDataChange({
+            ...resumeData,
+            customization,
+          })
+        }
       />
 
-      {/* 2. Split Workspace Layout */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      {/* Unlocked Entitlement Success Feedback Banner */}
+      {unlockedSuccessMsg && (
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold shadow-md animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+            <span>{unlockedSuccessMsg}</span>
+          </div>
+          <button
+            onClick={() => setUnlockedSuccessMsg(null)}
+            className="p-1 hover:bg-white/20 rounded-lg transition-colors cursor-pointer"
+            aria-label="Dismiss banner"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* 2. Top Pricing & Templates Section */}
+      <ResumePricingSection
+        currentTemplate={resumeData.template}
+        onSelectTemplate={handleChangeTemplate}
+        entitlements={entitlements}
+        onProceedToCheckout={(productId, amountPaise, title, couponCode) => {
+          setCheckoutModal({
+            isOpen: true,
+            productId,
+            productTitle: title,
+            pricePaise: amountPaise,
+            couponCode,
+            targetTemplate: productId.includes('template')
+              ? (productId.replace('pro-template-', '') as ResumeTemplateId)
+              : undefined,
+          })
+        }}
+      />
+
+      {/* 3. Split Workspace Layout */}
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Left Column: Form Editor */}
         <div
           className={`resume-editor-panel w-full lg:w-[48%] xl:w-[45%] flex flex-col border-r border-[#E2E8F0] bg-white overflow-y-auto no-print ${
             mobileView === 'preview' ? 'hidden lg:flex' : 'flex'
           }`}
-          style={{ maxHeight: 'calc(100vh - 65px)' }}
         >
           <div className="p-4 sm:p-6 space-y-4">
             {/* Storage status disclosure */}
@@ -271,10 +347,9 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
 
         {/* Right Column: Live A4 Preview */}
         <div
-          className={`resume-preview-panel w-full lg:w-[52%] xl:w-[55%] flex-1 bg-[#F1F5F9] overflow-hidden ${
-            mobileView === 'editor' ? 'hidden lg:flex flex-col' : 'flex flex-col'
+          className={`resume-preview-panel w-full lg:w-[52%] xl:w-[55%] flex-1 bg-[#F1F5F9] overflow-hidden flex flex-col ${
+            mobileView === 'editor' ? 'hidden lg:flex' : 'flex'
           }`}
-          style={{ maxHeight: 'calc(100vh - 65px)' }}
         >
           <ResumePreview data={resumeData} />
         </div>
@@ -330,6 +405,55 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
           </div>
         </div>
       )}
+
+      {/* 5. Premium Upgrade Modal (Comparison, Benefits & Server Price) */}
+      <PremiumUpgradeModal
+        isOpen={upgradeModal.isOpen}
+        itemType="resume_template"
+        itemId={upgradeModal.itemId}
+        isOwned={isTemplateUnlocked(upgradeModal.itemId)}
+        onClose={() => setUpgradeModal((prev) => ({ ...prev, isOpen: false }))}
+        onApplyOwned={() => {
+          handleDataChange({
+            ...resumeData,
+            template: upgradeModal.itemId,
+          })
+          setUpgradeModal((prev) => ({ ...prev, isOpen: false }))
+        }}
+        onProceedToCheckout={(productId, pricePaise, title, couponCode) => {
+          setUpgradeModal((prev) => ({ ...prev, isOpen: false }))
+          setCheckoutModal({
+            isOpen: true,
+            productId,
+            productTitle: title,
+            pricePaise,
+            couponCode,
+            targetTemplate: upgradeModal.itemId,
+          })
+        }}
+      />
+
+      {/* 6. UPI Checkout Modal for Pro Resume Templates */}
+      <CheckoutModal
+        isOpen={checkoutModal.isOpen}
+        productId={checkoutModal.productId}
+        productTitle={checkoutModal.productTitle}
+        productCategory={checkoutModal.productId.startsWith('pro-all-access') ? 'bundle' : 'resume_template'}
+        pricePaise={checkoutModal.pricePaise}
+        initialCouponCode={checkoutModal.couponCode}
+        onClose={() => setCheckoutModal((prev) => ({ ...prev, isOpen: false }))}
+        onSuccess={async () => {
+          await refreshEntitlements()
+          if (checkoutModal.targetTemplate) {
+            handleDataChange({
+              ...resumeData,
+              template: checkoutModal.targetTemplate,
+            })
+            setUnlockedSuccessMsg(`Premium Template Unlocked! Your resume is now active in ${checkoutModal.productTitle}.`)
+            setTimeout(() => setUnlockedSuccessMsg(null), 6000)
+          }
+        }}
+      />
     </div>
   )
 }

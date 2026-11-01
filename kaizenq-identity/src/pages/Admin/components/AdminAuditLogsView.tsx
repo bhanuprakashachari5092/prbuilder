@@ -9,7 +9,6 @@ import {
   FileText,
   User,
   Globe,
-  Clock,
   CheckCircle2,
   XCircle,
   Code,
@@ -17,17 +16,28 @@ import {
 } from 'lucide-react'
 import { adminService, type AdminAuditLogItem, type PaginatedResult } from '../../../services/adminService.ts'
 
-export const AdminAuditLogsView: React.FC = () => {
+interface AdminAuditLogsViewProps {
+  globalSearch?: string
+}
+
+export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({ globalSearch }) => {
   const [data, setData] = useState<PaginatedResult<AdminAuditLogItem> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(globalSearch || '')
   const [actionFilter, setActionFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 15
 
   const [selectedLog, setSelectedLog] = useState<AdminAuditLogItem | null>(null)
+
+  useEffect(() => {
+    if (globalSearch !== undefined && globalSearch !== searchTerm) {
+      setSearchTerm(globalSearch)
+      setCurrentPage(1)
+    }
+  }, [globalSearch])
 
   const fetchLogs = useCallback(async () => {
     setIsLoading(true)

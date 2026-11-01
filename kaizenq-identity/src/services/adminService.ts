@@ -1,6 +1,23 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts'
+import type {
+  Json,
+  AnalyticsEventInsert,
+  AnalyticsEventType,
+} from '../types/database.types.ts'
+import type { ResumeTemplateId } from '../pages/Resume/types.ts'
+import type { PortfolioThemeId, PortfolioData } from '../pages/Portfolio/types.ts'
+import { paymentService } from './paymentService.ts'
 
 export interface AdminOverviewStats {
+  revenue?: {
+    totalPaise: number
+    totalRupees: number
+    paidOrdersCount: number
+    todayPaise: number
+    todayRupees: number
+    last7DaysRupees: number
+    pendingCount: number
+  }
   users: {
     total: number
     today: number
@@ -105,7 +122,7 @@ export interface AdminResumeItem {
   id: string
   userId: string
   title: string
-  selectedTemplate: string
+  selectedTemplate: ResumeTemplateId
   ownerName: string
   ownerEmail: string
   sectionCount: number
@@ -118,13 +135,14 @@ export interface AdminPortfolioItem {
   userId: string
   title: string | null
   slug: string | null
-  theme: string
+  theme: PortfolioThemeId
   publicationStatus: 'draft' | 'published'
   publishedAt: string | null
   ownerName: string
   ownerEmail: string
   projectCount: number
   customHostname: string | null
+  portfolioData?: PortfolioData | Record<string, unknown> | null
   createdAt: string
   updatedAt: string
 }
@@ -142,7 +160,36 @@ export interface AdminAuditLogItem {
   createdAt: string
 }
 
+export interface AdminUserAssets {
+  resumes: Array<{
+    id: string
+    title: string
+    template: ResumeTemplateId
+    createdAt: string
+    updatedAt: string
+  }>
+  portfolios: Array<{
+    id: string
+    title: string | null
+    slug: string | null
+    theme: PortfolioThemeId
+    status: 'draft' | 'published'
+    publishedAt: string | null
+    createdAt: string
+    updatedAt: string
+  }>
+}
+
 const EMPTY_STATS: AdminOverviewStats = {
+  revenue: {
+    totalPaise: 0,
+    totalRupees: 0,
+    paidOrdersCount: 0,
+    todayPaise: 0,
+    todayRupees: 0,
+    last7DaysRupees: 0,
+    pendingCount: 0,
+  },
   users: {
     total: 0,
     today: 0,
@@ -224,26 +271,338 @@ function generateZeroedDateSeries(numDays: number): GrowthDataPoint[] {
   return result
 }
 
+// -----------------------------------------------------------------------------
+// Runtime Type Guards and Validators
+// -----------------------------------------------------------------------------
+
+export const VALID_RESUME_TEMPLATES: readonly ResumeTemplateId[] = [
+  'classic-ats',
+  'modern-professional',
+  'technical',
+  'minimal',
+  'classic',
+  'modern',
+] as const
+
+export function isResumeTemplateId(val: unknown): val is ResumeTemplateId {
+  return typeof val === 'string' && (VALID_RESUME_TEMPLATES as readonly string[]).includes(val)
+}
+
+export const VALID_PORTFOLIO_THEMES: readonly PortfolioThemeId[] = [
+  'developer',
+  'minimal',
+  'creative',
+  'modern',
+  'midnight',
+] as const
+
+export function isPortfolioThemeId(val: unknown): val is PortfolioThemeId {
+  return typeof val === 'string' && (VALID_PORTFOLIO_THEMES as readonly string[]).includes(val)
+}
+
+export function isPublicationStatus(val: unknown): val is 'draft' | 'published' {
+  return val === 'draft' || val === 'published'
+}
+
+function isRecord(val: unknown): val is Record<string, unknown> {
+  return typeof val === 'object' && val !== null && !Array.isArray(val)
+}
+
+function parseNumber(val: unknown, fallback = 0): number {
+  if (typeof val === 'number' && !Number.isNaN(val)) return val
+  if (typeof val === 'string') {
+    const parsed = Number(val)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+  return fallback
+}
+
+function parseRpcResult(data: unknown): { success: boolean; error?: string } {
+  if (isRecord(data)) {
+    return {
+      success: Boolean(data.success),
+      error: typeof data.error === 'string' ? data.error : undefined,
+    }
+  }
+  return { success: false, error: 'Invalid RPC response format' }
+}
+
+function parseGrowthDataPoint(item: unknown): GrowthDataPoint | null {
+  if (!isRecord(item)) return null
+  if (typeof item.date !== 'string') return null
+
+  const resumeDownloads = parseNumber(item.resumeDownloads)
+  const portfolioDownloads = parseNumber(item.portfolioDownloads)
+  const totalDownloads = item.totalDownloads !== undefined
+    ? parseNumber(item.totalDownloads)
+    : resumeDownloads + portfolioDownloads
+
+  return {
+    date: item.date,
+    newUsers: parseNumber(item.newUsers),
+    resumesCreated: parseNumber(item.resumesCreated),
+    portfoliosCreated: parseNumber(item.portfoliosCreated),
+    publishedPortfolios: parseNumber(item.publishedPortfolios),
+    draftPortfolios: parseNumber(item.draftPortfolios),
+    resumeDownloads,
+    portfolioDownloads,
+    totalDownloads,
+  }
+}
+
+function parseAdminUserItem(item: unknown): AdminUserItem | null {
+  if (!isRecord(item)) return null
+  if (typeof item.id !== 'string') return null
+
+  return {
+    id: item.id,
+    displayName: typeof item.displayName === 'string' && item.displayName ? item.displayName : 'Student Member',
+    email: typeof item.email === 'string' && item.email ? item.email : 'private@workspace.internal',
+    headline: typeof item.headline === 'string' ? item.headline : null,
+    avatarPath: typeof item.avatarPath === 'string' ? item.avatarPath : null,
+    isAdmin: Boolean(item.isAdmin),
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : new Date().toISOString(),
+    lastSignInAt: typeof item.lastSignInAt === 'string' ? item.lastSignInAt : null,
+    resumeCount: parseNumber(item.resumeCount),
+    portfolioCount: parseNumber(item.portfolioCount),
+    publishedPortfolioCount: parseNumber(item.publishedPortfolioCount),
+    lastActivity: typeof item.lastActivity === 'string' ? item.lastActivity : null,
+  }
+}
+
+function parseAdminResumeItem(item: unknown): AdminResumeItem | null {
+  if (!isRecord(item)) return null
+  if (typeof item.id !== 'string') return null
+
+  return {
+    id: item.id,
+    userId: typeof item.userId === 'string' ? item.userId : '',
+    title: typeof item.title === 'string' && item.title ? item.title : 'ATS Resume',
+    selectedTemplate: isResumeTemplateId(item.selectedTemplate) ? item.selectedTemplate : 'classic',
+    ownerName: typeof item.ownerName === 'string' ? item.ownerName : 'Student Author',
+    ownerEmail: typeof item.ownerEmail === 'string' ? item.ownerEmail : 'student@prbuilder.me',
+    sectionCount: parseNumber(item.sectionCount, 4),
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : new Date().toISOString(),
+  }
+}
+
+function parseAdminPortfolioItem(item: unknown): AdminPortfolioItem | null {
+  if (!isRecord(item)) return null
+  if (typeof item.id !== 'string') return null
+
+  return {
+    id: item.id,
+    userId: typeof item.userId === 'string' ? item.userId : '',
+    title: typeof item.title === 'string' && item.title ? item.title : 'Portfolio Studio',
+    slug: typeof item.slug === 'string' ? item.slug : null,
+    theme: isPortfolioThemeId(item.theme) ? item.theme : 'midnight',
+    publicationStatus: isPublicationStatus(item.publicationStatus) ? item.publicationStatus : 'draft',
+    publishedAt: typeof item.publishedAt === 'string' ? item.publishedAt : null,
+    ownerName: typeof item.ownerName === 'string' ? item.ownerName : 'Student Member',
+    ownerEmail: typeof item.ownerEmail === 'string' ? item.ownerEmail : 'student@prbuilder.me',
+    projectCount: parseNumber(item.projectCount),
+    customHostname: typeof item.customHostname === 'string' ? item.customHostname : null,
+    portfolioData: isRecord(item.portfolioData) ? ((item.portfolioData as unknown) as PortfolioData) : undefined,
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+    updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : new Date().toISOString(),
+  }
+}
+
+function parseAdminAuditLogItem(item: unknown): AdminAuditLogItem | null {
+  if (!isRecord(item)) return null
+  if (typeof item.id !== 'string') return null
+
+  const outcome = item.outcome === 'success' || item.outcome === 'failure' || item.outcome === 'denied'
+    ? item.outcome
+    : 'success'
+
+  return {
+    id: item.id,
+    adminId: typeof item.adminId === 'string' ? item.adminId : null,
+    adminEmail: typeof item.adminEmail === 'string' ? item.adminEmail : null,
+    adminName: typeof item.adminName === 'string' ? item.adminName : 'Platform Administrator',
+    action: typeof item.action === 'string' ? item.action : 'unknown_action',
+    targetId: typeof item.targetId === 'string' ? item.targetId : null,
+    targetType: typeof item.targetType === 'string' ? item.targetType : 'system',
+    outcome,
+    metadata: isRecord(item.metadata) ? item.metadata : {},
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+  }
+}
+
+function parsePaginatedRpc<T>(
+  data: unknown,
+  itemParser: (item: unknown) => T | null,
+  fallbackPage = 1,
+  fallbackPageSize = 15
+): PaginatedResult<T> | null {
+  if (!isRecord(data)) return null
+  if (!Array.isArray(data.items)) return null
+
+  const items: T[] = []
+  for (const raw of data.items) {
+    const parsed = itemParser(raw)
+    if (parsed) items.push(parsed)
+  }
+
+  const total = parseNumber(data.total, items.length)
+  const page = parseNumber(data.page, fallbackPage)
+  const pageSize = parseNumber(data.pageSize, fallbackPageSize)
+  const totalPages = parseNumber(data.totalPages, Math.ceil(total / Math.max(1, pageSize)))
+
+  return { items, total, page, pageSize, totalPages }
+}
+
+function parseAdminUserAssets(data: unknown): AdminUserAssets | null {
+  if (!isRecord(data)) return null
+  const resumes: AdminUserAssets['resumes'] = []
+  const portfolios: AdminUserAssets['portfolios'] = []
+
+  if (Array.isArray(data.resumes)) {
+    for (const r of data.resumes) {
+      if (isRecord(r) && typeof r.id === 'string') {
+        resumes.push({
+          id: r.id,
+          title: typeof r.title === 'string' ? r.title : 'Untitled Resume',
+          template: isResumeTemplateId(r.template) ? r.template : 'classic',
+          createdAt: typeof r.createdAt === 'string' ? r.createdAt : new Date().toISOString(),
+          updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt : new Date().toISOString(),
+        })
+      }
+    }
+  }
+
+  if (Array.isArray(data.portfolios)) {
+    for (const p of data.portfolios) {
+      if (isRecord(p) && typeof p.id === 'string') {
+        portfolios.push({
+          id: p.id,
+          title: typeof p.title === 'string' ? p.title : 'Untitled Portfolio',
+          slug: typeof p.slug === 'string' ? p.slug : null,
+          theme: isPortfolioThemeId(p.theme) ? p.theme : 'midnight',
+          status: isPublicationStatus(p.status) ? p.status : 'draft',
+          publishedAt: typeof p.publishedAt === 'string' ? p.publishedAt : null,
+          createdAt: typeof p.createdAt === 'string' ? p.createdAt : new Date().toISOString(),
+          updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : new Date().toISOString(),
+        })
+      }
+    }
+  }
+
+  return { resumes, portfolios }
+}
+
+function parseAdminOverviewStats(data: Record<string, unknown>): AdminOverviewStats {
+  const usersObj = isRecord(data.users) ? data.users : {}
+  const resumesObj = isRecord(data.resumes) ? data.resumes : {}
+  const portfoliosObj = isRecord(data.portfolios) ? data.portfolios : {}
+  const downloadsObj = isRecord(data.downloads) ? data.downloads : {}
+  const engagementObj = isRecord(data.engagement) ? data.engagement : {}
+  const revenueObj = isRecord(data.revenue) ? data.revenue : null
+
+  const resumesTpl = isRecord(resumesObj.templatesBreakdown) ? resumesObj.templatesBreakdown : {}
+  const portfoliosThm = isRecord(portfoliosObj.themesBreakdown) ? portfoliosObj.themesBreakdown : {}
+
+  const recentActivity: AdminOverviewStats['recentActivity'] = []
+  if (Array.isArray(data.recentActivity)) {
+    for (const act of data.recentActivity) {
+      if (isRecord(act) && typeof act.id === 'string') {
+        recentActivity.push({
+          id: act.id,
+          type: typeof act.type === 'string' ? act.type : 'general',
+          userEmail: typeof act.userEmail === 'string' ? act.userEmail : 'student@prbuilder.me',
+          userName: typeof act.userName === 'string' ? act.userName : 'Student Member',
+          details: typeof act.details === 'string' ? act.details : '',
+          timestamp: typeof act.timestamp === 'string' ? act.timestamp : new Date().toISOString(),
+        })
+      }
+    }
+  }
+
+  let revenue: AdminOverviewStats['revenue'] | undefined
+  if (revenueObj) {
+    revenue = {
+      totalPaise: parseNumber(revenueObj.totalPaise),
+      totalRupees: parseNumber(revenueObj.totalRupees),
+      paidOrdersCount: parseNumber(revenueObj.paidOrdersCount),
+      todayPaise: parseNumber(revenueObj.todayPaise),
+      todayRupees: parseNumber(revenueObj.todayRupees),
+      last7DaysRupees: parseNumber(revenueObj.last7DaysRupees),
+      pendingCount: parseNumber(revenueObj.pendingCount),
+    }
+  }
+
+  return {
+    revenue,
+    users: {
+      total: parseNumber(usersObj.total),
+      today: parseNumber(usersObj.today),
+      last7Days: parseNumber(usersObj.last7Days),
+      prev7Days: parseNumber(usersObj.prev7Days),
+      last30Days: parseNumber(usersObj.last30Days),
+      prev30Days: parseNumber(usersObj.prev30Days),
+      active30Days: parseNumber(usersObj.active30Days),
+      prevActive30Days: parseNumber(usersObj.prevActive30Days),
+    },
+    resumes: {
+      total: parseNumber(resumesObj.total),
+      last7Days: parseNumber(resumesObj.last7Days),
+      prev7Days: parseNumber(resumesObj.prev7Days),
+      uniqueCreators: parseNumber(resumesObj.uniqueCreators),
+      downloads: parseNumber(resumesObj.downloads),
+      downloadRatePct: parseNumber(resumesObj.downloadRatePct),
+      templatesBreakdown: {
+        modern: parseNumber(resumesTpl.modern),
+        classic: parseNumber(resumesTpl.classic),
+        minimal: parseNumber(resumesTpl.minimal),
+      },
+    },
+    portfolios: {
+      total: parseNumber(portfoliosObj.total),
+      last7Days: parseNumber(portfoliosObj.last7Days),
+      prev7Days: parseNumber(portfoliosObj.prev7Days),
+      published: parseNumber(portfoliosObj.published),
+      draft: parseNumber(portfoliosObj.draft),
+      uniqueCreators: parseNumber(portfoliosObj.uniqueCreators),
+      zipDownloads: parseNumber(portfoliosObj.zipDownloads),
+      qrDownloads: parseNumber(portfoliosObj.qrDownloads),
+      downloadRatePct: parseNumber(portfoliosObj.downloadRatePct),
+      themesBreakdown: {
+        developer: parseNumber(portfoliosThm.developer),
+        minimal: parseNumber(portfoliosThm.minimal),
+        creative: parseNumber(portfoliosThm.creative),
+      },
+    },
+    downloads: {
+      totalDownloads: parseNumber(downloadsObj.totalDownloads),
+      resumePdfs: parseNumber(downloadsObj.resumePdfs),
+      portfolioZips: parseNumber(downloadsObj.portfolioZips),
+      qrCards: parseNumber(downloadsObj.qrCards),
+      todayDownloads: parseNumber(downloadsObj.todayDownloads),
+      last7Days: parseNumber(downloadsObj.last7Days),
+    },
+    engagement: {
+      usersWithBoth: parseNumber(engagementObj.usersWithBoth),
+      usersResumesOnly: parseNumber(engagementObj.usersResumesOnly),
+      usersPortfoliosOnly: parseNumber(engagementObj.usersPortfoliosOnly),
+      usersNeither: parseNumber(engagementObj.usersNeither),
+      conversionRate: parseNumber(engagementObj.conversionRate),
+    },
+    recentActivity,
+  }
+}
+
 export const adminService = {
   /**
    * Record real user activity event to public.analytics_events
    */
   async recordRealAnalyticsEvent(
-    eventType:
-      | 'resume_pdf_downloaded'
-      | 'portfolio_zip_downloaded'
-      | 'portfolio_qr_downloaded'
-      | 'resume_created'
-      | 'resume_updated'
-      | 'resume_deleted'
-      | 'portfolio_created'
-      | 'portfolio_published'
-      | 'portfolio_unpublished'
-      | 'portfolio_viewed'
-      | 'user_registered',
-    metadata: Record<string, unknown> = {},
+    eventType: AnalyticsEventType,
+    metadata: Record<string, Json | undefined> = {},
     targetId?: string,
-    targetType: string = 'asset'
+    targetType = 'asset'
   ): Promise<void> {
     if (!isSupabaseConfigured()) return
 
@@ -253,19 +612,20 @@ export const adminService = {
         p_event_type: eventType,
         p_target_id: targetId || null,
         p_target_type: targetType,
-        p_metadata: metadata,
+        p_metadata: metadata as Json,
       })
 
       if (rpcErr) {
         // Fallback to direct table insertion with authenticated user
         const { data: authData } = await supabase.auth.getUser()
-        await supabase.from('analytics_events').insert({
+        const eventPayload: AnalyticsEventInsert = {
           user_id: authData?.user?.id || null,
           event_type: eventType,
           target_id: targetId || null,
           target_type: targetType,
-          metadata,
-        })
+          metadata: metadata as Json,
+        }
+        await supabase.from('analytics_events').insert(eventPayload)
       }
     } catch (err) {
       // Non-blocking telemetry failure
@@ -278,12 +638,12 @@ export const adminService = {
    */
   recordDownloadEvent(
     type: 'resume_pdf' | 'portfolio_zip' | 'portfolio_qr',
-    metadata: Record<string, unknown> = {}
+    metadata: Record<string, Json | undefined> = {}
   ): void {
-    const eventTypeMap = {
-      resume_pdf: 'resume_pdf_downloaded' as const,
-      portfolio_zip: 'portfolio_zip_downloaded' as const,
-      portfolio_qr: 'portfolio_qr_downloaded' as const,
+    const eventTypeMap: Record<'resume_pdf' | 'portfolio_zip' | 'portfolio_qr', AnalyticsEventType> = {
+      resume_pdf: 'resume_pdf_downloaded',
+      portfolio_zip: 'portfolio_zip_downloaded',
+      portfolio_qr: 'portfolio_qr_downloaded',
     }
     const mapped = eventTypeMap[type] || 'resume_pdf_downloaded'
     this.recordRealAnalyticsEvent(mapped, metadata)
@@ -295,14 +655,40 @@ export const adminService = {
    */
   async getOverviewStats(): Promise<{ data: AdminOverviewStats | null; error: Error | null }> {
     if (!isSupabaseConfigured()) {
-      return { data: EMPTY_STATS, error: null }
+      const payRes = await paymentService.getAdminPaymentAnalytics()
+      const revenue = payRes.data
+        ? {
+            totalPaise: payRes.data.totalRevenuePaise,
+            totalRupees: payRes.data.totalRevenueRupees,
+            paidOrdersCount: payRes.data.paidOrdersCount,
+            todayPaise: (payRes.data.dailyTrend?.slice(-1)[0]?.revenueRupees || 0) * 100,
+            todayRupees: payRes.data.dailyTrend?.slice(-1)[0]?.revenueRupees || 0,
+            last7DaysRupees: payRes.data.totalRevenueRupees,
+            pendingCount: payRes.data.pendingOrdersCount,
+          }
+        : EMPTY_STATS.revenue
+      return { data: { ...EMPTY_STATS, revenue }, error: null }
     }
 
     try {
       // 1. Call authoritative production RPC
       const { data, error } = await supabase.rpc('get_admin_overview_stats')
-      if (!error && data) {
-        const stats = data as unknown as AdminOverviewStats
+      if (!error && data && isRecord(data)) {
+        const stats = parseAdminOverviewStats(data)
+        if (!stats.revenue || stats.revenue.totalRupees === undefined) {
+          const payRes = await paymentService.getAdminPaymentAnalytics()
+          if (payRes.data) {
+            stats.revenue = {
+              totalPaise: payRes.data.totalRevenuePaise,
+              totalRupees: payRes.data.totalRevenueRupees,
+              paidOrdersCount: payRes.data.paidOrdersCount,
+              todayPaise: (payRes.data.dailyTrend?.slice(-1)[0]?.revenueRupees || 0) * 100,
+              todayRupees: payRes.data.dailyTrend?.slice(-1)[0]?.revenueRupees || 0,
+              last7DaysRupees: payRes.data.totalRevenueRupees,
+              pendingCount: payRes.data.pendingOrdersCount,
+            }
+          }
+        }
         return { data: stats, error: null }
       }
 
@@ -366,6 +752,40 @@ export const adminService = {
         // analytics_events might not be provisioned yet
       }
 
+      // Fetch real-time payment revenue metrics from database
+      let totalRevenuePaise = 0
+      let totalPaidOrders = 0
+      let pendingOrders = 0
+      let todayRevenuePaise = 0
+
+      try {
+        const { data: paidOrders } = await supabase
+          .from('payment_orders')
+          .select('amount_paise, created_at, status')
+          .eq('status', 'paid')
+
+        if (paidOrders && paidOrders.length > 0) {
+          totalRevenuePaise = paidOrders.reduce((sum, o) => sum + (o.amount_paise || 0), 0)
+          totalPaidOrders = paidOrders.length
+          todayRevenuePaise = paidOrders
+            .filter((o) => o.created_at && o.created_at >= todayStart)
+            .reduce((sum, o) => sum + (o.amount_paise || 0), 0)
+        }
+
+        const { count: pendingCount } = await supabase
+          .from('payment_orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+        pendingOrders = pendingCount || 0
+      } catch {
+        const payRes = await paymentService.getAdminPaymentAnalytics()
+        if (payRes.data) {
+          totalRevenuePaise = payRes.data.totalRevenuePaise
+          totalPaidOrders = payRes.data.paidOrdersCount
+          pendingOrders = payRes.data.pendingOrdersCount
+        }
+      }
+
       const totalU = totalUsers || 0
       const totalR = totalResumes || 0
       const totalP = totalPortfolios || 0
@@ -427,6 +847,15 @@ export const adminService = {
           usersNeither: Math.max(0, totalU - Math.max(totalR, totalP)),
           conversionRate: totalU > 0 ? Math.round((Math.max(totalR, totalP) / totalU) * 100) : 0,
         },
+        revenue: {
+          totalPaise: totalRevenuePaise,
+          totalRupees: Math.round((totalRevenuePaise / 100) * 100) / 100,
+          paidOrdersCount: totalPaidOrders,
+          todayPaise: todayRevenuePaise,
+          todayRupees: Math.round((todayRevenuePaise / 100) * 100) / 100,
+          last7DaysRupees: Math.round((totalRevenuePaise / 100) * 100) / 100,
+          pendingCount: pendingOrders,
+        },
         recentActivity: [],
       }
 
@@ -451,7 +880,16 @@ export const adminService = {
     try {
       const { data, error } = await supabase.rpc('get_admin_growth_analytics', { p_days: days })
       if (!error && Array.isArray(data) && data.length > 0) {
-        return { data: data as GrowthDataPoint[], error: null }
+        const points: GrowthDataPoint[] = []
+        for (const item of data) {
+          const parsed = parseGrowthDataPoint(item)
+          if (parsed) {
+            points.push(parsed)
+          }
+        }
+        if (points.length > 0) {
+          return { data: points, error: null }
+        }
       }
 
       // Return zeroed date bucket sequence if no activity yet recorded
@@ -497,15 +935,18 @@ export const adminService = {
         p_page_size: pageSize,
       })
 
-      if (!error && data && Array.isArray((data as any)?.items)) {
-        return { data: data as unknown as PaginatedResult<AdminUserItem>, error: null }
+      if (!error && data) {
+        const parsed = parsePaginatedRpc<AdminUserItem>(data, parseAdminUserItem, page, pageSize)
+        if (parsed) {
+          return { data: parsed, error: null }
+        }
       }
 
       // 2. Fallback to direct table query
       let query = supabase.from('profiles').select('*', { count: 'exact' })
 
       if (params.search?.trim()) {
-        query = query.ilike('full_name', `%${params.search.trim()}%`)
+        query = query.ilike('display_name', `%${params.search.trim()}%`)
       }
       if (params.roleFilter === 'admin') {
         query = query.eq('is_admin', true)
@@ -515,7 +956,7 @@ export const adminService = {
 
       const from = (page - 1) * pageSize
       const to = from + pageSize - 1
-      const sortColumn = params.sortBy === 'display_name' ? 'full_name' : 'created_at'
+      const sortColumn = params.sortBy === 'display_name' ? 'display_name' : 'created_at'
       const { data: rows, count, error: queryErr } = await query
         .order(sortColumn, { ascending: params.sortDir === 'asc' })
         .range(from, to)
@@ -525,10 +966,10 @@ export const adminService = {
       const total = count || 0
       const items: AdminUserItem[] = (rows || []).map((r) => ({
         id: r.id,
-        displayName: r.full_name || 'Member Student',
-        email: r.email || 'student@prbuilder.me',
+        displayName: r.display_name || 'Member Student',
+        email: 'private@workspace.internal',
         headline: r.headline || null,
-        avatarPath: r.avatar_url || null,
+        avatarPath: r.avatar_path || null,
         isAdmin: !!r.is_admin,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
@@ -590,8 +1031,11 @@ export const adminService = {
         p_page_size: pageSize,
       })
 
-      if (!error && data && Array.isArray((data as any)?.items)) {
-        return { data: data as unknown as PaginatedResult<AdminResumeItem>, error: null }
+      if (!error && data) {
+        const parsed = parsePaginatedRpc<AdminResumeItem>(data, parseAdminResumeItem, page, pageSize)
+        if (parsed) {
+          return { data: parsed, error: null }
+        }
       }
 
       // Fallback query
@@ -599,7 +1043,7 @@ export const adminService = {
       if (params.search?.trim()) {
         query = query.ilike('title', `%${params.search.trim()}%`)
       }
-      if (params.templateFilter) {
+      if (params.templateFilter && isResumeTemplateId(params.templateFilter)) {
         query = query.eq('selected_template', params.templateFilter)
       }
 
@@ -616,7 +1060,7 @@ export const adminService = {
         id: r.id,
         userId: r.user_id,
         title: r.title || 'ATS Resume',
-        selectedTemplate: r.selected_template || 'classic',
+        selectedTemplate: isResumeTemplateId(r.selected_template) ? r.selected_template : 'classic',
         ownerName: 'Author Student',
         ownerEmail: 'student@prbuilder.me',
         sectionCount: 4,
@@ -677,19 +1121,22 @@ export const adminService = {
         p_page_size: pageSize,
       })
 
-      if (!error && data && Array.isArray((data as any)?.items)) {
-        return { data: data as unknown as PaginatedResult<AdminPortfolioItem>, error: null }
+      if (!error && data) {
+        const parsed = parsePaginatedRpc<AdminPortfolioItem>(data, parseAdminPortfolioItem, page, pageSize)
+        if (parsed) {
+          return { data: parsed, error: null }
+        }
       }
 
       // Direct fallback
-      let query = supabase.from('portfolios').select('id, user_id, title, slug, theme, publication_status, published_at, created_at, updated_at', { count: 'exact' })
+      let query = supabase.from('portfolios').select('id, user_id, title, slug, theme, publication_status, published_at, created_at, updated_at, portfolio_data', { count: 'exact' })
       if (params.search?.trim()) {
         query = query.or(`title.ilike.%${params.search.trim()}%,slug.ilike.%${params.search.trim()}%`)
       }
-      if (params.statusFilter) {
+      if (params.statusFilter && isPublicationStatus(params.statusFilter)) {
         query = query.eq('publication_status', params.statusFilter)
       }
-      if (params.themeFilter) {
+      if (params.themeFilter && isPortfolioThemeId(params.themeFilter)) {
         query = query.eq('theme', params.themeFilter)
       }
 
@@ -702,21 +1149,37 @@ export const adminService = {
       if (qErr) throw qErr
 
       const total = count || 0
-      const items: AdminPortfolioItem[] = (rows || []).map((p) => ({
-        id: p.id,
-        userId: p.user_id,
-        title: p.title || 'Portfolio Studio',
-        slug: p.slug || null,
-        theme: p.theme || 'midnight',
-        publicationStatus: p.publication_status as 'draft' | 'published',
-        publishedAt: p.published_at || null,
-        ownerName: 'Author Student',
-        ownerEmail: 'student@prbuilder.me',
-        projectCount: 0,
-        customHostname: null,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      }))
+      const items: AdminPortfolioItem[] = (rows || []).map((p) => {
+        const rawData = isRecord(p.portfolio_data) ? (p.portfolio_data as Record<string, unknown>) : {}
+        const rawProfile = isRecord(rawData.profile) ? (rawData.profile as Record<string, unknown>) : {}
+        const rawAppearance = isRecord(rawData.appearance) ? (rawData.appearance as Record<string, unknown>) : {}
+        const rawProjects = Array.isArray(rawData.projects) ? rawData.projects : []
+
+        const theme = isPortfolioThemeId(p.theme)
+          ? p.theme
+          : isPortfolioThemeId(rawAppearance.theme)
+          ? rawAppearance.theme
+          : 'midnight'
+
+        const status = isPublicationStatus(p.publication_status) ? p.publication_status : 'draft'
+
+        return {
+          id: p.id,
+          userId: p.user_id,
+          title: p.title || (typeof rawProfile.title === 'string' ? rawProfile.title : 'Portfolio Studio'),
+          slug: p.slug || null,
+          theme,
+          publicationStatus: status,
+          publishedAt: p.published_at || null,
+          ownerName: typeof rawProfile.fullName === 'string' ? rawProfile.fullName : 'Student Member',
+          ownerEmail: typeof rawProfile.email === 'string' ? rawProfile.email : 'student@prbuilder.me',
+          projectCount: rawProjects.length,
+          customHostname: null,
+          portfolioData: (rawData as unknown) as PortfolioData,
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+        }
+      })
 
       return {
         data: {
@@ -766,7 +1229,10 @@ export const adminService = {
       })
 
       if (!error && data) {
-        return { data: data as unknown as PaginatedResult<AdminAuditLogItem>, error: null }
+        const parsed = parsePaginatedRpc<AdminAuditLogItem>(data, parseAdminAuditLogItem, page, pageSize)
+        if (parsed) {
+          return { data: parsed, error: null }
+        }
       }
 
       // Direct table query fallback
@@ -835,7 +1301,7 @@ export const adminService = {
         if (delErr) throw delErr
         return { success: true, error: null }
       }
-      const res = data as unknown as { success: boolean; error?: string }
+      const res = parseRpcResult(data)
       if (!res.success) throw new Error(res.error || 'Failed to delete resume')
       return { success: true, error: null }
     } catch (err) {
@@ -864,7 +1330,7 @@ export const adminService = {
         if (upErr) throw upErr
         return { success: true, error: null }
       }
-      const res = data as unknown as { success: boolean; error?: string }
+      const res = parseRpcResult(data)
       if (!res.success) throw new Error(res.error || 'Failed to unpublish portfolio')
       return { success: true, error: null }
     } catch (err) {
@@ -890,11 +1356,70 @@ export const adminService = {
         if (delErr) throw delErr
         return { success: true, error: null }
       }
-      const res = data as unknown as { success: boolean; error?: string }
+      const res = parseRpcResult(data)
       if (!res.success) throw new Error(res.error || 'Failed to delete portfolio')
       return { success: true, error: null }
     } catch (err) {
       return { success: false, error: err as Error }
+    }
+  },
+
+  /**
+   * Fetch a specific user's resumes and portfolios for the admin profile drawer
+   */
+  async getUserAssets(userId: string): Promise<{ data: AdminUserAssets | null; error: Error | null }> {
+    if (!isSupabaseConfigured()) {
+      return { data: { resumes: [], portfolios: [] }, error: null }
+    }
+
+    try {
+      // 1. Try secure RPC
+      const { data, error } = await supabase.rpc('get_admin_user_assets', { p_user_id: userId })
+      if (!error && data) {
+        const parsed = parseAdminUserAssets(data)
+        if (parsed) {
+          return { data: parsed, error: null }
+        }
+      }
+
+      // 2. Direct query fallback
+      const [{ data: resumes }, { data: portfolios }] = await Promise.all([
+        supabase
+          .from('resumes')
+          .select('id, title, selected_template, created_at, updated_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('portfolios')
+          .select('id, title, slug, theme, publication_status, published_at, created_at, updated_at')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+      ])
+
+      const result: AdminUserAssets = {
+        resumes: (resumes || []).map((r) => ({
+          id: r.id,
+          title: r.title || 'Untitled Resume',
+          template: isResumeTemplateId(r.selected_template) ? r.selected_template : 'classic',
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        })),
+        portfolios: (portfolios || []).map((p) => ({
+          id: p.id,
+          title: p.title || 'Untitled Portfolio',
+          slug: p.slug || null,
+          theme: isPortfolioThemeId(p.theme) ? p.theme : 'midnight',
+          status: isPublicationStatus(p.publication_status) ? p.publication_status : 'draft',
+          publishedAt: p.published_at || null,
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+        })),
+      }
+
+      return { data: result, error: null }
+    } catch (err) {
+      console.warn('Failed to query user assets:', err)
+      return { data: { resumes: [], portfolios: [] }, error: err as Error }
     }
   },
 
@@ -920,7 +1445,7 @@ export const adminService = {
         if (upErr) throw upErr
         return { success: true, error: null }
       }
-      const res = data as unknown as { success: boolean; error?: string }
+      const res = parseRpcResult(data)
       if (!res.success) throw new Error(res.error || 'Failed to update user role')
       return { success: true, error: null }
     } catch (err) {
@@ -1037,15 +1562,19 @@ export const getRecentActivity = (limit = 20) =>
 export const getUserGrowthSeries = (period = 30) => adminService.getGrowthAnalytics(period)
 export const recordRealAnalyticsEvent = (
   eventType: Parameters<typeof adminService.recordRealAnalyticsEvent>[0],
-  metadata?: Record<string, unknown>,
+  metadata?: Record<string, Json | undefined>,
   targetId?: string,
   targetType?: string
 ) => adminService.recordRealAnalyticsEvent(eventType, metadata, targetId, targetType)
 
 function escapeCsv(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '""'
-  const str = String(value)
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+  let str = String(value)
+  // Neutralize spreadsheet formula injection per OWASP guidance
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`
+  }
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`
   }
   return `"${str}"`

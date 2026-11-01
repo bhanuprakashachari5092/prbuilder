@@ -19,6 +19,8 @@ export interface PRLogoProps {
   theme?: 'light' | 'dark'
   /** Optional click handler */
   onClick?: () => void
+  /** Optional animation effect */
+  animated?: boolean
 }
 
 /**
@@ -115,6 +117,7 @@ export const PRLogo: React.FC<PRLogoProps> = ({
   renderMode = 'vector',
   theme = 'light',
   onClick,
+  animated = false,
 }) => {
   const sizeMap = {
     xs: { px: 20, textClass: 'text-xs', subClass: 'text-[9px]' },
@@ -138,6 +141,7 @@ export const PRLogo: React.FC<PRLogoProps> = ({
       className={cn(
         'inline-flex items-center gap-2.5 select-none transition-opacity duration-200',
         onClick && 'cursor-pointer hover:opacity-90',
+        animated && 'transition-transform duration-300 hover:scale-105',
         className,
       )}
     >

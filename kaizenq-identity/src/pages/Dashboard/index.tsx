@@ -38,8 +38,26 @@ export interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = 'overview' }) => {
-  const { user, profile, isConfigured } = useAuth()
+  const { user, profile, isAdmin, isConfigured } = useAuth()
   const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab)
+
+  // Platform administrator accounts are strictly dedicated to the Admin Console
+  useEffect(() => {
+    if (isAdmin) {
+      onNavigate?.('admin')
+    }
+  }, [isAdmin, onNavigate])
+
+  if (isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-500 font-medium">Redirecting to Platform Admin Console...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Cloud data state
   const [cloudPortfolio, setCloudPortfolio] = useState<PortfolioRow | null>(null)

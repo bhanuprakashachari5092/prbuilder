@@ -5,8 +5,6 @@ import {
   Users,
   FileText,
   Globe,
-  Layers,
-  Calendar,
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react'

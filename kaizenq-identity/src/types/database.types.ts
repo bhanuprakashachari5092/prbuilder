@@ -21,6 +21,7 @@ export interface Database {
         Row: {
           id: string
           display_name: string | null
+          full_name?: string | null
           avatar_path: string | null
           headline: string | null
           location: string | null
@@ -33,6 +34,7 @@ export interface Database {
         Insert: {
           id: string
           display_name?: string | null
+          full_name?: string | null
           avatar_path?: string | null
           headline?: string | null
           location?: string | null
@@ -45,6 +47,7 @@ export interface Database {
         Update: {
           id?: string
           display_name?: string | null
+          full_name?: string | null
           avatar_path?: string | null
           headline?: string | null
           location?: string | null
@@ -178,6 +181,12 @@ export interface Database {
           hostname: string
           verification_status: 'pending_verification' | 'verified' | 'connected' | 'failed'
           connection_status: 'disconnected' | 'active' | 'failed'
+          ssl_status: 'pending' | 'provisioning' | 'issued' | 'failed'
+          verification_token: string | null
+          provider_reference: string | null
+          activated_at: string | null
+          last_checked_at: string | null
+          error_message: string | null
           dns_records: Json
           verified_at: string | null
           created_at: string
@@ -190,6 +199,12 @@ export interface Database {
           hostname: string
           verification_status?: 'pending_verification' | 'verified' | 'connected' | 'failed'
           connection_status?: 'disconnected' | 'active' | 'failed'
+          ssl_status?: 'pending' | 'provisioning' | 'issued' | 'failed'
+          verification_token?: string | null
+          provider_reference?: string | null
+          activated_at?: string | null
+          last_checked_at?: string | null
+          error_message?: string | null
           dns_records?: Json
           verified_at?: string | null
           created_at?: string
@@ -202,6 +217,12 @@ export interface Database {
           hostname?: string
           verification_status?: 'pending_verification' | 'verified' | 'connected' | 'failed'
           connection_status?: 'disconnected' | 'active' | 'failed'
+          ssl_status?: 'pending' | 'provisioning' | 'issued' | 'failed'
+          verification_token?: string | null
+          provider_reference?: string | null
+          activated_at?: string | null
+          last_checked_at?: string | null
+          error_message?: string | null
           dns_records?: Json
           verified_at?: string | null
           created_at?: string
@@ -370,6 +391,372 @@ export interface Database {
           target_type?: string
           outcome?: 'success' | 'failure' | 'denied'
           metadata?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      payment_products: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          category: 'resume_template' | 'portfolio_theme' | 'domain_pass' | 'bundle'
+          target_id: string
+          price_paise: number
+          currency: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          name: string
+          description?: string | null
+          category: 'resume_template' | 'portfolio_theme' | 'domain_pass' | 'bundle'
+          target_id: string
+          price_paise: number
+          currency?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          category?: 'resume_template' | 'portfolio_theme' | 'domain_pass' | 'bundle'
+          target_id?: string
+          price_paise?: number
+          currency?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_orders: {
+        Row: {
+          id: string
+          user_id: string
+          product_id: string
+          amount_paise: number
+          currency: string
+          status: 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled'
+          upi_vpa: string | null
+          gateway_order_id: string | null
+          utr: string | null
+          payer_vpa: string | null
+          metadata: Json
+          is_sandbox: boolean
+          expires_at: string
+          paid_at: string | null
+          coupon_id?: string | null
+          coupon_code?: string | null
+          original_amount_paise?: number | null
+          discount_amount_paise?: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          user_id: string
+          product_id: string
+          amount_paise: number
+          currency?: string
+          status?: 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled'
+          upi_vpa?: string | null
+          gateway_order_id?: string | null
+          utr?: string | null
+          payer_vpa?: string | null
+          metadata?: Json
+          is_sandbox?: boolean
+          expires_at?: string
+          paid_at?: string | null
+          coupon_id?: string | null
+          coupon_code?: string | null
+          original_amount_paise?: number | null
+          discount_amount_paise?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          product_id?: string
+          amount_paise?: number
+          currency?: string
+          status?: 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled'
+          upi_vpa?: string | null
+          gateway_order_id?: string | null
+          utr?: string | null
+          payer_vpa?: string | null
+          metadata?: Json
+          is_sandbox?: boolean
+          expires_at?: string
+          paid_at?: string | null
+          coupon_id?: string | null
+          coupon_code?: string | null
+          original_amount_paise?: number | null
+          discount_amount_paise?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_entitlements: {
+        Row: {
+          id: string
+          user_id: string
+          product_id: string
+          entitlement_key: string
+          order_id: string | null
+          is_active: boolean
+          granted_at: string
+          expires_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          product_id: string
+          entitlement_key: string
+          order_id?: string | null
+          is_active?: boolean
+          granted_at?: string
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          product_id?: string
+          entitlement_key?: string
+          order_id?: string | null
+          is_active?: boolean
+          granted_at?: string
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_audit_logs: {
+        Row: {
+          id: string
+          order_id: string | null
+          event_type: string
+          payload: Json
+          signature: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          order_id?: string | null
+          event_type: string
+          payload?: Json
+          signature?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string | null
+          event_type?: string
+          payload?: Json
+          signature?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      analytics_events: {
+        Row: {
+          id: string
+          user_id: string | null
+          event_type:
+            | 'user_registered'
+            | 'resume_created'
+            | 'resume_updated'
+            | 'resume_deleted'
+            | 'resume_pdf_downloaded'
+            | 'portfolio_created'
+            | 'portfolio_published'
+            | 'portfolio_unpublished'
+            | 'portfolio_zip_downloaded'
+            | 'portfolio_qr_downloaded'
+            | 'portfolio_viewed'
+          target_id: string | null
+          target_type: string
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          event_type:
+            | 'user_registered'
+            | 'resume_created'
+            | 'resume_updated'
+            | 'resume_deleted'
+            | 'resume_pdf_downloaded'
+            | 'portfolio_created'
+            | 'portfolio_published'
+            | 'portfolio_unpublished'
+            | 'portfolio_zip_downloaded'
+            | 'portfolio_qr_downloaded'
+            | 'portfolio_viewed'
+          target_id?: string | null
+          target_type?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          event_type?:
+            | 'user_registered'
+            | 'resume_created'
+            | 'resume_updated'
+            | 'resume_deleted'
+            | 'resume_pdf_downloaded'
+            | 'portfolio_created'
+            | 'portfolio_published'
+            | 'portfolio_unpublished'
+            | 'portfolio_zip_downloaded'
+            | 'portfolio_qr_downloaded'
+            | 'portfolio_viewed'
+          target_id?: string | null
+          target_type?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      coupons: {
+        Row: {
+          id: string
+          code: string
+          description: string | null
+          discount_type: 'percentage' | 'fixed'
+          discount_value: number
+          is_active: boolean
+          start_date: string
+          expiry_date: string | null
+          max_redemptions_total: number | null
+          max_redemptions_per_user: number
+          min_order_amount_paise: number
+          eligible_product_ids: string[] | null
+          eligible_user_groups: string[] | null
+          first_purchase_only: boolean
+          redemptions_count: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          description?: string | null
+          discount_type: 'percentage' | 'fixed'
+          discount_value: number
+          is_active?: boolean
+          start_date?: string
+          expiry_date?: string | null
+          max_redemptions_total?: number | null
+          max_redemptions_per_user?: number
+          min_order_amount_paise?: number
+          eligible_product_ids?: string[] | null
+          eligible_user_groups?: string[] | null
+          first_purchase_only?: boolean
+          redemptions_count?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          description?: string | null
+          discount_type?: 'percentage' | 'fixed'
+          discount_value?: number
+          is_active?: boolean
+          start_date?: string
+          expiry_date?: string | null
+          max_redemptions_total?: number | null
+          max_redemptions_per_user?: number
+          min_order_amount_paise?: number
+          eligible_product_ids?: string[] | null
+          eligible_user_groups?: string[] | null
+          first_purchase_only?: boolean
+          redemptions_count?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coupon_redemptions: {
+        Row: {
+          id: string
+          coupon_id: string
+          user_id: string
+          order_id: string
+          status: 'reserved' | 'fulfilled' | 'cancelled' | 'expired'
+          original_amount_paise: number
+          discount_amount_paise: number
+          final_amount_paise: number
+          created_at: string
+          fulfilled_at: string | null
+        }
+        Insert: {
+          id?: string
+          coupon_id: string
+          user_id: string
+          order_id: string
+          status?: 'reserved' | 'fulfilled' | 'cancelled' | 'expired'
+          original_amount_paise: number
+          discount_amount_paise: number
+          final_amount_paise: number
+          created_at?: string
+          fulfilled_at?: string | null
+        }
+        Update: {
+          id?: string
+          coupon_id?: string
+          user_id?: string
+          order_id?: string
+          status?: 'reserved' | 'fulfilled' | 'cancelled' | 'expired'
+          original_amount_paise?: number
+          discount_amount_paise?: number
+          final_amount_paise?: number
+          created_at?: string
+          fulfilled_at?: string | null
+        }
+        Relationships: []
+      }
+      coupon_validation_logs: {
+        Row: {
+          id: string
+          user_id: string
+          attempted_code: string
+          is_valid: boolean
+          error_reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          attempted_code: string
+          is_valid: boolean
+          error_reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          attempted_code?: string
+          is_valid?: boolean
+          error_reason?: string | null
           created_at?: string
         }
         Relationships: []
@@ -613,7 +1000,170 @@ export interface Database {
         }
         Returns: string
       }
+      get_admin_user_assets: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      create_payment_order: {
+        Args: {
+          p_product_id: string
+          p_is_sandbox?: boolean
+          p_coupon_code?: string | null
+        }
+        Returns: Json
+      }
+      verify_and_fulfill_payment: {
+        Args: {
+          p_order_id: string
+          p_utr?: string | null
+          p_signature?: string | null
+          p_raw_payload?: string | null
+          p_is_sandbox?: boolean
+        }
+        Returns: Json
+      }
+      cancel_payment_order: {
+        Args: {
+          p_order_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      check_user_entitlement: {
+        Args: {
+          p_user_id: string
+          p_entitlement_key: string
+        }
+        Returns: boolean
+      }
+      get_user_payment_history: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      get_admin_payment_analytics: {
+        Args: Record<string, never>
+        Returns: Json
+      }
+      record_analytics_event: {
+        Args: {
+          p_event_type: string
+          p_target_id?: string | null
+          p_target_type?: string | null
+          p_metadata?: Json
+        }
+        Returns: string
+      }
+      validate_coupon: {
+        Args: {
+          p_product_id: string
+          p_coupon_code: string
+        }
+        Returns: Json
+      }
+      fulfill_free_order: {
+        Args: {
+          p_product_id: string
+          p_coupon_code: string
+        }
+        Returns: Json
+      }
+      get_admin_coupons: {
+        Args: {
+          p_search?: string | null
+          p_status_filter?: string | null
+          p_type_filter?: string | null
+          p_sort_by?: string | null
+          p_sort_dir?: string | null
+          p_page?: number | null
+          p_page_size?: number | null
+        }
+        Returns: Json
+      }
+      get_admin_coupon_redemptions: {
+        Args: {
+          p_coupon_id?: string | null
+          p_search?: string | null
+          p_page?: number | null
+          p_page_size?: number | null
+        }
+        Returns: Json
+      }
+      create_or_update_coupon: {
+        Args: {
+          p_coupon_id?: string | null
+          p_code?: string | null
+          p_description?: string | null
+          p_discount_type?: string | null
+          p_discount_value?: number | null
+          p_is_active?: boolean | null
+          p_start_date?: string | null
+          p_expiry_date?: string | null
+          p_max_total?: number | null
+          p_max_per_user?: number | null
+          p_min_order_paise?: number | null
+          p_eligible_products?: string[] | null
+          eligible_user_groups?: string[] | null
+          p_first_purchase_only?: boolean | null
+        }
+        Returns: Json
+      }
+      calculate_cart_pricing: {
+        Args: {
+          p_product_id: string
+          p_addon_ids?: string[] | null
+          p_coupon_code?: string | null
+        }
+        Returns: Json
+      }
+      update_product_price: {
+        Args: {
+          p_product_id: string
+          p_new_price_paise: number
+          p_reason?: string | null
+        }
+        Returns: Json
+      }
+      toggle_product_status: {
+        Args: {
+          p_product_id: string
+          p_is_active: boolean
+        }
+        Returns: Json
+      }
+      get_admin_pricing_catalog: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      connect_custom_domain: {
+        Args: {
+          p_portfolio_id: string
+          p_raw_hostname: string
+        }
+        Returns: Json
+      }
+      verify_custom_domain: {
+        Args: {
+          p_domain_id: string
+          p_simulate_success?: boolean
+        }
+        Returns: Json
+      }
+      disconnect_custom_domain: {
+        Args: {
+          p_domain_id: string
+        }
+        Returns: Json
+      }
+      check_user_custom_domain_entitlement: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: boolean
+      }
     }
+
     Enums: {
       [_ in never]: never
     }
@@ -622,3 +1172,17 @@ export interface Database {
     }
   }
 }
+
+export type ProfileRow = Database['public']['Tables']['profiles']['Row']
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+
+export type AnalyticsEventRow = Database['public']['Tables']['analytics_events']['Row']
+export type AnalyticsEventInsert = Database['public']['Tables']['analytics_events']['Insert']
+export type AnalyticsEventUpdate = Database['public']['Tables']['analytics_events']['Update']
+export type AnalyticsEventType = AnalyticsEventRow['event_type']
+
+export type ResumeRow = Database['public']['Tables']['resumes']['Row']
+export type PortfolioRow = Database['public']['Tables']['portfolios']['Row']
+export type AdminAuditLogRow = Database['public']['Tables']['admin_audit_logs']['Row']
+

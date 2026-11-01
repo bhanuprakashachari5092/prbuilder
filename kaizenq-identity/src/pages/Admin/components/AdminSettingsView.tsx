@@ -1,14 +1,10 @@
 import React from 'react'
 import {
   ShieldCheck,
-  Server,
   Database,
   Globe,
-  Key,
   CheckCircle2,
-  AlertTriangle,
   Lock,
-  ExternalLink,
 } from 'lucide-react'
 import { isSupabaseConfigured, getBaseAppUrl } from '../../../lib/supabase.ts'
 import { getPlatformDomain } from '../../../lib/domainUtils.ts'

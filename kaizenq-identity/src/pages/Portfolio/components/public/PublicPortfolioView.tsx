@@ -190,8 +190,23 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
     skills.tools.length > 0 ||
     skills.otherSkills.length > 0
 
+  const densitySpacing =
+    data.customization?.layoutDensity === 'compact'
+      ? 'py-6 sm:py-10 space-y-10'
+      : data.customization?.layoutDensity === 'relaxed'
+      ? 'py-16 sm:py-24 space-y-24'
+      : 'py-10 sm:py-16 space-y-16'
+
+  const customAccent = data.customization?.accentColor
+  const animationsEnabled = data.customization?.animationsEnabled !== false
+
   return (
-    <div className={`min-h-screen ${themeClasses.wrapper} transition-colors duration-200`}>
+    <div
+      className={`min-h-screen ${themeClasses.wrapper} transition-colors duration-200 ${
+        !animationsEnabled ? 'motion-reduce' : ''
+      }`}
+      style={customAccent ? ({ '--portfolio-accent': customAccent } as React.CSSProperties) : undefined}
+    >
       {/* 1. Top Navigation Bar */}
       {!isPreviewMode && (
         <header className={`sticky top-0 z-40 border-b ${themeClasses.nav} transition-colors`}>
@@ -256,7 +271,7 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
       )}
 
       {/* 2. Main Content Container */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-16 space-y-16">
+      <main className={`max-w-5xl mx-auto px-4 sm:px-6 ${densitySpacing}`}>
         {/* ===================================================================
             HERO / PROFILE OVERVIEW
            =================================================================== */}

@@ -16,7 +16,6 @@ import {
   Share2,
   Layers,
   Palette,
-  Eye,
   Check,
 } from 'lucide-react'
 import { Container } from '../ui/Container.tsx'

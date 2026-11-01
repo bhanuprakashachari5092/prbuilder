@@ -9,28 +9,30 @@ import {
   RefreshCw,
   AlertCircle,
   Eye,
-  Calendar,
-  Layers,
   X,
   User,
 } from 'lucide-react'
 import { adminService, type AdminResumeItem, type PaginatedResult } from '../../../services/adminService.ts'
-import type { AdminConfirmationModalState, AdminTab } from '../types.ts'
+import type { AdminConfirmationModalState } from '../types.ts'
 
 interface AdminResumesViewProps {
   onOpenConfirmation: (state: AdminConfirmationModalState) => void
   onNavigateToUser?: (userId: string) => void
+  globalSearch?: string
+  initialResumeId?: string | null
 }
 
 export const AdminResumesView: React.FC<AdminResumesViewProps> = ({
   onOpenConfirmation,
   onNavigateToUser,
+  globalSearch,
+  initialResumeId,
 }) => {
   const [data, setData] = useState<PaginatedResult<AdminResumeItem> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(globalSearch || '')
   const [templateFilter, setTemplateFilter] = useState('all')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -38,6 +40,13 @@ export const AdminResumesView: React.FC<AdminResumesViewProps> = ({
   const pageSize = 12
 
   const [selectedResume, setSelectedResume] = useState<AdminResumeItem | null>(null)
+
+  useEffect(() => {
+    if (globalSearch !== undefined && globalSearch !== searchTerm) {
+      setSearchTerm(globalSearch)
+      setCurrentPage(1)
+    }
+  }, [globalSearch])
 
   const fetchResumes = useCallback(async () => {
     setIsLoading(true)
@@ -55,9 +64,13 @@ export const AdminResumesView: React.FC<AdminResumesViewProps> = ({
       setError(res.error.message || 'Failed to fetch resumes directory')
     } else {
       setData(res.data)
+      if (initialResumeId && res.data?.items) {
+        const found = res.data.items.find((item) => item.id === initialResumeId)
+        if (found) setSelectedResume(found)
+      }
     }
     setIsLoading(false)
-  }, [searchTerm, templateFilter, sortBy, sortDir, currentPage])
+  }, [searchTerm, templateFilter, sortBy, sortDir, currentPage, initialResumeId])
 
   useEffect(() => {
     fetchResumes()
