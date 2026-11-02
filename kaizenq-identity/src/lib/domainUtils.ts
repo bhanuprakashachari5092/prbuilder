@@ -22,6 +22,7 @@ export const RESERVED_SUBDOMAINS = [
   'dns',
   'docs',
   'email',
+  'elevate',
   'help',
   'identity',
   'kaizenq',
@@ -32,6 +33,7 @@ export const RESERVED_SUBDOMAINS = [
   'portal',
   'portfolio',
   'prbuilder',
+  'prelevate',
   'privacy',
   'public',
   'resume',
@@ -53,15 +55,15 @@ export const RESERVED_SUBDOMAINS = [
 ] as const
 
 /**
- * Returns the primary configured platform domain (e.g. prbuilder.in).
- * Reads from VITE_PLATFORM_DOMAIN, falling back to 'prbuilder.in'.
+ * Returns the primary configured platform domain (e.g. prelevate.xyz).
+ * Reads from VITE_PLATFORM_DOMAIN, falling back to 'prelevate.xyz'.
  */
 export function getPlatformDomain(): string {
   const envDomain = import.meta.env.VITE_PLATFORM_DOMAIN
   if (envDomain && typeof envDomain === 'string' && envDomain.trim() && !envDomain.includes('example.com')) {
     return envDomain.trim().toLowerCase()
   }
-  return 'prbuilder.in'
+  return 'prelevate.xyz'
 }
 
 /**
@@ -148,11 +150,27 @@ export function getSubdomainFromHostname(hostname?: string): string | null {
   const platformDomain = getPlatformDomain()
 
   // 3. Exact apex domain match
-  if (host === platformDomain) return null
+  if (host === platformDomain || host === 'prelevate.xyz' || host === 'prbuilder.in') return null
 
-  // 4. Platform subdomain match (e.g. username.prbuilder.in)
+  // 4. Platform subdomain match (e.g. username.prelevate.xyz or username.prbuilder.in)
   if (host.endsWith(`.${platformDomain}`)) {
     const prefix = host.slice(0, -(platformDomain.length + 1))
+    const parts = prefix.split('.')
+    const slug = parts[parts.length - 1]
+    if (!slug || isReservedSubdomain(slug)) return null
+    return slug
+  }
+
+  if (host.endsWith('.prelevate.xyz')) {
+    const prefix = host.slice(0, -'.prelevate.xyz'.length)
+    const parts = prefix.split('.')
+    const slug = parts[parts.length - 1]
+    if (!slug || isReservedSubdomain(slug)) return null
+    return slug
+  }
+
+  if (host.endsWith('.prbuilder.in')) {
+    const prefix = host.slice(0, -'.prbuilder.in'.length)
     const parts = prefix.split('.')
     const slug = parts[parts.length - 1]
     if (!slug || isReservedSubdomain(slug)) return null
@@ -244,9 +262,15 @@ export function isCustomDomainHost(hostname?: string): boolean {
     return false
   }
 
-  // 3. Platform domain (e.g. prbuilder.in, www.prbuilder.in, user.prbuilder.in)
+  // 3. Platform domain (e.g. prelevate.xyz, prbuilder.in)
   const platform = getPlatformDomain()
   if (host === platform || host.endsWith(`.${platform}`)) {
+    return false
+  }
+  if (host === 'prelevate.xyz' || host.endsWith('.prelevate.xyz')) {
+    return false
+  }
+  if (host === 'prbuilder.in' || host.endsWith('.prbuilder.in')) {
     return false
   }
 

@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts'
 import type { Database } from '../types/database.types.ts'
+import { getPlatformDomain } from '../lib/domainUtils.ts'
 
 export type DomainRow = Database['public']['Tables']['domains']['Row']
 
@@ -89,9 +90,9 @@ export const domainService = {
           type: 'CNAME',
           host: 'www',
           name: `www.${clean}`,
-          value: 'prbuilder.in',
+          value: getPlatformDomain(),
           ttl: 300,
-          purpose: 'Routes www alias to PR Builder platform',
+          purpose: 'Routes www alias to PR Elevate platform',
         },
         {
           type: 'TXT',
@@ -110,7 +111,7 @@ export const domainService = {
         type: 'CNAME',
         host: subdomainPart,
         name: clean,
-        value: 'prbuilder.in',
+        value: getPlatformDomain(),
         ttl: 300,
         purpose: 'Routes custom subdomain to Netlify edge network',
       },
@@ -364,7 +365,7 @@ export const domainService = {
           for (const ans of json.Answer) {
             const rawData = String(ans.data || '').replace(/"/g, '').replace(/\.$/, '')
             currentRecords.push(`${ans.type === 1 ? 'A' : ans.type === 5 ? 'CNAME' : 'RECORD'}: ${rawData}`)
-            if (rawData === '75.2.60.5' || rawData.includes('prbuilder.in') || rawData.includes('netlify.app')) {
+            if (rawData === '75.2.60.5' || rawData.includes('prelevate.xyz') || rawData.includes('prbuilder.in') || rawData.includes('netlify.app')) {
               targetConfigured = true
             }
           }
