@@ -1,7 +1,13 @@
 {
-  "name": "pr-builder-root",
+  "name": "pr-builder-workspace",
   "private": true,
+  "type": "module",
   "scripts": {
+    "frontend:dev": "npm --prefix kaizenq-identity run dev",
+    "frontend:build": "npm --prefix kaizenq-identity run build",
+    "frontend:preview": "npm --prefix kaizenq-identity run preview",
+    "frontend:lint": "npm --prefix kaizenq-identity run lint",
+    "backend:verify": "node backend/scripts/verify-backend.js",
     "build": "npm --prefix kaizenq-identity run build",
     "start": "npm --prefix kaizenq-identity run start",
     "dev": "npm --prefix kaizenq-identity run dev",
@@ -9,7 +15,6 @@
     "preview": "npm --prefix kaizenq-identity run preview"
   },
   "dependencies": {
-    "motion": "^14.0.0",
-    "node": "^26.11.1"
+    "motion": "^14.0.0"
   }
 }
