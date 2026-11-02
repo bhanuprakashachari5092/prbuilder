@@ -218,7 +218,7 @@ export const BuilderShowcase: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="mt-4 text-sm sm:text-base text-[#64748B] leading-relaxed"
           >
-            Whether you are applying through corporate ATS portals or sharing your work with engineering leaders, PR Builder provides tailored tools for every touchpoint.
+            Whether you are applying through corporate ATS portals or sharing your work with engineering leaders, PR Elevate provides tailored tools for every touchpoint.
           </motion.p>
         </div>
 

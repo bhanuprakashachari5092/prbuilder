@@ -190,7 +190,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExitToHome }) 
             {!isSidebarCollapsed && (
               <div>
                 <div className="font-bold text-slate-900 text-sm tracking-tight leading-none">
-                  PR Builder
+                  PR Elevate
                 </div>
                 <div className="flex items-center gap-1 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />

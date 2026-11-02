@@ -576,7 +576,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </span>
                 ) : (
                   <span>
-                    New to KaizenQ Identity?{' '}
+                    New to PR Elevate?{' '}
                     <button
                       onClick={() => {
                         setErrorMsg(null)

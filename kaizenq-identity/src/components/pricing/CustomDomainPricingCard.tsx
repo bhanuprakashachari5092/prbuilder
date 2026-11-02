@@ -68,19 +68,19 @@ export const CustomDomainPricingCard: React.FC<CustomDomainPricingCardProps> = (
 
       {/* Two-Column Explanation: Connection vs Registration */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-        {/* Panel 1: What PR Builder Provides (Custom Domain Connection) */}
+        {/* Panel 1: What PR Elevate Provides (Custom Domain Connection) */}
         <div className="p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2.5">
           <div className="flex items-center gap-2 font-bold text-[#0F172A]">
             <Server className="w-4 h-4 text-[#2563EB]" />
             <span>1. Custom Domain Connection (Included for {formatINR(priceRupees)})</span>
           </div>
           <p className="text-[11px] text-[#64748B] leading-relaxed">
-            PR Builder manages the edge server routing, DNS verification, and SSL certificates so your portfolio is always fast and secure.
+            PR Elevate manages the edge server routing, DNS verification, and SSL certificates so your portfolio is always fast and secure.
           </p>
           <ul className="space-y-1.5 text-[#334155] text-[11px]">
             <li className="flex items-start gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-              <span>Instant DNS CNAME & A-record edge routing to PR Builder</span>
+              <span>Instant DNS CNAME & A-record edge routing to PR Elevate</span>
             </li>
             <li className="flex items-start gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
@@ -117,7 +117,7 @@ export const CustomDomainPricingCard: React.FC<CustomDomainPricingCardProps> = (
             </li>
             <li className="flex items-start gap-1.5">
               <Info className="w-3.5 h-3.5 text-purple-600 shrink-0 mt-0.5" />
-              <span>PR Builder connects the domain via DNS; we never take custody or custody fees</span>
+              <span>PR Elevate connects the domain via DNS; we never take custody or custody fees</span>
             </li>
             <li className="flex items-start gap-1.5">
               <Info className="w-3.5 h-3.5 text-purple-600 shrink-0 mt-0.5" />

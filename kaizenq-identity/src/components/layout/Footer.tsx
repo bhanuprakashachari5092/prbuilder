@@ -27,7 +27,7 @@ export const Footer: React.FC = () => {
           <div className="col-span-2">
             <PRLogo size="lg" tagline="Professional Identity & Portfolio Studio" />
             <p className="mt-4 text-xs sm:text-sm text-[#64748B] max-w-sm leading-relaxed">
-              PR Builder helps students and professionals create polished, ATS-compliant resumes and personal web portfolios that showcase their skills, work, and potential.
+              PR Elevate helps students and professionals create polished, ATS-compliant resumes and personal web portfolios that showcase their skills, work, and potential.
             </p>
 
             <div className="mt-6 flex items-center gap-3">
@@ -46,7 +46,7 @@ export const Footer: React.FC = () => {
 
             <div className="mt-6 inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] text-[11px] text-[#2563EB]">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>PR Builder Platform Online</span>
+              <span>PR Elevate Platform Online</span>
             </div>
           </div>
 
@@ -128,7 +128,7 @@ export const Footer: React.FC = () => {
         {/* Bottom Legal / Dynamic Copyright */}
         <div className="pt-8 border-t border-[#E2E8F0] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#94A3B8]">
           <p>
-            © {new Date().getFullYear()} PR Builder. All rights reserved.
+            © {new Date().getFullYear()} PR Elevate. All rights reserved.
           </p>
           <p className="text-center sm:text-right max-w-md">
             Engineered with React, Vite, TypeScript, and Motion. Built for students, builders, and professionals.

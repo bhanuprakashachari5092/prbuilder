@@ -181,18 +181,18 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
       productId: 'custom-domain-pass',
       isOwned: entitlements.hasDomainPass || entitlements.hasAllAccessPass,
       details: [
-        'Instant DNS CNAME & A record routing to PR Builder edge',
+        'Instant DNS CNAME & A record routing to PR Elevate edge',
         'Automated SSL certificate provisioning and renewal',
         'Zero wait for hackathon sponsorship or approval',
         'Lifetime routing to your portfolio',
       ],
     },
 
-    // 8. PR Builder Pro All-Access Lifetime Pass (Configured Bundle)
+    // 8. PR Elevate Pro All-Access Lifetime Pass (Configured Bundle)
     {
       id: 'pro-all-access-pass',
       category: 'bundle',
-      title: 'PR Builder Pro All-Access Lifetime Pass',
+      title: 'PR Elevate Pro All-Access Lifetime Pass',
       description: 'Complete lifetime access to all Pro resume templates, portfolio themes, and custom domain pass.',
       statusType: 'configured_product',
       priceDisplay: formatINR(proPass.rupees),

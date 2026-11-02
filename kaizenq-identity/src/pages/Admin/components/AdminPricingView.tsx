@@ -175,7 +175,7 @@ export const AdminPricingView: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={async () => {
-              const res = await paymentService.simulateRealtimePayment(999, 'PR Builder Pro All-Access Pass')
+              const res = await paymentService.simulateRealtimePayment(999, 'PR Elevate Pro All-Access Pass')
               setSuccessMsg(`⚡ Live Real-Time Sale Verified: +₹${res.amountRupees} for All-Access Pass! Counters updated.`)
               setTimeout(() => setSuccessMsg(null), 4000)
               loadCatalog()
@@ -284,7 +284,7 @@ export const AdminPricingView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-            <strong>PR Builder Pro All-Access Lifetime Pass</strong> (₹999 / 99900 paise) maps to{' '}
+            <strong>PR Elevate Pro All-Access Lifetime Pass</strong> (₹999 / 99900 paise) maps to{' '}
             <code className="text-blue-700 bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[11px]">
               bundle:all_access
             </code>

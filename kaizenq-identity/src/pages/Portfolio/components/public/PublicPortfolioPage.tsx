@@ -46,7 +46,7 @@ export const PublicPortfolioPage: React.FC<PublicPortfolioPageProps> = ({
           } else {
             setPublishedData(data)
             if (typeof document !== 'undefined') {
-              document.title = `${data.portfolioData.profile.fullName || 'Professional'} | PR Builder`
+              document.title = `${data.portfolioData.profile.fullName || 'Professional'} | PR Elevate`
             }
           }
         })
@@ -73,7 +73,7 @@ export const PublicPortfolioPage: React.FC<PublicPortfolioPageProps> = ({
           } else {
             setPublishedData(data)
             if (typeof document !== 'undefined') {
-              document.title = `${data.portfolioData.profile.fullName || 'Professional'} | PR Builder`
+              document.title = `${data.portfolioData.profile.fullName || 'Professional'} | PR Elevate`
             }
           }
         })
@@ -181,7 +181,7 @@ export const PublicPortfolioPage: React.FC<PublicPortfolioPageProps> = ({
               leftIcon={<Home className="w-4 h-4" />}
               className="text-xs w-full sm:w-auto"
             >
-              Go to PR Builder Home
+              Go to PR Elevate Home
             </Button>
 
             <Button

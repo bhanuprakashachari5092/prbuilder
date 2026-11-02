@@ -137,7 +137,7 @@ export const PRLogo: React.FC<PRLogoProps> = ({
     <div
       onClick={onClick}
       role="img"
-      aria-label="PR Builder Logo"
+      aria-label="PR Elevate Logo"
       className={cn(
         'inline-flex items-center gap-2.5 select-none transition-opacity duration-200',
         onClick && 'cursor-pointer hover:opacity-90',
@@ -162,7 +162,7 @@ export const PRLogo: React.FC<PRLogoProps> = ({
         )}
       </div>
 
-      {/* Typography Lockup: PR BUILDER */}
+      {/* Typography Lockup: PR ELEVATE */}
       {displayWordmark && (
         <div className="flex flex-col leading-none">
           <div className={cn('flex items-center gap-1.5 font-bold tracking-tight', textClass)}>
@@ -180,7 +180,7 @@ export const PRLogo: React.FC<PRLogoProps> = ({
                 theme === 'light' ? 'text-[#2563EB]' : 'text-[#A4B7BF]',
               )}
             >
-              BUILDER
+              ELEVATE
             </span>
           </div>
           {tagline ? (

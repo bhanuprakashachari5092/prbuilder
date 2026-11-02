@@ -68,7 +68,7 @@ export const AdminPaymentsView: React.FC = () => {
       const chosenAmount = amounts[Math.floor(Math.random() * amounts.length)]
       const productName =
         chosenAmount === 999
-          ? 'PR Builder Pro All-Access Pass'
+          ? 'PR Elevate Pro All-Access Pass'
           : chosenAmount === 299
           ? 'Creative Studio Portfolio Theme'
           : 'Modern Professional Resume Template'

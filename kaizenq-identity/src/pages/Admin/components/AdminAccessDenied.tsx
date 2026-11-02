@@ -31,7 +31,7 @@ export const AdminAccessDenied: React.FC<AdminAccessDeniedProps> = ({
         </h1>
 
         <p className="text-sm text-slate-600 leading-relaxed mb-6">
-          Access to the PR Builder Platform Administration Console is restricted strictly to accounts with verified administrative privileges. Your current session does not have administrative rights.
+          Access to the PR Elevate Platform Administration Console is restricted strictly to accounts with verified administrative privileges. Your current session does not have administrative rights.
         </p>
 
         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 text-xs text-slate-500 mb-6 text-left space-y-1">
@@ -67,7 +67,7 @@ export const AdminAccessDenied: React.FC<AdminAccessDeniedProps> = ({
       </div>
 
       <p className="text-xs text-slate-400 mt-6 text-center">
-        PR Builder Platform Security • Unauthorized access attempts are monitored and recorded.
+        PR Elevate Platform Security • Unauthorized access attempts are monitored and recorded.
       </p>
     </div>
   )

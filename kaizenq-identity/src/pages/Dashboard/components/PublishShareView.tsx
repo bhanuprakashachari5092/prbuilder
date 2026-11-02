@@ -581,7 +581,7 @@ export const PublishShareView: React.FC<PublishShareViewProps> = ({
 
             <h3 className="text-base font-bold text-[#111827]">Social & Recruiter Sharing</h3>
             <p className="text-xs text-[#64748B] leading-relaxed">
-              Share your verified PR Builder portfolio directly with recruiters, mentors, and hiring managers.
+              Share your verified PR Elevate portfolio directly with recruiters, mentors, and hiring managers.
             </p>
 
             {isPublished && publicUrl ? (
@@ -598,7 +598,7 @@ export const PublishShareView: React.FC<PublishShareViewProps> = ({
 
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                    `Check out my portfolio on PR Builder!`,
+                    `Check out my portfolio on PR Elevate!`,
                   )}&url=${encodeURIComponent(publicUrl)}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -610,7 +610,7 @@ export const PublishShareView: React.FC<PublishShareViewProps> = ({
 
                 <a
                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                    `My PR Builder Portfolio: ${publicUrl}`,
+                    `My PR Elevate Portfolio: ${publicUrl}`,
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"

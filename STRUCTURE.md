@@ -47,3 +47,4 @@ portofolio & resume builder/
 | **Verify Backend** | `npm run backend:verify` | Checks all 17 migrations, edge functions, and types |
 | **Run All Test Suites** | `npm run test` | Executes 165 automated verification tests across all domains |
 | **Deploy Build** | `npm run build` | Monorepo CI/CD production build target (Vercel & Render) |
+

@@ -108,7 +108,7 @@ const METADATA_MAP: Record<string, ItemDetails> = {
       'Instant domain linking without waiting for hackathon sponsorships',
       'Automatic TLS / SSL certificate generation and auto-renewal',
       'Custom DNS record manager with real-time verification status',
-      'Lifetime routing to your PR Builder portfolio',
+      'Lifetime routing to your PR Elevate portfolio',
     ],
     freeComparison: ['Free kaizenq.me subdomain routing', 'Standard SSL encryption'],
     proComparison: ['Personal top-level domain linking', 'Automated SSL provisioning', 'Zero event eligibility wait'],
@@ -291,7 +291,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-[#0F172A]">
-                        PR Builder Pro All-Access Lifetime Pass
+                        PR Elevate Pro All-Access Lifetime Pass
                       </span>
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md">
                         Save ₹496
@@ -507,7 +507,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                 size="sm"
                 onClick={() => {
                   const targetTitle = upgradeToLifetimePass
-                    ? 'PR Builder Pro All-Access Lifetime Pass'
+                    ? 'PR Elevate Pro All-Access Lifetime Pass'
                     : meta.title
                   onProceedToCheckout(effectiveProductId, payablePaise, targetTitle, activeCouponCode)
                 }}

@@ -56,3 +56,4 @@ npm run backend:verify
 npx supabase link --project-ref <your-supabase-project-id>
 npx supabase db push
 ```
+
