@@ -147,6 +147,18 @@ export function getSubdomainFromHostname(hostname?: string): string | null {
     return sub
   }
 
+  // 2b. Hosting platform default service domains are NOT portfolio subdomains
+  if (
+    host.endsWith('.onrender.com') ||
+    host.endsWith('.render.com') ||
+    host.endsWith('.vercel.app') ||
+    host.endsWith('.netlify.app') ||
+    host.endsWith('.pages.dev') ||
+    host.endsWith('.github.io')
+  ) {
+    return null
+  }
+
   const platformDomain = getPlatformDomain()
 
   // 3. Exact apex domain match
@@ -257,8 +269,19 @@ export function isCustomDomainHost(hostname?: string): boolean {
     return false
   }
 
-  // 2. Netlify preview and deploy URLs
-  if (host.endsWith('.netlify.app')) {
+  // 2. Hosting platform default domains (Render, Vercel, Netlify, Cloudflare Pages, GitHub Pages)
+  if (
+    host.endsWith('.onrender.com') ||
+    host.endsWith('.render.com') ||
+    host === 'onrender.com' ||
+    host === 'render.com' ||
+    host.endsWith('.vercel.app') ||
+    host === 'vercel.app' ||
+    host.endsWith('.netlify.app') ||
+    host === 'netlify.app' ||
+    host.endsWith('.pages.dev') ||
+    host.endsWith('.github.io')
+  ) {
     return false
   }
 
