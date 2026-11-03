@@ -17,12 +17,12 @@ export interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  onOpenAuth,
+  onOpenAuth: _onOpenAuth,
   onOpenBuilder: _onOpenBuilder,
   revealOnScroll = false,
 }) => {
-  const { setCurrentRoute, setTargetRouteAfterAuth } = useApp()
-  const { user, isAdmin } = useAuth()
+  const { setCurrentRoute } = useApp()
+  const { isAdmin } = useAuth()
   const shouldReduceMotion = useReducedMotion()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isHeroRevealed, setIsHeroRevealed] = useState(!revealOnScroll || shouldReduceMotion)
@@ -72,12 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       setCurrentRoute('admin')
       return
     }
-    if (user) {
-      setCurrentRoute(target)
-    } else {
-      setTargetRouteAfterAuth(target)
-      onOpenAuth?.('signup')
-    }
+    setCurrentRoute(target)
   }
 
   const handleGetStarted = () => {
@@ -86,12 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       setCurrentRoute('admin')
       return
     }
-    if (user) {
-      setCurrentRoute('dashboard')
-    } else {
-      setTargetRouteAfterAuth('dashboard')
-      onOpenAuth?.('signup')
-    }
+    setCurrentRoute('dashboard')
   }
 
   return (
@@ -163,34 +153,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 Admin Console
               </Button>
-            ) : user ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setCurrentRoute('dashboard')}
-                rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                className="text-xs lg:text-sm"
-              >
-                Go to Workspace
-              </Button>
             ) : (
               <>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => onOpenAuth?.('signin')}
-                  className="text-xs lg:text-sm text-[#64748B] hover:text-[#111827] hover:bg-[#F8FAFC]"
+                  onClick={() => setCurrentRoute('resume')}
+                  className="text-xs lg:text-sm border-[#E2E8F0] text-[#111827] hover:bg-[#F8FAFC]"
                 >
-                  Sign In
+                  ATS Resume
                 </Button>
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={handleGetStarted}
                   rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                  className="text-xs lg:text-sm"
+                  className="text-xs lg:text-sm bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-xs"
                 >
-                  Get Started
+                  Workspace
                 </Button>
               </>
             )}
@@ -259,19 +239,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     Admin Console
                   </Button>
-                ) : user ? (
-                  <Button
-                    variant="primary"
-                    fullWidth
-                    size="sm"
-                    onClick={() => {
-                      setMobileMenuOpen(false)
-                      setCurrentRoute('dashboard')
-                    }}
-                    rightIcon={<ArrowRight className="w-4 h-4" />}
-                  >
-                    Go to Workspace
-                  </Button>
                 ) : (
                   <>
                     <Button
@@ -280,11 +247,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                       size="sm"
                       onClick={() => {
                         setMobileMenuOpen(false)
-                        onOpenAuth?.('signin')
+                        setCurrentRoute('resume')
                       }}
                       className="border-[#E2E8F0] text-[#111827] hover:bg-[#F8FAFC]"
                     >
-                      Sign In
+                      ATS Resume Builder
                     </Button>
                     <Button
                       variant="primary"
@@ -292,8 +259,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       size="sm"
                       onClick={handleGetStarted}
                       rightIcon={<ArrowRight className="w-4 h-4" />}
+                      className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold shadow-xs"
                     >
-                      Get Started
+                      Open Workspace
                     </Button>
                   </>
                 )}

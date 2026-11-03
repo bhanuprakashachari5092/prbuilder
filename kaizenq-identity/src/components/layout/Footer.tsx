@@ -2,21 +2,13 @@ import React from 'react'
 import { PRLogo } from '../brand/PRLogo.tsx'
 import { Container } from '../ui/Container.tsx'
 import { useApp } from '../../app/providers/AppContext.ts'
-import { useAuth } from '../../app/providers/AuthContext.tsx'
 import { SITE_CONFIG } from '../../lib/constants.ts'
 
 export const Footer: React.FC = () => {
-  const { setCurrentRoute, setIsAuthOpen, setAuthMode, setTargetRouteAfterAuth } = useApp()
-  const { user } = useAuth()
+  const { setCurrentRoute } = useApp()
 
   const handleBuilderClick = (target: 'resume' | 'portfolio') => {
-    if (user) {
-      setCurrentRoute(target)
-    } else {
-      setTargetRouteAfterAuth(target)
-      setAuthMode('signup')
-      setIsAuthOpen(true)
-    }
+    setCurrentRoute(target)
   }
 
   return (

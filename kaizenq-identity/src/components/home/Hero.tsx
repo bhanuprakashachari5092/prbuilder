@@ -18,7 +18,6 @@ import {
 import { Container } from '../ui/Container.tsx'
 import { Button } from '../ui/Button.tsx'
 import { useApp } from '../../app/providers/AppContext.ts'
-import { useAuth } from '../../app/providers/AuthContext.tsx'
 import { useMediaQuery } from '../../hooks/useMediaQuery.ts'
 import { cn } from '../../lib/utils.ts'
 import resumeMockupPng from '../../assets/images/resume-mockup.png'
@@ -41,8 +40,7 @@ export interface HeroProps {
  *          the hero headline, description, CTAs, and top navbar.
  */
 export const Hero: React.FC<HeroProps> = () => {
-  const { setCurrentRoute, setIsAuthOpen, setAuthMode, setTargetRouteAfterAuth } = useApp()
-  const { user } = useAuth()
+  const { setCurrentRoute } = useApp()
   const heroRef = useRef<HTMLElement>(null)
   const shouldReduceMotion = useReducedMotion()
   const isDesktop = useMediaQuery('(min-width: 1024px)')
@@ -187,23 +185,11 @@ export const Hero: React.FC<HeroProps> = () => {
   const glowOpacity = useTransform(smoothProgress, [0, 1], [0.85, 0.45])
 
   const handleResumeClick = () => {
-    if (user) {
-      setCurrentRoute('resume')
-    } else {
-      setTargetRouteAfterAuth('resume')
-      setAuthMode('signup')
-      setIsAuthOpen(true)
-    }
+    setCurrentRoute('resume')
   }
 
   const handlePortfolioClick = () => {
-    if (user) {
-      setCurrentRoute('portfolio')
-    } else {
-      setTargetRouteAfterAuth('portfolio')
-      setAuthMode('signup')
-      setIsAuthOpen(true)
-    }
+    setCurrentRoute('portfolio')
   }
 
   // =========================================================================

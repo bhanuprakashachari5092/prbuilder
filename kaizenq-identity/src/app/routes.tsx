@@ -28,41 +28,20 @@ export type RouteKey =
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  targetRoute: RouteKey
-  targetRouteName: string
+  targetRoute?: RouteKey
+  targetRouteName?: string
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  targetRoute,
-  targetRouteName,
-}) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, isAdmin, isLoading } = useAuth()
-  const { setIsAuthOpen, setAuthMode, setTargetRouteAfterAuth, setCurrentRoute } = useApp()
+  const { setCurrentRoute } = useApp()
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      setTargetRouteAfterAuth(targetRoute)
-      setAuthMode('signup')
-      setIsAuthOpen(true)
-    } else if (!isLoading && user && isAdmin) {
-      // Platform administrators are strictly dedicated to the Admin Console
+    if (!isLoading && user && isAdmin) {
       setCurrentRoute('admin')
     }
-  }, [isLoading, user, isAdmin, targetRoute, setTargetRouteAfterAuth, setAuthMode, setIsAuthOpen, setCurrentRoute])
+  }, [isLoading, user, isAdmin, setCurrentRoute])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-[#64748B] font-medium">Verifying authentication session...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // If authenticated as an administrator, immediately hand over to admin console
   if (isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
@@ -74,25 +53,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     )
   }
 
-  if (!user) {
-    return (
-      <AuthRequiredGate
-        targetRouteName={targetRouteName}
-        onOpenSignup={() => {
-          setTargetRouteAfterAuth(targetRoute)
-          setAuthMode('signup')
-          setIsAuthOpen(true)
-        }}
-        onOpenSignin={() => {
-          setTargetRouteAfterAuth(targetRoute)
-          setAuthMode('signin')
-          setIsAuthOpen(true)
-        }}
-        onGoHome={() => setCurrentRoute('home')}
-      />
-    )
-  }
-
+  // Direct open access for all users: no login or signup required to build resumes and portfolios
   return <>{children}</>
 }
 
@@ -166,9 +127,7 @@ export const AppRoutes: React.FC = () => {
     currentSlug,
     setIsAuthOpen,
     setAuthMode,
-    setTargetRouteAfterAuth,
   } = useApp()
-  const { user } = useAuth()
 
   const handleOpenAuth = (mode: 'signin' | 'signup' = 'signup') => {
     setAuthMode(mode)
@@ -176,13 +135,7 @@ export const AppRoutes: React.FC = () => {
   }
 
   const handleOpenBuilder = (target: RouteKey = 'portfolio') => {
-    if (user) {
-      setCurrentRoute(target)
-    } else {
-      setTargetRouteAfterAuth(target)
-      setAuthMode('signup')
-      setIsAuthOpen(true)
-    }
+    setCurrentRoute(target)
   }
 
   switch (currentRoute) {
