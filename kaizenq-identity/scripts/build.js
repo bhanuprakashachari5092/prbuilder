@@ -76,4 +76,25 @@ if (viteResult.status !== 0) {
   process.exit(viteResult.status ?? 1)
 }
 
+console.log('Generating SPA fallback and client route entry points...')
+const distDir = path.resolve(rootDir, 'dist')
+const indexHtmlPath = path.resolve(distDir, 'index.html')
+
+if (fs.existsSync(indexHtmlPath)) {
+  // 1. Generate 404.html fallback for static hosts (GitHub Pages, Netlify, Vercel)
+  fs.copyFileSync(indexHtmlPath, path.resolve(distDir, '404.html'))
+
+  // 2. Generate static /auth/callback/index.html route entry point
+  const authCallbackDir = path.resolve(distDir, 'auth', 'callback')
+  fs.mkdirSync(authCallbackDir, { recursive: true })
+  fs.copyFileSync(indexHtmlPath, path.resolve(authCallbackDir, 'index.html'))
+
+  // 3. Generate static /auth/index.html route entry point
+  const authDir = path.resolve(distDir, 'auth')
+  fs.mkdirSync(authDir, { recursive: true })
+  fs.copyFileSync(indexHtmlPath, path.resolve(authDir, 'index.html'))
+
+  console.log('✓ SPA static route fallbacks created successfully.')
+}
+
 console.log('✓ Build completed successfully.')

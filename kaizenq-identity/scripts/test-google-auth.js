@@ -302,6 +302,31 @@ it('validateRedirectRoute blocks open redirect attacks and defaults safely', () 
   assert(authCode.includes('VALID_APPLICATION_ROUTES'), 'Declares known internal routes whitelist')
 })
 
+it('Deployment configuration: vercel.json rewrites configured for SPA routing', () => {
+  const rootVercel = path.join(rootDir, '..', 'vercel.json')
+  const localVercel = path.join(rootDir, 'vercel.json')
+  assert(fs.existsSync(rootVercel), 'Root vercel.json exists')
+  assert(fs.existsSync(localVercel), 'kaizenq-identity vercel.json exists')
+
+  const rootConfig = JSON.parse(fs.readFileSync(rootVercel, 'utf8'))
+  const localConfig = JSON.parse(fs.readFileSync(localVercel, 'utf8'))
+
+  assert(rootConfig.rewrites && rootConfig.rewrites.some(r => r.source === '/(.*)' && r.destination === '/index.html'), 'Root vercel.json rewrites all paths to /index.html')
+  assert(localConfig.rewrites && localConfig.rewrites.some(r => r.source === '/(.*)' && r.destination === '/index.html'), 'Local vercel.json rewrites all paths to /index.html')
+})
+
+it('Build script generates static /auth/callback/index.html and 404.html route fallbacks', () => {
+  const buildScript = fs.readFileSync(path.join(rootDir, 'scripts', 'build.js'), 'utf8')
+  assert(buildScript.includes('authCallbackDir'), 'Build script creates authCallbackDir')
+  assert(buildScript.includes('404.html'), 'Build script generates 404.html fallback')
+})
+
+it('Direct access to /auth/callback without tokens smoothly redirects to sign in', () => {
+  const callbackCode = fs.readFileSync(path.join(rootDir, 'src', 'pages', 'Auth', 'components', 'AuthCallbackView.tsx'), 'utf8')
+  assert(callbackCode.includes('No active Google authentication credentials found'), 'Detects direct access without credentials')
+  assert(callbackCode.includes("setCurrentRoute('auth')"), 'Redirects to sign in page')
+})
+
 it('Security: Zero Google Client Secrets exposed in frontend bundle', () => {
   const srcFiles = fs.readdirSync(path.join(rootDir, 'src'), { recursive: true })
   for (const file of srcFiles) {

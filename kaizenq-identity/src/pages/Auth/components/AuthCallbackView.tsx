@@ -109,6 +109,19 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
         }
 
         if (!activeSession?.user) {
+          // If accessed directly without OAuth tokens, redirect smoothly to the sign-in page
+          if (!accessToken && !code) {
+            setStatus('error')
+            setErrorMessage('No active Google authentication credentials found. Redirecting to sign in...')
+            setTimeout(() => {
+              if (typeof window !== 'undefined') {
+                window.history.replaceState({}, document.title, '/auth')
+              }
+              setCurrentRoute('auth')
+            }, 1200)
+            return
+          }
+
           throw new Error(
             'Authentication session could not be established. Please try signing in again.',
           )
