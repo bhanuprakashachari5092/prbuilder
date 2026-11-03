@@ -576,7 +576,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </span>
                 ) : (
                   <span>
-                    New to PR Elevate?{' '}
+                    New to PR Builder?{' '}
                     <button
                       onClick={() => {
                         setErrorMsg(null)

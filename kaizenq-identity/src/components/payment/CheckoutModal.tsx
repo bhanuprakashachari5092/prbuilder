@@ -264,7 +264,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         amountRupees: 0,
         currency: 'INR',
         status: 'paid',
-        upiVpa: 'PR Elevate Promo',
+        upiVpa: 'PR Builder Promo',
         upiUri: '',
         expiresAt: new Date().toISOString(),
         isSandbox: false,
@@ -373,7 +373,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div className="py-16 text-center space-y-3">
               <RefreshCw className="w-8 h-8 text-[#2563EB] animate-spin mx-auto" />
               <p className="text-sm font-medium text-[#0F172A]">Generating secure payment session...</p>
-              <p className="text-xs text-[#64748B]">Verifying catalog pricing on PR Elevate server</p>
+              <p className="text-xs text-[#64748B]">Verifying catalog pricing on PR Builder server</p>
             </div>
           ) : error ? (
             <div className="py-10 text-center space-y-4">

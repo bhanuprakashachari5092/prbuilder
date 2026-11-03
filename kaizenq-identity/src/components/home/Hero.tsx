@@ -215,7 +215,7 @@ export const Hero: React.FC<HeroProps> = () => {
     return (
       <section
         className="relative pt-16 sm:pt-20 lg:pt-24 pb-16 sm:pb-20 lg:pb-24 overflow-hidden bg-[#F7F9FC]"
-        aria-label="PR Elevate Hero"
+        aria-label="PR Builder Hero"
       >
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[520px] bg-gradient-to-b from-[#EFF6FF] via-[#EEF2FF]/40 to-transparent blur-3xl pointer-events-none -z-10" />
 
@@ -355,7 +355,7 @@ export const Hero: React.FC<HeroProps> = () => {
         'relative bg-[#F7F9FC]',
         isDesktop ? 'h-[220vh]' : 'h-[180vh]',
       )}
-      aria-label="PR Elevate Hero"
+      aria-label="PR Builder Hero"
     >
       {/* Sticky Full-Viewport Stage */}
       <div className="sticky top-0 h-screen h-[100dvh] w-full overflow-hidden bg-[#F7F9FC] flex flex-col">

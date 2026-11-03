@@ -92,7 +92,7 @@ export const domainService = {
           name: `www.${clean}`,
           value: getPlatformDomain(),
           ttl: 300,
-          purpose: 'Routes www alias to PR Elevate platform',
+          purpose: 'Routes www alias to PR Builder platform',
         },
         {
           type: 'TXT',

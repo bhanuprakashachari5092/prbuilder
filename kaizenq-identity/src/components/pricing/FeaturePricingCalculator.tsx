@@ -412,7 +412,7 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                   <ul className="space-y-1 text-[11px] text-[#475569] pt-1">
                     <li className="flex items-center gap-1.5">
                       <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                      <span>Instant CNAME & A record routing to PR Elevate edge</span>
+                      <span>Instant CNAME & A record routing to PR Builder edge</span>
                     </li>
                     <li className="flex items-center gap-1.5">
                       <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
@@ -480,7 +480,7 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                     <div className="space-y-0.5">
                       <div className="font-bold text-[#0F172A] text-xs sm:text-sm flex items-center gap-1.5">
                         <Crown className="w-4 h-4 text-amber-500" />
-                        <span>PR Elevate Pro All-Access Lifetime Pass</span>
+                        <span>PR Builder Pro All-Access Lifetime Pass</span>
                       </div>
                       <p className="text-[11px] text-[#64748B] leading-relaxed">
                         Unlocks all Pro resume templates (₹398 value), portfolio themes (₹598 value), and custom domain pass (₹499 value).

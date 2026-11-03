@@ -64,7 +64,7 @@ export const PRLogoReveal: React.FC<PRLogoRevealProps> = ({
     <div
       key={replayKey}
       role="img"
-      aria-label="PR Elevate animated logo reveal"
+      aria-label="PR Builder animated logo reveal"
       className={`pr-reveal-viewport ${fullScreen ? 'fixed inset-0 z-50 min-h-screen w-screen' : 'rounded-2xl p-6 sm:p-8'} ${className}`}
       style={{ backgroundColor: theme === 'light' ? '#F7F9FC' : '#20282A' }}
     >
@@ -216,7 +216,7 @@ export const PRLogoReveal: React.FC<PRLogoRevealProps> = ({
         </motion.div>
       </div>
 
-      {/* Layer 4: Brand Wordmark (PR ELEVATE) Reveal */}
+      {/* Layer 4: Brand Wordmark (PR BUILDER) Reveal */}
       {showWordmark && (
         <motion.div
           className="mt-6 flex flex-col items-center select-none z-20"
@@ -231,7 +231,7 @@ export const PRLogoReveal: React.FC<PRLogoRevealProps> = ({
           <div className="flex items-center gap-2 text-xl sm:text-2xl font-bold tracking-tight">
             <span className={theme === 'light' ? 'text-[#111827]' : 'text-[#F7FAFF]'}>PR</span>
             <span className={theme === 'light' ? 'text-[#2563EB] tracking-widest font-semibold' : 'text-[#A4B7BF] tracking-widest font-semibold'}>
-              ELEVATE
+              BUILDER
             </span>
           </div>
           <motion.span

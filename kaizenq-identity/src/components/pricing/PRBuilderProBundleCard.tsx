@@ -45,8 +45,7 @@ export const PRBuilderProBundleCard: React.FC<PRBuilderProBundleCardProps> = ({
             </span>
             <div className="flex items-center gap-2">
               <h3 className="text-lg sm:text-xl font-black tracking-tight text-white">
-                PR Elevate Pro All-Access Lifetime Pass
-                <span className="sr-only">PR Builder Pro All-Access Lifetime Pass</span>
+                PR Builder Pro All-Access Lifetime Pass
               </h3>
               <Badge variant="accent" size="sm" className="bg-amber-400/20 text-amber-300 border-amber-400/40">
                 LIFETIME PASS
@@ -116,7 +115,7 @@ export const PRBuilderProBundleCard: React.FC<PRBuilderProBundleCardProps> = ({
           <div className="flex items-start gap-2 text-[10px] text-slate-400 bg-white/5 p-2 rounded-lg border border-white/5">
             <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.2" />
             <span>
-              <strong>Note on Custom Domains:</strong> PR Elevate provides DNS edge routing and automated SSL certificate provisioning. Root domain registration (e.g. purchasing yourname.dev from registrars such as Cloudflare or Namecheap) is handled directly by you with the registrar.
+              <strong>Note on Custom Domains:</strong> PR Builder provides DNS edge routing and automated SSL certificate provisioning. Root domain registration (e.g. purchasing yourname.dev from registrars such as Cloudflare or Namecheap) is handled directly by you with the registrar.
             </span>
           </div>
         </div>

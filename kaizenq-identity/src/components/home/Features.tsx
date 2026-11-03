@@ -566,7 +566,7 @@ export const Features: React.FC = () => {
                 Engineered for Precision & Recruiter Impact
               </h2>
               <p className="mt-1 text-xs sm:text-sm text-[#64748B] max-w-2xl leading-relaxed">
-                Every feature in PR Elevate is built to solve the real friction students and professionals face when presenting their work.
+                Every feature in PR Builder is built to solve the real friction students and professionals face when presenting their work.
               </p>
             </div>
 

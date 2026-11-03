@@ -133,7 +133,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
         <div className="relative z-10">
           <div className="flex items-center gap-2 text-blue-200 text-xs font-semibold uppercase tracking-wider mb-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>PR Elevate Telemetry &amp; Platform Console</span>
+            <span>PR Builder Telemetry &amp; Platform Console</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white font-sans">
             Platform Intelligence &amp; Asset Conversion
@@ -339,7 +339,7 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
                 User Signups &amp; Community Growth
               </h2>
-              <span className="text-xs text-slate-500">Total accounts registered across PR Elevate platform</span>
+              <span className="text-xs text-slate-500">Total accounts registered across PR Builder platform</span>
             </div>
           </div>
           <button

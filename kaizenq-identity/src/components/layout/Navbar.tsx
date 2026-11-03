@@ -108,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     >
       <Container size="xl">
         <div className="flex items-center justify-between">
-          {/* PR Elevate Brand Logo */}
+          {/* PR Builder Brand Logo */}
           <div className="flex items-center">
             <button
               onClick={() => {
@@ -116,7 +116,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
               className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded cursor-pointer"
-              aria-label="PR Elevate Home"
+              aria-label="PR Builder Home"
             >
               <PRLogo size="md" />
             </button>

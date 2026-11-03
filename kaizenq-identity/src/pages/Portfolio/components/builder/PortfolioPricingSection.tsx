@@ -468,7 +468,7 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
                     onProceedToCheckout(
                       'pro-all-access-pass',
                       proPass.paise,
-                      'PR Elevate Pro All-Access Lifetime Pass',
+                      'PR Builder Pro All-Access Lifetime Pass',
                     )
                   }}
                 />
@@ -518,7 +518,7 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
                   onProceedToCheckout(
                     'pro-all-access-pass',
                     proPass.paise,
-                    'PR Elevate Pro All-Access Lifetime Pass',
+                    'PR Builder Pro All-Access Lifetime Pass',
                   )
                 }}
               />

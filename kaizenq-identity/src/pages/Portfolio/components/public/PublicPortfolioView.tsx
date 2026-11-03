@@ -801,7 +801,7 @@ export const PublicPortfolioView: React.FC<PublicPortfolioViewProps> = ({
           <span className="flex items-center gap-1.5">
             <span>Powered by</span>
             <span className={`font-semibold ${themeClasses.accentText}`}>
-              PR Elevate
+              PR Builder
             </span>
           </span>
         </div>

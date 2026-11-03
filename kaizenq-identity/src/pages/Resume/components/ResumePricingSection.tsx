@@ -419,7 +419,7 @@ export const ResumePricingSection: React.FC<ResumePricingSectionProps> = ({
                   onProceedToCheckout(
                     'pro-all-access-pass',
                     proPass.paise,
-                    'PR Elevate Pro All-Access Lifetime Pass',
+                    'PR Builder Pro All-Access Lifetime Pass',
                   )
                 }}
               />
@@ -450,7 +450,7 @@ export const ResumePricingSection: React.FC<ResumePricingSectionProps> = ({
                   onProceedToCheckout(
                     'pro-all-access-pass',
                     proPass.paise,
-                    'PR Elevate Pro All-Access Lifetime Pass',
+                    'PR Builder Pro All-Access Lifetime Pass',
                   )
                 }}
               />

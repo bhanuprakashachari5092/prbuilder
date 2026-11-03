@@ -156,7 +156,7 @@ export const OnboardingModal: React.FC = () => {
               </span>
               <div>
                 <h2 id="onboarding-title" className="text-xl font-bold text-[#111827]">
-                  Welcome to PR Elevate
+                  Welcome to PR Builder
                 </h2>
                 <p className="text-xs text-[#64748B]">
                   Step {step} of 3 • Set up your professional workspace
