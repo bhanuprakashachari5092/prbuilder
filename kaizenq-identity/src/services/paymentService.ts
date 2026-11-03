@@ -34,6 +34,8 @@ export interface CreateOrderResult {
   discountAmountPaise?: number
   couponId?: string | null
   couponCode?: string | null
+  paymentSessionId?: string | null
+  gateway?: 'cashfree' | 'youpi'
 }
 
 export interface CartItemBreakdown {
@@ -260,6 +262,23 @@ export async function computeHmacSha256Hex(payload: string, secret: string): Pro
 }
 
 export const paymentService = {
+  /**
+   * Determines whether Cashfree Payment Gateway is configured and active.
+   */
+  isCashfreeActive(): boolean {
+    return (
+      import.meta.env.VITE_PAYMENT_GATEWAY === 'cashfree' ||
+      Boolean(import.meta.env.VITE_CASHFREE_APP_ID)
+    )
+  },
+
+  /**
+   * Returns current active payment gateway identifier ('cashfree' | 'youpi').
+   */
+  getActiveGateway(): 'cashfree' | 'youpi' {
+    return this.isCashfreeActive() ? 'cashfree' : 'youpi'
+  },
+
   /**
    * Retrieves all available products from the database or local catalog fallback.
    */

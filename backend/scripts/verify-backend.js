@@ -66,11 +66,19 @@ if (!fs.existsSync(migrationsDir)) {
 if (!fs.existsSync(functionsDir)) {
   fail('Functions directory does not exist')
 } else {
-  const webhookIndex = path.join(functionsDir, 'youpi-webhook', 'index.ts')
-  if (fs.existsSync(webhookIndex)) {
-    pass('Verified Edge Function: youpi-webhook/index.ts')
-  } else {
-    fail('Missing Edge Function: youpi-webhook/index.ts')
+  const edgeFunctions = [
+    'youpi-webhook/index.ts',
+    'cashfree-order/index.ts',
+    'cashfree-verify/index.ts',
+    'cashfree-webhook/index.ts',
+  ]
+  for (const fn of edgeFunctions) {
+    const fnPath = path.join(functionsDir, fn)
+    if (fs.existsSync(fnPath)) {
+      pass(`Verified Edge Function: ${fn}`)
+    } else {
+      fail(`Missing Edge Function: ${fn}`)
+    }
   }
 }
 

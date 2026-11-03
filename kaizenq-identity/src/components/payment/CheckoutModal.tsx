@@ -16,6 +16,9 @@ import {
   Tag,
   Gift,
   ArrowRight,
+  CreditCard,
+  Lock,
+  Zap,
 } from 'lucide-react'
 import QRCode from 'qrcode'
 import { Button } from '../ui/Button.tsx'
@@ -29,6 +32,7 @@ import {
   couponService,
   type ValidateCouponResult,
 } from '../../services/couponService.ts'
+import { cashfreeService } from '../../services/cashfreeService.ts'
 
 export interface CheckoutModalProps {
   isOpen: boolean
@@ -50,6 +54,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const isCashfreeConfigured = cashfreeService.isConfigured()
+
   const [order, setOrder] = useState<CreateOrderResult | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -58,6 +64,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [paymentStatus, setPaymentStatus] = useState<PaymentOrderStatus>('pending')
   const [confirmedUtr, setConfirmedUtr] = useState<string | null>(null)
   const [isSimulating, setIsSimulating] = useState<boolean>(false)
+
+  // Payment Mode Tab (Cashfree Express vs Direct UPI QR)
+  const [activeTab, setActiveTab] = useState<'cashfree' | 'upi_qr'>(
+    isCashfreeConfigured ? 'cashfree' : 'upi_qr',
+  )
+  const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null)
+  const [isLaunchingCashfree, setIsLaunchingCashfree] = useState<boolean>(false)
+  const [cashfreeError, setCashfreeError] = useState<string | null>(null)
 
   // Coupon State
   const [couponInput, setCouponInput] = useState<string>('')
@@ -77,6 +91,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     async (codeToApply?: string) => {
       setLoading(true)
       setError(null)
+      setCashfreeError(null)
       setPaymentStatus('pending')
       setSecondsRemaining(300)
 
@@ -91,8 +106,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       setOrder(res.data)
       setLoading(false)
+
+      // Preload Cashfree payment session if Cashfree is active
+      if (isCashfreeConfigured) {
+        cashfreeService
+          .createOrder(productId, isSandboxEnv, codeToApply)
+          .then((cfRes) => {
+            if (cfRes.data?.paymentSessionId) {
+              setPaymentSessionId(cfRes.data.paymentSessionId)
+            }
+          })
+          .catch(() => {})
+      }
     },
-    [productId],
+    [productId, isCashfreeConfigured],
   )
 
   // Reset or initialize on open
@@ -101,6 +128,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setAppliedCoupon(null)
       setCouponInput(initialCouponCode || '')
       setCouponError(null)
+      setCashfreeError(null)
+      setPaymentSessionId(null)
+      setActiveTab(isCashfreeConfigured ? 'cashfree' : 'upi_qr')
+      if (isCashfreeConfigured) {
+        cashfreeService.loadSdk().catch(() => {})
+      }
       initOrderWithCoupon(initialCouponCode)
     } else {
       if (order?.orderId && paymentStatus === 'pending') {
@@ -108,6 +141,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
       setOrder(null)
       setAppliedCoupon(null)
+      setPaymentSessionId(null)
       if (pollTimerRef.current) clearInterval(pollTimerRef.current)
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current)
     }
@@ -121,7 +155,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       canvasRef.current,
       order.upiUri,
       {
-        width: 220,
+        width: 200,
         margin: 2,
         color: {
           dark: '#0F172A',
@@ -135,7 +169,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         }
       },
     )
-  }, [order?.upiUri, loading, appliedCoupon])
+  }, [order?.upiUri, loading, appliedCoupon, activeTab])
 
   // 3. Countdown Timer (5 Minutes)
   useEffect(() => {
@@ -178,6 +212,51 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       if (pollTimerRef.current) clearInterval(pollTimerRef.current)
     }
   }, [isOpen, order, paymentStatus, appliedCoupon])
+
+  // Launch Cashfree Checkout Modal
+  const handleLaunchCashfree = async () => {
+    if (!order) return
+    setIsLaunchingCashfree(true)
+    setCashfreeError(null)
+
+    try {
+      let currentSession = paymentSessionId
+      if (!currentSession) {
+        const isSandboxEnv = import.meta.env.VITE_PAYMENT_MODE !== 'live'
+        const cfRes = await cashfreeService.createOrder(
+          productId,
+          isSandboxEnv,
+          appliedCoupon?.couponCode || initialCouponCode,
+        )
+        if (cfRes.data?.paymentSessionId) {
+          currentSession = cfRes.data.paymentSessionId
+          setPaymentSessionId(currentSession)
+        } else if (cfRes.error) {
+          throw cfRes.error
+        }
+      }
+
+      if (!currentSession) {
+        throw new Error('Unable to initialize Cashfree payment session.')
+      }
+
+      const checkoutRes = await cashfreeService.launchCheckout(currentSession, '_modal')
+      if (checkoutRes.error) {
+        setCashfreeError(checkoutRes.error.message || 'Payment window closed or cancelled')
+      }
+
+      // Authoritatively verify with Cashfree and database
+      const verifyRes = await cashfreeService.verifyOrder(order.orderId)
+      if (verifyRes.success) {
+        setPaymentStatus('paid')
+        setConfirmedUtr(verifyRes.utr || 'CASHFREE_VERIFIED')
+      }
+    } catch (err: any) {
+      setCashfreeError(err?.message || 'Cashfree checkout failed to start')
+    } finally {
+      setIsLaunchingCashfree(false)
+    }
+  }
 
   // Apply Coupon Action
   const handleApplyCoupon = async (e?: React.FormEvent) => {
@@ -290,7 +369,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const handleSimulatePayment = async () => {
     if (!order) return
     setIsSimulating(true)
-    const simulatedUtr = `UTR${Date.now()}${Math.random().toString(16).slice(2, 6).toUpperCase()}`
+    const simulatedUtr = `CF_SIM_${Date.now()}_${Math.random().toString(16).slice(2, 6).toUpperCase()}`
     const res = await paymentService.verifyAndFulfill(
       order.orderId,
       simulatedUtr,
@@ -340,20 +419,32 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         <div className="flex items-center justify-between px-6 py-5 border-b border-[#E2E8F0] bg-gradient-to-r from-[#F8FAFC] to-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#EEF2FF] border border-[#C7D2FE] flex items-center justify-center text-[#2563EB]">
-              {appliedCoupon?.isFree ? <Gift className="w-5 h-5" /> : <QrCode className="w-5 h-5" />}
+              {appliedCoupon?.isFree ? (
+                <Gift className="w-5 h-5" />
+              ) : isCashfreeConfigured ? (
+                <CreditCard className="w-5 h-5" />
+              ) : (
+                <QrCode className="w-5 h-5" />
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-[#0F172A]">
-                  {appliedCoupon?.isFree ? '100% Sponsored Unlock' : 'UPI Instant Checkout'}
+                  {appliedCoupon?.isFree
+                    ? '100% Sponsored Unlock'
+                    : isCashfreeConfigured
+                    ? 'Cashfree Express Checkout'
+                    : 'UPI Instant Checkout'}
                 </h3>
                 <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
-                  YouPI-PG
+                  {isCashfreeConfigured ? 'Cashfree PG' : 'YouPI-PG'}
                 </span>
               </div>
               <p className="text-xs text-[#64748B]">
                 {appliedCoupon?.isFree
                   ? 'Server-verified promotional sponsorship'
+                  : isCashfreeConfigured
+                  ? 'Cards, NetBanking, Google Pay, PhonePe & Wallets'
                   : 'Scan with any UPI app for zero-fee activation'}
               </p>
             </div>
@@ -590,7 +681,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       100% Free Promotional Unlock
                     </h4>
                     <p className="text-xs text-emerald-800 mt-1 max-w-sm mx-auto">
-                      Your coupon <span className="font-mono font-bold">{appliedCoupon.couponCode}</span> covers the full price. No UPI transfer or credit card needed!
+                      Your coupon <span className="font-mono font-bold">{appliedCoupon.couponCode}</span> covers the full price. No card or payment transfer required!
                     </p>
                   </div>
 
@@ -614,113 +705,215 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </Button>
                 </div>
               ) : (
-                /* Standard UPI Payment Gateway View */
-                <div className="space-y-5">
-                  {/* QR and Mobile Intent Grid */}
-                  <div className="flex flex-col sm:flex-row items-center gap-5 justify-center">
-                    {/* QR Code Canvas Frame */}
-                    <div className="relative p-3 bg-white rounded-3xl border-2 border-[#2563EB]/20 shadow-md flex flex-col items-center shrink-0">
-                      <canvas ref={canvasRef} className="rounded-xl" />
-                      <div className="flex items-center gap-1.5 mt-2 text-[11px] font-medium text-[#64748B]">
-                        <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Expires in: </span>
+                /* Active Payment Gateway View */
+                <div className="space-y-4">
+                  {/* Payment Method Switcher (if Cashfree is configured) */}
+                  {isCashfreeConfigured && (
+                    <div className="grid grid-cols-2 p-1 bg-[#F1F5F9] rounded-2xl gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('cashfree')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          activeTab === 'cashfree'
+                            ? 'bg-white text-[#2563EB] shadow-sm'
+                            : 'text-[#64748B] hover:text-[#0F172A]'
+                        }`}
+                      >
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>Cashfree Checkout</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('upi_qr')}
+                        className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          activeTab === 'upi_qr'
+                            ? 'bg-white text-[#2563EB] shadow-sm'
+                            : 'text-[#64748B] hover:text-[#0F172A]'
+                        }`}
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>Direct UPI QR</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {activeTab === 'cashfree' && isCashfreeConfigured ? (
+                    /* Cashfree Express Checkout Flow */
+                    <div className="p-5 bg-gradient-to-b from-[#F8FAFC] to-white rounded-3xl border border-[#E2E8F0] space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
+                            <Zap className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-[#0F172A]">Instant Gateway Checkout</p>
+                            <p className="text-[10px] text-[#64748B]">All Indian payment methods accepted</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          Secure 256-Bit SSL
+                        </span>
+                      </div>
+
+                      {/* Payment method icon chips */}
+                      <div className="grid grid-cols-4 gap-1.5 text-center">
+                        <div className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[10px] font-semibold text-[#334155]">
+                          Cards (All)
+                        </div>
+                        <div className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[10px] font-semibold text-[#334155]">
+                          Google Pay
+                        </div>
+                        <div className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[10px] font-semibold text-[#334155]">
+                          PhonePe
+                        </div>
+                        <div className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[10px] font-semibold text-[#334155]">
+                          NetBanking
+                        </div>
+                      </div>
+
+                      {cashfreeError && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                          <span>{cashfreeError}</span>
+                        </div>
+                      )}
+
+                      {/* Cashfree Primary Checkout Button */}
+                      <Button
+                        onClick={handleLaunchCashfree}
+                        disabled={isLaunchingCashfree}
+                        className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-lg shadow-blue-500/25 py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                      >
+                        {isLaunchingCashfree ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Opening Cashfree Gateway...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4" />
+                            <span>Pay ₹{displayFinalRupees} via Cashfree</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </Button>
+
+                      <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#64748B]">
+                        <Clock className="w-3 h-3 text-amber-600" />
+                        <span>Session active for: </span>
                         <span className="font-mono font-bold text-[#0F172A]">{formatTime(secondsRemaining)}</span>
                       </div>
                     </div>
-
-                    {/* Mobile Intent Actions & Manual Details */}
-                    <div className="flex-1 w-full space-y-3">
-                      <p className="text-xs font-semibold text-[#0F172A] flex items-center gap-1.5">
-                        <Smartphone className="w-4 h-4 text-[#2563EB]" />
-                        <span>Pay with mobile UPI app:</span>
-                      </p>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <a
-                          href={order?.upiUri}
-                          className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
-                        >
-                          <span>Google Pay</span>
-                          <ExternalLink className="w-3 h-3 text-[#64748B]" />
-                        </a>
-                        <a
-                          href={order?.upiUri}
-                          className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
-                        >
-                          <span>PhonePe</span>
-                          <ExternalLink className="w-3 h-3 text-[#64748B]" />
-                        </a>
-                        <a
-                          href={order?.upiUri}
-                          className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
-                        >
-                          <span>Paytm</span>
-                          <ExternalLink className="w-3 h-3 text-[#64748B]" />
-                        </a>
-                        <a
-                          href={order?.upiUri}
-                          className="flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
-                        >
-                          <span>Any UPI App</span>
-                          <ExternalLink className="w-3 h-3 text-[#64748B]" />
-                        </a>
-                      </div>
-
-                      {/* Copy UPI VPA Option */}
-                      <div className="pt-1">
-                        <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                          <div className="truncate pr-2">
-                            <span className="text-[10px] text-[#64748B] block">UPI VPA:</span>
-                            <span className="font-mono font-medium text-[#0F172A]">{order?.upiVpa}</span>
+                  ) : (
+                    /* Standard UPI QR Payment Gateway View */
+                    <div className="space-y-4">
+                      {/* QR and Mobile Intent Grid */}
+                      <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
+                        {/* QR Code Canvas Frame */}
+                        <div className="relative p-2.5 bg-white rounded-3xl border-2 border-[#2563EB]/20 shadow-md flex flex-col items-center shrink-0">
+                          <canvas ref={canvasRef} className="rounded-xl" />
+                          <div className="flex items-center gap-1 mt-1.5 text-[10px] font-medium text-[#64748B]">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            <span>Expires in: </span>
+                            <span className="font-mono font-bold text-[#0F172A]">{formatTime(secondsRemaining)}</span>
                           </div>
-                          <button
-                            onClick={() => order?.upiVpa && handleCopy(order.upiVpa)}
-                            className="p-1.5 rounded-lg hover:bg-white text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
-                            title="Copy VPA"
-                          >
-                            {copiedVpa ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                          </button>
+                        </div>
+
+                        {/* Mobile Intent Actions & Manual Details */}
+                        <div className="flex-1 w-full space-y-2.5">
+                          <p className="text-xs font-semibold text-[#0F172A] flex items-center gap-1.5">
+                            <Smartphone className="w-3.5 h-3.5 text-[#2563EB]" />
+                            <span>Pay with mobile UPI app:</span>
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <a
+                              href={order?.upiUri}
+                              className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
+                            >
+                              <span>Google Pay</span>
+                              <ExternalLink className="w-3 h-3 text-[#64748B]" />
+                            </a>
+                            <a
+                              href={order?.upiUri}
+                              className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
+                            >
+                              <span>PhonePe</span>
+                              <ExternalLink className="w-3 h-3 text-[#64748B]" />
+                            </a>
+                            <a
+                              href={order?.upiUri}
+                              className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
+                            >
+                              <span>Paytm</span>
+                              <ExternalLink className="w-3 h-3 text-[#64748B]" />
+                            </a>
+                            <a
+                              href={order?.upiUri}
+                              className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
+                            >
+                              <span>Any UPI</span>
+                              <ExternalLink className="w-3 h-3 text-[#64748B]" />
+                            </a>
+                          </div>
+
+                          {/* Copy UPI VPA Option */}
+                          <div>
+                            <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
+                              <div className="truncate pr-2">
+                                <span className="text-[10px] text-[#64748B] block">UPI VPA:</span>
+                                <span className="font-mono font-medium text-[#0F172A]">{order?.upiVpa}</span>
+                              </div>
+                              <button
+                                onClick={() => order?.upiVpa && handleCopy(order.upiVpa)}
+                                className="p-1.5 rounded-lg hover:bg-white text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
+                                title="Copy VPA"
+                              >
+                                {copiedVpa ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {/* Realtime settlement listener */}
+                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-50/50 rounded-xl border border-blue-100 text-[11px] text-[#2563EB]">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>Listening for payment confirmation... Auto-activates immediately</span>
                   </div>
 
-                  {/* Waiting status indicator */}
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs text-[#2563EB]">
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Listening for payment confirmation... Auto-activates in real time</span>
-                  </div>
-
-                  {/* Sandbox Simulation Panel (Visible during test/dev) */}
-                  <div className="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200 space-y-2">
+                  {/* Sandbox Simulation Panel */}
+                  <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                        <FlaskConical className="w-4 h-4 text-amber-600" />
+                        <FlaskConical className="w-3.5 h-3.5 text-amber-600" />
                         <span>Developer Sandbox Test Simulation</span>
                       </div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-200/60 text-amber-900">
+                      <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-200/60 text-amber-900">
                         Test Mode
                       </span>
                     </div>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      Safely test the atomic entitlement flow without real bank transfers. Simulates an NPCI webhook callback with a verified UTR.
+                    <p className="text-[10px] text-amber-800 leading-relaxed">
+                      Safely test the atomic entitlement flow without real bank transfers. Simulates gateway settlement with verified UTR.
                     </p>
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="pt-0.5">
                       <Button
                         onClick={handleSimulatePayment}
                         disabled={isSimulating}
                         size="sm"
-                        className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-xl shadow-sm cursor-pointer"
+                        className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-1.5 rounded-xl shadow-sm cursor-pointer"
                       >
                         {isSimulating ? (
                           <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                            Simulating Payment...
+                            <RefreshCw className="w-3 h-3 animate-spin mr-1.5" />
+                            Simulating Settlement...
                           </>
                         ) : (
                           <>
-                            <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
-                            Simulate Successful UPI Payment
+                            <ShieldCheck className="w-3 h-3 mr-1.5" />
+                            Simulate Successful Payment
                           </>
                         )}
                       </Button>
@@ -730,9 +923,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               )}
 
               {/* Security Invariant Notice */}
-              <div className="text-[11px] text-[#64748B] text-center flex items-center justify-center gap-1">
+              <div className="text-[10px] text-[#64748B] text-center flex items-center justify-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#2563EB]" />
-                <span>Peer-to-peer UPI protocol • 100% encrypted & verified server-side</span>
+                <span>PCI-DSS compliant • 256-bit encrypted • Authoritative server verification</span>
               </div>
             </div>
           )}

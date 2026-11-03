@@ -13,6 +13,7 @@ const suites = [
   { name: 'Suite 5: Client-Side ATS Resume Vector PDF Export Engine', script: 'test-resume-export.js' },
   { name: 'Suite 6: Google Authentication Integration & Profile Sync', script: 'test-google-auth.js' },
   { name: 'Suite 7: Complete Authentication, Validation & Link Expiry Engine', script: 'test-complete-auth.js' },
+  { name: 'Suite 8: Cashfree Payment Gateway Integration & Webhook Security', script: 'test-cashfree-payments.js' },
 ]
 
 for (const suite of suites) {
