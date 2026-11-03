@@ -108,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] rounded cursor-pointer"
               aria-label="PR Builder Home"
             >
-              <PRLogo size="md" />
+              <PRLogo size="md" animatedWordmark />
             </button>
           </div>
 

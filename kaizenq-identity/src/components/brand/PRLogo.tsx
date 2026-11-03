@@ -1,6 +1,8 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import prMonogramPng from '../../assets/pr-monogram.png'
 import { cn } from '../../lib/utils.ts'
+import { useReducedMotion } from '../../hooks/useReducedMotion.ts'
 
 export interface PRLogoProps {
   /** Size variant or explicit pixel size */
@@ -19,9 +21,17 @@ export interface PRLogoProps {
   theme?: 'light' | 'dark'
   /** Optional click handler */
   onClick?: () => void
-  /** Optional animation effect */
+  /** Optional animation effect on monogram hover */
   animated?: boolean
+  /** Whether to cycle animated rotating words after 'PR' */
+  animatedWordmark?: boolean
+  /** Duration in milliseconds for each word rotation (default: 2800ms) */
+  rotationInterval?: number
+  /** Custom rotating words array (defaults to ['Builder', 'Elevate', 'Create', 'Showcase']) */
+  words?: string[]
 }
+
+const DEFAULT_ROTATING_WORDS = ['Builder', 'Elevate', 'Create', 'Showcase'] as const
 
 /**
  * Geometric SVG Vector Paths of the PR Builder Monogram
@@ -107,6 +117,7 @@ export const PRMonogramVector: React.FC<{ className?: string; style?: React.CSSP
 /**
  * PRLogo — Official PR Builder Logo Component
  * Combines the original geometric silver PR monogram with high-end modern typography.
+ * Supports smooth, layout-stable wordmark animation: "PR [Builder | Elevate | Create | Showcase]"
  */
 export const PRLogo: React.FC<PRLogoProps> = ({
   size = 'md',
@@ -118,7 +129,24 @@ export const PRLogo: React.FC<PRLogoProps> = ({
   theme = 'light',
   onClick,
   animated = false,
+  animatedWordmark = false,
+  rotationInterval = 2800,
+  words = DEFAULT_ROTATING_WORDS as unknown as string[],
 }) => {
+  const shouldReduceMotion = useReducedMotion()
+  const [wordIndex, setWordIndex] = useState(0)
+
+  // Rotate through words every 2.5–3 seconds when animatedWordmark is active and motion is allowed
+  useEffect(() => {
+    if (!animatedWordmark || shouldReduceMotion || words.length <= 1) return
+
+    const timer = setInterval(() => {
+      setWordIndex((prev) => (prev + 1) % words.length)
+    }, rotationInterval)
+
+    return () => clearInterval(timer)
+  }, [animatedWordmark, shouldReduceMotion, rotationInterval, words.length])
+
   const sizeMap = {
     xs: { px: 20, textClass: 'text-xs', subClass: 'text-[9px]' },
     sm: { px: 28, textClass: 'text-sm', subClass: 'text-[10px]' },
@@ -132,6 +160,7 @@ export const PRLogo: React.FC<PRLogoProps> = ({
   const subClass = typeof size === 'number' ? 'text-[10px]' : sizeMap[size].subClass
 
   const displayWordmark = showText && !monogramOnly
+  const currentWord = words[wordIndex] || 'Builder'
 
   return (
     <div
@@ -162,10 +191,18 @@ export const PRLogo: React.FC<PRLogoProps> = ({
         )}
       </div>
 
-      {/* Typography Lockup: PR BUILDER */}
+      {/* Typography Lockup: PR [animated word] */}
       {displayWordmark && (
         <div className="flex flex-col leading-none">
-          <div className={cn('flex items-center gap-1.5 font-bold tracking-tight', textClass)}>
+          {/* Static accessible label for screen readers */}
+          <span className="sr-only">PR Builder</span>
+
+          {/* Visual brand typography */}
+          <div
+            aria-hidden="true"
+            className={cn('flex items-center gap-1.5 font-bold tracking-tight', textClass)}
+          >
+            {/* Fixed "PR" */}
             <span
               className={cn(
                 "font-['Outfit','Inter',sans-serif]",
@@ -174,15 +211,60 @@ export const PRLogo: React.FC<PRLogoProps> = ({
             >
               PR
             </span>
-            <span
-              className={cn(
-                "font-['Outfit','Inter',sans-serif] tracking-wider font-semibold",
-                theme === 'light' ? 'text-[#2563EB]' : 'text-[#A4B7BF]',
-              )}
-            >
-              BUILDER
-            </span>
+
+            {/* Word after "PR" — Animated rotating or static */}
+            {animatedWordmark ? (
+              <span className="relative inline-grid grid-cols-1 grid-rows-1 text-left items-center overflow-hidden h-[1.3em] align-middle">
+                {/* Ghost placeholder element with the widest word ("Showcase") to strictly reserve layout width and eliminate any CLS */}
+                <span
+                  aria-hidden="true"
+                  className="invisible pointer-events-none select-none opacity-0 col-start-1 row-start-1 tracking-wider font-semibold whitespace-nowrap"
+                >
+                  Showcase
+                </span>
+
+                {/* Active animated rotating word */}
+                <span className="col-start-1 row-start-1 inline-flex items-center h-full">
+                  {shouldReduceMotion ? (
+                    <span
+                      className={cn(
+                        "font-['Outfit','Inter',sans-serif] tracking-wider font-semibold inline-block whitespace-nowrap",
+                        theme === 'light' ? 'text-[#2563EB]' : 'text-[#A4B7BF]',
+                      )}
+                    >
+                      Builder
+                    </span>
+                  ) : (
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.span
+                        key={currentWord}
+                        initial={{ opacity: 0, y: 7 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -7 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        className={cn(
+                          "font-['Outfit','Inter',sans-serif] tracking-wider font-semibold inline-block whitespace-nowrap",
+                          theme === 'light' ? 'text-[#2563EB]' : 'text-[#A4B7BF]',
+                        )}
+                      >
+                        {currentWord}
+                      </motion.span>
+                    </AnimatePresence>
+                  )}
+                </span>
+              </span>
+            ) : (
+              <span
+                className={cn(
+                  "font-['Outfit','Inter',sans-serif] tracking-wider font-semibold",
+                  theme === 'light' ? 'text-[#2563EB]' : 'text-[#A4B7BF]',
+                )}
+              >
+                BUILDER
+              </span>
+            )}
           </div>
+
           {tagline ? (
             <span
               className={cn(
