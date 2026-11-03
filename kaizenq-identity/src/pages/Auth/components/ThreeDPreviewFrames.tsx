@@ -77,7 +77,7 @@ export const ThreeDPreviewFrames: React.FC = () => {
                   </div>
                   <div className="flex-1 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-mono flex items-center gap-1">
                     <Lock className="w-2.5 h-2.5 text-emerald-400" />
-                    <span>alexander.prelevate.xyz</span>
+                    <span>alexander.prbuilder.xyz</span>
                   </div>
                   <ExternalLink className="w-3 h-3 text-slate-500" />
                 </div>
@@ -134,7 +134,7 @@ export const ThreeDPreviewFrames: React.FC = () => {
                   </div>
                   <div className="flex-1 px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-[10px] text-slate-400 font-mono flex items-center gap-1">
                     <FileText className="w-2.5 h-2.5 text-blue-400" />
-                    <span>prelevate.xyz/resume</span>
+                    <span>prbuilder.xyz/resume</span>
                   </div>
                   <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-[9px] font-bold text-emerald-400">
                     98% ATS Score
