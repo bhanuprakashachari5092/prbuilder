@@ -33,6 +33,7 @@ export interface FeaturePricingCalculatorProps {
   catalog: PricingCatalogState
   onPreviewItem?: (type: 'resume' | 'portfolio', id: string) => void
   className?: string
+  hideHeaderBanner?: boolean
 }
 
 export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> = ({
@@ -45,6 +46,7 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
   catalog,
   onPreviewItem,
   className = '',
+  hideHeaderBanner = false,
 }) => {
   const domainPass = catalog.getDomainPassPrice()
   const proPass = catalog.getProPassPrice()
@@ -137,31 +139,33 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
 
   return (
     <div className={`space-y-6 text-[#111827] ${className}`}>
-      {/* Header Banner */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-600 text-white shadow-xs">
-              <Sliders className="w-4 h-4" />
-            </span>
-            <h3 className="text-sm sm:text-base font-bold text-[#0F172A]">
-              {mode === 'resume'
-                ? 'Customize Your Resume & Get Pricing'
-                : 'Build Your Portfolio Package'}
-            </h3>
-            <Badge variant="accent" size="sm">
-              INTERACTIVE CALCULATOR
-            </Badge>
+      {/* Header Banner (Hidden when embedded under parent section with title) */}
+      {!hideHeaderBanner && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/40 to-slate-50 border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-blue-600 text-white shadow-xs">
+                <Sliders className="w-4 h-4" />
+              </span>
+              <h3 className="text-sm sm:text-base font-bold text-[#0F172A]">
+                {mode === 'resume'
+                  ? 'Customize Your Resume & Get Pricing'
+                  : 'Build Your Portfolio Package'}
+              </h3>
+              <Badge variant="accent" size="sm">
+                INTERACTIVE CALCULATOR
+              </Badge>
+            </div>
+            <p className="text-xs text-[#475569]">
+              Select individual features, templates, and optional add-ons below. Your personalized total updates dynamically in integer paise.
+            </p>
           </div>
-          <p className="text-xs text-[#475569]">
-            Select individual features, templates, and optional add-ons below. Your personalized total updates dynamically in integer paise.
-          </p>
-        </div>
 
-        <div className="text-[11px] font-mono text-[#64748B] bg-white px-3 py-1.5 rounded-xl border border-blue-200 shrink-0">
-          Zero Hidden Fees • Never Double-Charged
+          <div className="text-[11px] font-mono text-[#64748B] bg-white px-3 py-1.5 rounded-xl border border-blue-200 shrink-0">
+            Zero Hidden Fees • Never Double-Charged
+          </div>
         </div>
-      </div>
+      )}
 
       {/* SECTION 1: TEMPLATE / THEME SELECTION */}
       <div className="space-y-3">
@@ -172,10 +176,14 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
               1. Choose {mode === 'resume' ? 'Resume Template' : 'Portfolio Theme'} (1 Included)
             </span>
           </h4>
-          <span className="text-[11px] text-[#64748B]">Click to select & update layout</span>
+          <span className="text-[11px] text-[#64748B]">Click card to select design</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div
+          role="radiogroup"
+          aria-label={`Select ${mode === 'resume' ? 'resume template' : 'portfolio theme'}`}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5"
+        >
           {activeTemplatesList.map((item) => {
             const isSelected = selectedTemplateOrTheme === item.id
             const priceInfo =
@@ -192,21 +200,30 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
             return (
               <div
                 key={item.id}
+                role="radio"
+                aria-checked={isSelected}
+                tabIndex={0}
                 onClick={() => onSelectTemplateOrTheme(item.id)}
-                className={`p-3.5 rounded-xl border transition-all text-xs flex flex-col justify-between cursor-pointer relative ${
+                onKeyDown={(e) => {
+                  if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault()
+                    onSelectTemplateOrTheme(item.id)
+                  }
+                }}
+                className={`group p-4 rounded-xl border transition-all text-xs flex flex-col justify-between cursor-pointer relative select-none ${
                   isSelected
-                    ? 'border-[#2563EB] bg-[#EFF6FF] shadow-sm ring-2 ring-[#2563EB]/20'
-                    : 'border-[#E2E8F0] bg-white hover:border-[#CBD5E1]'
+                    ? 'border-[#2563EB] bg-[#EFF6FF]/70 shadow-sm ring-2 ring-[#2563EB]/20'
+                    : 'border-[#E2E8F0] bg-white hover:border-[#CBD5E1] hover:shadow-xs'
                 }`}
               >
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-1.5 font-bold text-[#0F172A] text-xs sm:text-sm">
+                    <div className="flex items-center gap-2 font-bold text-[#0F172A] text-xs sm:text-sm">
                       <span
-                        className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
                           isSelected
                             ? 'border-[#2563EB] bg-[#2563EB] text-white'
-                            : 'border-[#CBD5E1] bg-white'
+                            : 'border-[#CBD5E1] bg-white group-hover:border-slate-400'
                         }`}
                       >
                         {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
@@ -214,13 +231,18 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                       <span className="truncate">{item.name}</span>
                     </div>
 
+                    {/* Single Clean Price Indicator Badge */}
                     {item.isFree ? (
                       <Badge variant="success" size="sm">
-                        FREE • ₹0
+                        Free Tier
+                      </Badge>
+                    ) : isOwned ? (
+                      <Badge variant="success" size="sm">
+                        Unlocked
                       </Badge>
                     ) : (
                       <Badge variant="accent" size="sm">
-                        {isOwned ? 'OWNED' : `PRO • ${priceInfo.formatted}`}
+                        Pro • {priceInfo.formatted}
                       </Badge>
                     )}
                   </div>
@@ -230,19 +252,19 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                   </p>
                 </div>
 
-                <div className="pt-2.5 mt-2.5 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
-                  <span className="font-semibold text-[#0F172A]">
+                <div className="pt-2.5 mt-3 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
+                  <span className="font-medium text-[#475569]">
                     {item.isFree ? (
-                      <span className="text-emerald-600 font-bold">Free Forever (₹0)</span>
+                      <span className="text-emerald-700 font-semibold">Free forever</span>
                     ) : isOwned ? (
-                      <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
                         <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Unlocked</span>
+                        <span>Lifetime active</span>
                       </span>
                     ) : (
-                      <span className="text-amber-700 font-bold flex items-center gap-1">
+                      <span className="text-amber-700 font-semibold flex items-center gap-1">
                         <Lock className="w-3.5 h-3.5" />
-                        <span>{priceInfo.formatted}</span>
+                        <span>One-time unlock</span>
                       </span>
                     )}
                   </span>
@@ -254,7 +276,7 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                         e.stopPropagation()
                         onPreviewItem(mode, item.id)
                       }}
-                      className="px-2 py-0.5 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#475569] hover:text-[#0F172A] text-[10px] font-medium transition-colors cursor-pointer flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#475569] hover:text-[#0F172A] text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
                     >
                       <Eye className="w-3 h-3" />
                       <span>Preview</span>
@@ -272,10 +294,10 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
         <div className="flex items-center justify-between">
           <h4 className="text-xs font-bold uppercase tracking-wider text-[#64748B] flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-[#2563EB]" />
-            <span>2. Built-In Styling & Customization Options (Protected ₹0 Tier)</span>
+            <span>2. Built-In Styling & Customization Options</span>
           </h4>
-          <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            All Included at ₹0
+          <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+            INCLUDED (₹0) Tier
           </span>
         </div>
 
@@ -287,9 +309,9 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                 <Type className="w-3.5 h-3.5 text-[#2563EB]" />
                 <span>Typography</span>
               </span>
-              <Badge variant="success" size="sm">
-                INCLUDED (₹0)
-              </Badge>
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                Included
+              </span>
             </div>
             <p className="text-[11px] text-[#64748B]">
               Inter Sans, Merriweather Serif, and JetBrains Mono fonts tested across PDF & web.
@@ -307,9 +329,9 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                 <Palette className="w-3.5 h-3.5 text-[#2563EB]" />
                 <span>Color Palettes</span>
               </span>
-              <Badge variant="success" size="sm">
-                INCLUDED (₹0)
-              </Badge>
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                Included
+              </span>
             </div>
             <p className="text-[11px] text-[#64748B]">
               Curated HSL theme tokens plus custom native color-picker for brand accents.
@@ -327,9 +349,9 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                 <Layout className="w-3.5 h-3.5 text-[#2563EB]" />
                 <span>{mode === 'resume' ? 'Layout Density' : 'Project Layouts'}</span>
               </span>
-              <Badge variant="success" size="sm">
-                INCLUDED (₹0)
-              </Badge>
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                Included
+              </span>
             </div>
             <p className="text-[11px] text-[#64748B]">
               {mode === 'resume'
@@ -349,9 +371,9 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                 <Code2 className="w-3.5 h-3.5 text-[#2563EB]" />
                 <span>{mode === 'resume' ? 'Section Styling' : 'Visual Effects'}</span>
               </span>
-              <Badge variant="success" size="sm">
-                INCLUDED (₹0)
-              </Badge>
+              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                Included
+              </span>
             </div>
             <p className="text-[11px] text-[#64748B]">
               {mode === 'resume'
@@ -439,7 +461,7 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                     <button
                       type="button"
                       onClick={() => onToggleAddon('custom-domain-pass')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                         isDomainSelected
                           ? 'bg-[#2563EB] text-white shadow-xs'
                           : 'bg-[#F8FAFC] text-[#1E293B] hover:bg-[#EFF6FF] border border-[#CBD5E1]'
@@ -525,7 +547,7 @@ export const FeaturePricingCalculator: React.FC<FeaturePricingCalculatorProps> =
                     <button
                       type="button"
                       onClick={() => onToggleAddon('pro-all-access-pass')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                         isBundleSelected
                           ? 'bg-amber-600 text-white shadow-xs'
                           : 'bg-[#F8FAFC] text-[#1E293B] hover:bg-amber-50 border border-[#CBD5E1]'

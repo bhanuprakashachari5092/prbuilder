@@ -11,6 +11,7 @@ import {
   Globe,
   ShieldCheck,
   Palette,
+  Sliders,
 } from 'lucide-react'
 import { Badge } from '../../../../components/ui/Badge.tsx'
 import { Button } from '../../../../components/ui/Button.tsx'
@@ -134,7 +135,7 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
 }) => {
   const catalog = usePricingCatalog()
   const [isExpanded, setIsExpanded] = useState<boolean>(true)
-  const [activeTab, setActiveTab] = useState<'calculator' | 'themes' | 'customization' | 'domain' | 'bundle'>('calculator')
+  const [activeTab, setActiveTab] = useState<'themes' | 'calculator' | 'customization' | 'domain' | 'bundle'>('themes')
   const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([])
   const [previewTheme, setPreviewTheme] = useState<ThemeMetadata | null>(null)
 
@@ -158,88 +159,108 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
 
   return (
     <div
-      className={`border-b border-[#E2E8F0] bg-gradient-to-b from-white via-[#F8FAFC] to-white text-[#111827] ${className}`}
+      className={`border-b border-slate-200 bg-white text-[#111827] ${className}`}
     >
-      {/* 1. Header Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 1. Header Bar: Single clear title, clean active status & segmented navigation */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
+          <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 shrink-0">
             <Palette className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-bold text-[#0F172A]">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
                 Build Your Portfolio Package
               </h2>
-              <Badge variant="success" size="sm">
-                3 FREE • 2 PRO (₹299)
-              </Badge>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                3 Free • 2 Pro (₹299)
+              </span>
             </div>
-            <p className="text-[11px] text-[#64748B]">
+            <p className="text-xs text-slate-500 mt-0.5">
               Active Theme:{' '}
-              <span className="font-semibold text-[#0F172A]">{currentThemeName}</span>{' '}
+              <span className="font-semibold text-slate-800">{currentThemeName}</span>{' '}
               {currentPriceInfo.isFree ? (
-                <span className="text-emerald-600 font-semibold">(Free Tier)</span>
+                <span className="text-emerald-600 font-medium">(Free Tier)</span>
               ) : entitlements.isThemeUnlocked(currentTheme) ? (
-                <span className="text-emerald-600 font-semibold">(Unlocked)</span>
+                <span className="text-emerald-600 font-medium">(Unlocked)</span>
               ) : (
-                <span className="text-amber-600 font-semibold">(Pro • {currentPriceInfo.formatted})</span>
+                <span className="text-amber-600 font-medium">(Pro • {currentPriceInfo.formatted})</span>
               )}
             </p>
           </div>
         </div>
 
         {/* View Tabs & Expand Toggle */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2 self-start md:self-auto overflow-x-auto max-w-full pb-1 md:pb-0 scrollbar-none">
           {isExpanded && (
-            <div className="flex items-center bg-[#F1F5F9] p-1 rounded-xl border border-[#E2E8F0] text-xs">
+            <div
+              role="tablist"
+              aria-label="Portfolio package sections"
+              className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs shrink-0"
+            >
               <button
-                onClick={() => setActiveTab('calculator')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                  activeTab === 'calculator'
-                    ? 'bg-white text-[#2563EB] font-bold shadow-xs'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
-                }`}
-              >
-                Package Calculator
-              </button>
-              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'themes'}
                 onClick={() => setActiveTab('themes')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'themes'
-                    ? 'bg-white text-[#2563EB] font-bold shadow-xs'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
+                    ? 'bg-white text-blue-600 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Themes (5)
               </button>
               <button
-                onClick={() => setActiveTab('customization')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                  activeTab === 'customization'
-                    ? 'bg-white text-[#2563EB] font-bold shadow-xs'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'calculator'}
+                onClick={() => setActiveTab('calculator')}
+                className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'calculator'
+                    ? 'bg-white text-blue-600 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Customization Panel
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Package Calculator</span>
               </button>
               <button
-                onClick={() => setActiveTab('domain')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                  activeTab === 'domain'
-                    ? 'bg-white text-[#2563EB] font-bold shadow-xs'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'customization'}
+                onClick={() => setActiveTab('customization')}
+                className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'customization'
+                    ? 'bg-white text-blue-600 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Globe className="w-3.5 h-3.5 text-[#2563EB]" />
+                Customization
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'domain'}
+                onClick={() => setActiveTab('domain')}
+                className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'domain'
+                    ? 'bg-white text-blue-600 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5 text-blue-600" />
                 <span>Custom Domain</span>
               </button>
               <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'bundle'}
                 onClick={() => setActiveTab('bundle')}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'bundle'
                     ? 'bg-white text-amber-600 font-bold shadow-xs'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Crown className="w-3.5 h-3.5 text-amber-500" />
@@ -249,11 +270,12 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
           )}
 
           <button
+            type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-xs font-semibold text-[#334155] transition-colors cursor-pointer"
-            title={isExpanded ? 'Collapse Pricing & Themes' : 'Expand Pricing & Themes'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shrink-0"
+            title={isExpanded ? 'Collapse Package Builder' : 'Expand Package Builder'}
           >
-            <span>{isExpanded ? 'Hide Pricing & Themes' : 'View Pricing & Themes'}</span>
+            <span>{isExpanded ? 'Collapse' : 'Customize Package'}</span>
             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
@@ -262,42 +284,29 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
       {/* 2. Expanded Content Drawer */}
       {isExpanded && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-6 pt-2 space-y-6 animate-in slide-in-from-top-2 duration-200">
-          {/* TAB 0: INTERACTIVE PACKAGE CALCULATOR */}
-          {activeTab === 'calculator' && (
-            <FeaturePricingCalculator
-              mode="portfolio"
-              selectedTemplateOrTheme={currentTheme}
-              onSelectTemplateOrTheme={(id) => onSelectTheme(id as PortfolioThemeId)}
-              selectedAddonIds={selectedAddonIds}
-              onToggleAddon={toggleAddon}
-              entitlements={entitlements}
-              catalog={catalog}
-              onPreviewItem={(_type, id) => {
-                const tmpl = PORTFOLIO_THEMES.find((t) => t.id === id)
-                if (tmpl) setPreviewTheme(tmpl)
-              }}
-            />
-          )}
-
-          {/* TAB 1: THEMES & PRICING CARDS */}
+          {/* TAB 0: THEMES & PRICING CARDS */}
           {activeTab === 'themes' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
-                    Select Your Portfolio Theme Design
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Select Your Portfolio Theme
                   </h3>
-                  <p className="text-xs text-[#475569]">
-                    All themes preserve 100% of your configured projects and bio. Prices verified from backend catalog.
+                  <p className="text-xs text-slate-600">
+                    Switch freely anytime. 100% of your projects, bio, and custom content are preserved with zero data loss.
                   </p>
                 </div>
-                <div className="text-xs font-mono text-[#64748B] hidden sm:block">
+                <div className="text-xs font-mono text-slate-500 hidden sm:block">
                   Live Preview • Zero Data Loss
                 </div>
               </div>
 
-              {/* 5 Themes Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* 5 Themes Grid — Uniform card heights, accessible radio selection, single price indicator */}
+              <div
+                role="radiogroup"
+                aria-label="Portfolio theme selection"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
                 {PORTFOLIO_THEMES.map((tmpl) => {
                   const priceInfo = catalog.getThemePrice(tmpl.id)
                   const isActive = currentTheme === tmpl.id
@@ -306,14 +315,24 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
                   return (
                     <div
                       key={tmpl.id}
-                      className={`rounded-2xl border transition-all p-4.5 flex flex-col justify-between text-xs relative ${
+                      role="radio"
+                      aria-checked={isActive}
+                      tabIndex={0}
+                      onClick={() => onSelectTheme(tmpl.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault()
+                          onSelectTheme(tmpl.id)
+                        }
+                      }}
+                      className={`group rounded-2xl border transition-all p-4.5 flex flex-col justify-between text-xs relative cursor-pointer select-none ${
                         isActive
-                          ? 'border-[#2563EB] bg-[#EFF6FF]/60 shadow-md ring-2 ring-[#2563EB]/20'
-                          : 'border-[#E2E8F0] bg-white hover:border-[#CBD5E1] hover:shadow-sm'
+                          ? 'border-blue-600 bg-blue-50/40 shadow-sm ring-2 ring-blue-600/20'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
                       }`}
                     >
                       <div className="space-y-3">
-                        {/* Theme Visual Preview Thumbnail Header */}
+                        {/* Visual Palette Preview Thumbnail Header */}
                         <div
                           className="w-full h-20 rounded-xl p-2.5 flex flex-col justify-between overflow-hidden shadow-inner border border-black/5"
                           style={{
@@ -334,40 +353,53 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
                               ))}
                             </div>
                           </div>
-                          <div className="text-[10px] font-bold text-white drop-shadow-sm">
+                          <div className="text-[11px] font-bold text-white drop-shadow-sm">
                             {tmpl.name}
                           </div>
                         </div>
 
-                        {/* Title, Badges, Price */}
+                        {/* Title, Radio Indicator & Single Clean Price Badge */}
                         <div className="flex items-start justify-between gap-2">
-                          <div className="space-y-0.5">
-                            <h4 className="font-bold text-sm text-[#0F172A] flex items-center gap-1.5">
-                              <span>{tmpl.name}</span>
-                              {isActive && (
-                                <span className="w-2 h-2 rounded-full bg-[#2563EB]" title="Active Selection" />
-                              )}
-                            </h4>
-                            <p className="text-[11px] text-[#64748B] leading-tight line-clamp-2">
-                              {tmpl.tagline}
-                            </p>
+                          <div className="flex items-start gap-2">
+                            <span
+                              className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                                isActive
+                                  ? 'border-blue-600 bg-blue-600 text-white'
+                                  : 'border-slate-300 bg-white group-hover:border-slate-400'
+                              }`}
+                            >
+                              {isActive && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                            </span>
+                            <div className="space-y-0.5">
+                              <h4 className="font-bold text-sm text-slate-900 leading-snug">
+                                {tmpl.name}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+                                {tmpl.tagline}
+                              </p>
+                            </div>
                           </div>
 
-                          <div className="text-right shrink-0">
+                          {/* Single Price Badge */}
+                          <div className="shrink-0">
                             {tmpl.isFree ? (
                               <Badge variant="success" size="sm">
-                                FREE • ₹0
+                                Free Tier
+                              </Badge>
+                            ) : isUnlocked ? (
+                              <Badge variant="success" size="sm">
+                                Unlocked
                               </Badge>
                             ) : (
                               <Badge variant="accent" size="sm">
-                                PRO • {priceInfo.formatted}
+                                Pro • {priceInfo.formatted}
                               </Badge>
                             )}
                           </div>
                         </div>
 
                         {/* Feature Highlights */}
-                        <ul className="space-y-1 text-[11px] text-[#475569] pt-2 border-t border-[#F1F5F9]">
+                        <ul className="space-y-1 text-[11px] text-slate-600 pt-2 border-t border-slate-100">
                           {tmpl.highlights.slice(0, 3).map((h, i) => (
                             <li key={i} className="flex items-start gap-1.5">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
@@ -378,32 +410,35 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
                       </div>
 
                       {/* Card Action Footer */}
-                      <div className="pt-3 mt-3 border-t border-[#F1F5F9] flex items-center justify-between gap-2">
+                      <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                         <div className="text-[11px]">
                           {isActive ? (
-                            <span className="font-bold text-[#2563EB] flex items-center gap-1">
+                            <span className="font-bold text-blue-600 flex items-center gap-1">
                               <Check className="w-3.5 h-3.5" />
                               <span>Active</span>
                             </span>
                           ) : isUnlocked || tmpl.isFree ? (
-                            <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                              <ShieldCheck className="w-3.5 h-3.5" />
-                              <span>{tmpl.isFree ? 'Free Forever' : 'Unlocked'}</span>
+                            <span className="text-emerald-700 font-medium flex items-center gap-1">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>{tmpl.isFree ? 'Free forever' : 'Unlocked'}</span>
                             </span>
                           ) : (
-                            <span className="text-amber-700 font-semibold flex items-center gap-1">
-                              <Lock className="w-3.5 h-3.5" />
-                              <span>{priceInfo.formatted} One-Time</span>
+                            <span className="text-amber-700 font-medium flex items-center gap-1">
+                              <Lock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>One-time unlock</span>
                             </span>
                           )}
                         </div>
 
                         <div className="flex items-center gap-1.5">
-                          {/* Preview Action */}
+                          {/* Secondary Preview Action (Does not select card) */}
                           <button
                             type="button"
-                            onClick={() => setPreviewTheme(tmpl)}
-                            className="px-2.5 py-1 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#475569] hover:text-[#0F172A] text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPreviewTheme(tmpl)
+                            }}
+                            className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 active:scale-95"
                             title={`Preview ${tmpl.name}`}
                           >
                             <Eye className="w-3 h-3" />
@@ -419,22 +454,26 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
                             <Button
                               variant="primary"
                               size="sm"
-                              onClick={() => onSelectTheme(tmpl.id)}
-                              className="text-[11px] py-1 px-2.5 h-7 bg-[#2563EB] hover:bg-[#1D4ED8]"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onSelectTheme(tmpl.id)
+                              }}
+                              className="text-[11px] py-1 px-2.5 h-7 bg-blue-600 hover:bg-blue-700"
                             >
-                              Select Theme
+                              Select
                             </Button>
                           ) : (
                             <Button
                               variant="glow"
                               size="sm"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation()
                                 onSelectTheme(tmpl.id)
                               }}
                               className="text-[11px] py-1 px-2.5 h-7 flex items-center gap-1"
                             >
                               <Sparkles className="w-3 h-3 text-amber-300" />
-                              <span>Unlock {priceInfo.formatted}</span>
+                              <span>Select (Pro)</span>
                             </Button>
                           )}
                         </div>
@@ -445,7 +484,7 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
               </div>
 
               {/* Custom Domain Pass & Pro All-Access Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
                 <CustomDomainPricingCard
                   priceRupees={domainPass.rupees}
                   isOwned={entitlements.hasDomainPass || entitlements.hasAllAccessPass}
@@ -476,6 +515,24 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
             </div>
           )}
 
+          {/* TAB 1: INTERACTIVE PACKAGE CALCULATOR */}
+          {activeTab === 'calculator' && (
+            <FeaturePricingCalculator
+              mode="portfolio"
+              hideHeaderBanner={true}
+              selectedTemplateOrTheme={currentTheme}
+              onSelectTemplateOrTheme={(id) => onSelectTheme(id as PortfolioThemeId)}
+              selectedAddonIds={selectedAddonIds}
+              onToggleAddon={toggleAddon}
+              entitlements={entitlements}
+              catalog={catalog}
+              onPreviewItem={(_type, id) => {
+                const tmpl = PORTFOLIO_THEMES.find((t) => t.id === id)
+                if (tmpl) setPreviewTheme(tmpl)
+              }}
+            />
+          )}
+
           {/* TAB 2: CUSTOMIZATION PRICING PANEL */}
           {activeTab === 'customization' && (
             <CustomizationPricingPanel
@@ -488,7 +545,7 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
             />
           )}
 
-          {/* TAB 3: CUSTOM DOMAIN PASS EXPLANATION */}
+          {/* TAB 3: CUSTOM DOMAIN PASS */}
           {activeTab === 'domain' && (
             <div className="space-y-4">
               <CustomDomainPricingCard

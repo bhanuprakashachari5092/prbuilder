@@ -10,6 +10,7 @@ import {
   Plus,
   Check,
   Crown,
+  CheckCircle2,
 } from 'lucide-react'
 import { Badge } from '../ui/Badge.tsx'
 import { formatINR } from '../../hooks/usePricingCatalog.ts'
@@ -211,14 +212,14 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
   return (
     <div className={`space-y-4 text-[#111827] ${className}`}>
       {/* Panel Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#E2E8F0]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
         <div className="flex items-center gap-2">
-          <Sliders className="w-4 h-4 text-[#2563EB]" />
-          <h3 className="text-sm sm:text-base font-bold text-[#0F172A]">
+          <Sliders className="w-4 h-4 text-blue-600" />
+          <h3 className="text-sm sm:text-base font-bold text-slate-900">
             Customization & Pricing Catalog
           </h3>
         </div>
-        <div className="text-[11px] text-[#64748B]">
+        <div className="text-[11px] text-slate-500 font-medium">
           Server-Authoritative Pricing • Protected Free Tier
         </div>
       </div>
@@ -234,34 +235,35 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
               key={opt.id}
               className={`p-4 rounded-xl border transition-all text-xs flex flex-col justify-between ${
                 opt.statusType === 'draft_proposed'
-                  ? 'bg-[#F8FAFC]/70 border-[#E2E8F0] opacity-80'
+                  ? 'bg-slate-50/70 border-slate-200 opacity-80'
                   : isOwned
-                  ? 'bg-emerald-50/50 border-emerald-200'
+                  ? 'bg-emerald-50/40 border-emerald-200'
                   : isSelected
-                  ? 'bg-[#EFF6FF] border-[#2563EB] shadow-xs'
-                  : 'bg-white border-[#E2E8F0] hover:border-[#CBD5E1]'
+                  ? 'bg-blue-50/50 border-blue-600 shadow-xs ring-1 ring-blue-600/20'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-0.5">
-                    <div className="font-bold text-[#0F172A] text-xs sm:text-sm flex items-center gap-1.5">
+                    <div className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
                       {opt.category === 'bundle' && <Crown className="w-3.5 h-3.5 text-amber-500" />}
-                      {opt.category === 'domain' && <Globe className="w-3.5 h-3.5 text-[#2563EB]" />}
-                      {opt.category === 'typography' && <Type className="w-3.5 h-3.5 text-[#64748B]" />}
-                      {opt.category === 'colors' && <Palette className="w-3.5 h-3.5 text-[#64748B]" />}
-                      {opt.category === 'layout' && <Layout className="w-3.5 h-3.5 text-[#64748B]" />}
+                      {opt.category === 'domain' && <Globe className="w-3.5 h-3.5 text-blue-600" />}
+                      {opt.category === 'typography' && <Type className="w-3.5 h-3.5 text-slate-500" />}
+                      {opt.category === 'colors' && <Palette className="w-3.5 h-3.5 text-slate-500" />}
+                      {opt.category === 'layout' && <Layout className="w-3.5 h-3.5 text-slate-500" />}
                       <span>{opt.title}</span>
                     </div>
-                    <p className="text-[11px] text-[#64748B] leading-relaxed">{opt.description}</p>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">{opt.description}</p>
                   </div>
 
-                  {/* Status Badge */}
+                  {/* Status Badge: Clean and uncluttered */}
                   <div>
                     {opt.statusType === 'included' && (
-                      <Badge variant="success" size="sm">
-                        INCLUDED
-                      </Badge>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        Included
+                      </span>
                     )}
                     {opt.statusType === 'draft_proposed' && (
                       <Badge variant="outline" size="sm">
@@ -270,17 +272,17 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
                     )}
                     {opt.statusType === 'configured_product' && (
                       <Badge variant={isOwned ? 'success' : 'accent'} size="sm">
-                        {isOwned ? 'OWNED' : 'CATALOG'}
+                        {isOwned ? 'OWNED' : 'ADD-ON'}
                       </Badge>
                     )}
                   </div>
                 </div>
 
                 {/* Bullet Points */}
-                <ul className="space-y-1 text-[11px] text-[#475569] pt-1">
+                <ul className="space-y-1 text-[11px] text-slate-600 pt-1">
                   {opt.details.map((d, idx) => (
                     <li key={idx} className="flex items-start gap-1.5">
-                      <span className="text-[#94A3B8]">•</span>
+                      <span className="text-slate-400">•</span>
                       <span>{d}</span>
                     </li>
                   ))}
@@ -288,16 +290,16 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
               </div>
 
               {/* Price & Action Footer */}
-              <div className="pt-3 mt-3 border-t border-[#F1F5F9] flex items-center justify-between">
+              <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-[#64748B] block">Pricing Status</span>
+                  <span className="text-[10px] text-slate-400 block font-medium">Pricing Status</span>
                   <span
                     className={`font-bold ${
                       opt.statusType === 'included'
                         ? 'text-emerald-700'
                         : opt.statusType === 'draft_proposed'
                         ? 'text-amber-700 font-mono text-[11px]'
-                        : 'text-[#0F172A]'
+                        : 'text-slate-900'
                     }`}
                   >
                     {opt.priceDisplay}
@@ -315,10 +317,10 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
                       <button
                         type="button"
                         onClick={() => opt.productId && onToggleAddon(opt.productId)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95 ${
                           isSelected
-                            ? 'bg-[#2563EB] text-white shadow-xs'
-                            : 'bg-[#F8FAFC] text-[#1E293B] hover:bg-[#EFF6FF] border border-[#CBD5E1]'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-slate-50 text-slate-700 hover:bg-blue-50 hover:text-blue-700 border border-slate-200'
                         }`}
                       >
                         {isSelected ? (
@@ -329,7 +331,7 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
                         ) : (
                           <>
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Add to Cart</span>
+                            <span>Add to Package</span>
                           </>
                         )}
                       </button>
@@ -343,9 +345,9 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
       </div>
 
       {/* Footnote Disclosures */}
-      <div className="p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-[11px] text-[#64748B] space-y-1">
-        <div className="flex items-center gap-1.5 font-semibold text-[#0F172A]">
-          <AlertCircle className="w-3.5 h-3.5 text-[#2563EB]" />
+      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 space-y-1">
+        <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+          <AlertCircle className="w-3.5 h-3.5 text-blue-600" />
           <span>Double-Charge Protection & Invariant Guarantee</span>
         </div>
         <p>

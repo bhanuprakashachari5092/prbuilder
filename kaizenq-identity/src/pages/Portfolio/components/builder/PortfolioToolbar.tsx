@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   ArrowLeft,
   Save,
@@ -13,6 +13,7 @@ import {
   Sparkles,
   Sliders,
   ChevronDown,
+  MoreHorizontal,
 } from 'lucide-react'
 import { Button } from '../../../../components/ui/Button.tsx'
 import { PortfolioDownloadButton } from '../../../../components/download/PortfolioDownloadButton.tsx'
@@ -57,18 +58,36 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
 }) => {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showStyleMenu, setShowStyleMenu] = useState(false)
+  const [showOverflowMenu, setShowOverflowMenu] = useState(false)
+
+  const overflowRef = useRef<HTMLDivElement | null>(null)
+  const styleRef = useRef<HTMLDivElement | null>(null)
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (overflowRef.current && !overflowRef.current.contains(event.target as Node)) {
+        setShowOverflowMenu(false)
+      }
+      if (styleRef.current && !styleRef.current.contains(event.target as Node)) {
+        setShowStyleMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const activeTheme = data.theme === 'midnight' ? 'modern' : data.theme || 'modern'
 
   return (
-    <div className="bg-white border-b border-[#E2E8F0] px-4 sm:px-6 py-3.5 sticky top-0 z-30 select-none text-[#111827]">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        {/* Left: Back Button & Slug / Handle Indicator */}
-        <div className="flex items-center gap-3">
+    <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 sticky top-0 z-30 select-none text-slate-900">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        {/* Left: Navigation, Handle & Unified Save Status */}
+        <div className="flex items-center gap-3 min-w-0">
           {onBack && (
             <button
               onClick={onBack}
-              className="p-2 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#64748B] hover:text-[#111827] border border-[#E2E8F0] transition-colors cursor-pointer shrink-0"
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer shrink-0"
               title="Return to Dashboard"
               aria-label="Back to dashboard"
             >
@@ -76,109 +95,102 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
             </button>
           )}
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 font-mono text-xs sm:text-sm text-[#111827]">
-              <Globe className="w-3.5 h-3.5 text-[#2563EB] shrink-0" />
-              <span className="text-[#64748B]">portfolio/</span>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-1 font-mono text-xs text-slate-800">
+              <Globe className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span className="text-slate-400">portfolio/</span>
               <input
                 type="text"
                 value={data.profile.slug}
                 onChange={(e) => onChangeSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                 placeholder="your-slug"
-                className="bg-transparent font-bold text-[#111827] hover:border-b hover:border-[#CBD5E1] focus:border-b focus:border-[#2563EB] focus:outline-none transition-colors max-w-[140px] sm:max-w-[200px]"
-                title="Click to edit portfolio slug handle"
+                className="bg-transparent font-semibold text-slate-900 hover:bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 px-1 rounded transition-all max-w-[120px] sm:max-w-[180px] truncate"
+                title="Click to edit public portfolio slug handle"
               />
             </div>
-            <div className="flex items-center gap-2 text-[10px] sm:text-xs font-mono text-[#64748B] mt-0.5">
-              <span className="flex items-center gap-1">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    isSaved ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
-                  }`}
-                />
-                {lastSavedText}
-              </span>
-              <span>•</span>
-              <span className="text-[#2563EB]">Local Draft Secured</span>
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  isSaved ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+                }`}
+              />
+              <span className="truncate">{lastSavedText}</span>
             </div>
           </div>
         </div>
 
-        {/* Center: Mobile Toggle & Theme Switcher */}
-        <div className="flex items-center justify-between sm:justify-start gap-2.5">
-          {/* Mobile View Toggle Switch */}
-          <div className="lg:hidden flex items-center bg-[#F8FAFC] p-1 rounded-xl border border-[#E2E8F0]">
+        {/* Center: Mobile Editor/Preview & Theme Controls */}
+        <div className="flex items-center gap-2">
+          {/* Mobile Screen Toggle (Editor vs Preview) */}
+          <div className="lg:hidden flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
             <button
               onClick={() => onToggleMobileView('editor')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-all ${
                 mobileView === 'editor'
-                  ? 'bg-[#EFF6FF] text-[#2563EB] shadow-xs font-semibold border border-[#BFDBFE]'
-                  : 'text-[#64748B]'
+                  ? 'bg-white text-blue-600 font-semibold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              <Edit3 className="w-3 h-3" />
               <span>Editor</span>
             </button>
             <button
               onClick={() => onToggleMobileView('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-all ${
                 mobileView === 'preview'
-                  ? 'bg-[#EFF6FF] text-[#2563EB] shadow-xs font-semibold border border-[#BFDBFE]'
-                  : 'text-[#64748B]'
+                  ? 'bg-white text-blue-600 font-semibold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className="w-3 h-3" />
               <span>Preview</span>
             </button>
           </div>
 
-          {/* Theme Selector (All 4 Themes: Modern, Developer, Minimal, Creative) */}
-          <div className="flex items-center gap-1.5 bg-[#F8FAFC] px-2.5 py-1.5 rounded-xl border border-[#E2E8F0]">
-            <Palette className="w-3.5 h-3.5 text-[#2563EB] shrink-0" />
+          {/* Quick Theme Selector Dropdown */}
+          <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs transition-colors">
+            <Palette className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             <select
               value={activeTheme}
               onChange={(e) => onChangeTheme(e.target.value as PortfolioThemeId)}
-              className="bg-transparent text-xs text-[#111827] font-medium focus:outline-none cursor-pointer pr-1"
+              className="bg-transparent text-slate-800 font-medium focus:outline-none cursor-pointer pr-1"
               aria-label="Select Portfolio Theme"
             >
-              <option value="developer" className="bg-white text-[#111827]">
-                Developer (Free)
+              <option value="developer">Developer (Free)</option>
+              <option value="minimal">Minimal (Free)</option>
+              <option value="midnight">Midnight (Free)</option>
+              <option value="creative">
+                Creative Studio {isThemeUnlocked?.('creative') ? '✓' : '🔒 Pro'}
               </option>
-              <option value="minimal" className="bg-white text-[#111827]">
-                Minimal (Free)
-              </option>
-              <option value="creative" className="bg-white text-[#111827]">
-                Creative Studio {isThemeUnlocked?.('creative') ? '✓ Unlocked' : '🔒 Pro (₹299)'}
-              </option>
-              <option value="modern" className="bg-white text-[#111827]">
-                Modern Clean {isThemeUnlocked?.('modern') ? '✓ Unlocked' : '🔒 Pro (₹299)'}
+              <option value="modern">
+                Modern Clean {isThemeUnlocked?.('modern') ? '✓' : '🔒 Pro'}
               </option>
             </select>
           </div>
 
           {/* Theme Customization Popover */}
-          <div className="relative">
+          <div className="relative" ref={styleRef}>
             <button
               onClick={() => setShowStyleMenu(!showStyleMenu)}
-              className="flex items-center gap-1.5 bg-[#F8FAFC] hover:bg-[#F1F5F9] px-2.5 py-1.5 rounded-xl border border-[#E2E8F0] text-xs font-medium text-[#111827] transition-colors cursor-pointer"
-              title="Customize portfolio accent colors, animation effects, and layout density"
-              aria-label="Customize portfolio styling"
+              className="flex items-center gap-1 bg-slate-50 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 transition-colors cursor-pointer"
+              title="Customize accent colors, layout density, and animations"
+              aria-label="Theme styling"
             >
-              <Sliders className="w-3.5 h-3.5 text-[#2563EB]" />
-              <span className="hidden sm:inline">Customize</span>
-              <ChevronDown className="w-3 h-3 text-[#64748B]" />
+              <Sliders className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden md:inline">Styling</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
 
             {showStyleMenu && (
-              <div className="absolute right-0 sm:left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-[#E2E8F0] p-4 z-40 text-xs space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
-                  <span className="font-bold text-[#0F172A] flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-[#2563EB]" />
-                    Theme Customization
+              <div className="absolute right-0 sm:left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 z-40 text-xs space-y-3 animate-in fade-in zoom-in-95 duration-100">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-blue-600" />
+                    Customization Options
                   </span>
                   <button
                     onClick={() => setShowStyleMenu(false)}
-                    className="text-[#64748B] hover:text-[#0F172A] text-xs font-semibold cursor-pointer"
+                    className="text-slate-400 hover:text-slate-900 font-semibold cursor-pointer"
                   >
                     Done
                   </button>
@@ -186,8 +198,8 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
 
                 {/* Accent Color Palette */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider block">
-                    Accent Color
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Brand Accent
                   </label>
                   <div className="flex items-center gap-2 flex-wrap">
                     {[
@@ -209,7 +221,7 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
                         style={{ backgroundColor: c.color }}
                         className={`w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-110 flex items-center justify-center ${
                           (data.customization?.accentColor || '#10B981') === c.color
-                            ? 'ring-2 ring-offset-2 ring-[#2563EB] scale-110'
+                            ? 'ring-2 ring-offset-2 ring-blue-600 scale-105'
                             : ''
                         }`}
                         title={c.label}
@@ -233,13 +245,13 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
 
                 {/* Layout Density */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider block">
-                    Layout Density
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Spacing Density
                   </label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[
                       { id: 'compact', label: 'Compact' },
-                      { id: 'normal', label: 'Normal' },
+                      { id: 'normal', label: 'Balanced' },
                       { id: 'relaxed', label: 'Spacious' },
                     ].map((s) => (
                       <button
@@ -252,8 +264,8 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
                         }
                         className={`px-2 py-1.5 rounded-lg border text-center transition-all cursor-pointer ${
                           (data.customization?.layoutDensity || 'normal') === s.id
-                            ? 'bg-[#EFF6FF] border-[#2563EB] text-[#2563EB] font-bold shadow-xs'
-                            : 'border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#334155]'
+                            ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold'
+                            : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                         }`}
                       >
                         {s.label}
@@ -264,9 +276,7 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
 
                 {/* Animations Toggle */}
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-[11px] font-semibold text-[#334155]">
-                    Micro-Animations
-                  </span>
+                  <span className="text-[11px] font-medium text-slate-700">Micro-Animations</span>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -279,114 +289,188 @@ export const PortfolioToolbar: React.FC<PortfolioToolbarProps> = ({
                       }
                       className="sr-only peer"
                     />
-                    <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3.5 after:transition-all peer-checked:bg-[#2563EB]"></div>
+                    <div className="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3.5 after:transition-all peer-checked:bg-blue-600"></div>
                   </label>
-                </div>
-
-                <div className="pt-1 text-[10px] text-[#64748B] border-t border-[#E2E8F0]">
-                  Applies live to preview and published portfolio.
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center flex-wrap gap-2 justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onOpenImportModal}
-            leftIcon={<FileDown className="w-3.5 h-3.5 text-[#2563EB]" />}
-            title="Import profile & projects from existing resume"
-            className="text-xs text-[#64748B] hover:text-[#111827] hover:bg-[#F8FAFC]"
-          >
-            Import Resume
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onLoadSample}
-            leftIcon={<Sparkles className="w-3.5 h-3.5 text-[#2563EB]" />}
-            title="Load authentic demo portfolio data"
-            className="text-xs text-[#64748B] hover:text-[#111827] hover:bg-[#F8FAFC]"
-          >
-            Load Sample
-          </Button>
-
-          {showClearConfirm ? (
-            <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
-              <span className="text-[11px] text-rose-700">Clear all data?</span>
-              <button
-                onClick={() => {
-                  onClearAll()
-                  setShowClearConfirm(false)
-                }}
-                className="text-[11px] text-rose-600 font-bold hover:underline cursor-pointer"
-              >
-                Yes
-              </button>
-              <button
-                onClick={() => setShowClearConfirm(false)}
-                className="text-[11px] text-[#64748B] hover:underline cursor-pointer ml-1"
-              >
-                No
-              </button>
-            </div>
-          ) : (
+        {/* Right: Actions Group */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Desktop Secondary Actions */}
+          <div className="hidden xl:flex items-center gap-1.5">
             <button
-              onClick={() => setShowClearConfirm(true)}
-              title="Reset portfolio data"
-              className="p-2 rounded-lg text-[#64748B] hover:text-red-500 hover:bg-[#F8FAFC] transition-colors cursor-pointer text-xs"
-              aria-label="Reset portfolio data"
+              onClick={onOpenImportModal}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title="Import from ATS resume"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <FileDown className="w-3.5 h-3.5 text-blue-600" />
+              <span>Import</span>
             </button>
-          )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onSaveDraft}
-            leftIcon={isSaved ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Save className="w-3.5 h-3.5" />}
-            className="text-xs text-[#111827]"
-          >
-            {isSaved ? 'Draft Saved' : 'Save Draft'}
-          </Button>
+            <button
+              onClick={onLoadSample}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title="Load demo sample data"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              <span>Sample</span>
+            </button>
 
-          <PortfolioDownloadButton
-            data={data}
-            variant="outline"
-            size="sm"
-            label="Download ZIP"
-            className="text-xs border-[#E2E8F0] text-[#111827] hover:bg-[#F8FAFC]"
-          />
+            {showClearConfirm ? (
+              <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-2 py-1 rounded-lg text-xs">
+                <span className="text-rose-700 font-medium text-[11px]">Clear?</span>
+                <button
+                  onClick={() => {
+                    onClearAll()
+                    setShowClearConfirm(false)
+                  }}
+                  className="text-rose-600 font-bold hover:underline cursor-pointer text-[11px]"
+                >
+                  Yes
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="text-slate-500 hover:underline cursor-pointer text-[11px]"
+                >
+                  No
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowClearConfirm(true)}
+                title="Reset portfolio data"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                aria-label="Reset portfolio data"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onViewPublic}
-            rightIcon={<ExternalLink className="w-3.5 h-3.5" />}
-            className="text-xs"
-            title="Open dedicated preview page"
-          >
-            Local Preview
-          </Button>
+            <button
+              onClick={onSaveDraft}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+              title="Save changes to draft"
+            >
+              {isSaved ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+              ) : (
+                <Save className="w-3.5 h-3.5 text-slate-500" />
+              )}
+              <span>{isSaved ? 'Saved' : 'Save'}</span>
+            </button>
 
+            <PortfolioDownloadButton
+              data={data}
+              variant="outline"
+              size="sm"
+              label="Download"
+              className="text-xs h-8 border-slate-200 text-slate-700 hover:bg-slate-50"
+            />
+
+            <button
+              onClick={onViewPublic}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+              title="Open dedicated preview page"
+            >
+              <span>Preview</span>
+              <ExternalLink className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
+
+          {/* Compact Overflow Menu (< xl screens) */}
+          <div className="relative xl:hidden" ref={overflowRef}>
+            <button
+              onClick={() => setShowOverflowMenu(!showOverflowMenu)}
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors cursor-pointer"
+              title="More actions"
+              aria-label="More options"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            {showOverflowMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 space-y-0.5">
+                <button
+                  onClick={() => {
+                    onOpenImportModal()
+                    setShowOverflowMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Import Resume</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onLoadSample()
+                    setShowOverflowMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Load Sample Data</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onSaveDraft()
+                    setShowOverflowMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Save Draft</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onViewPublic()
+                    setShowOverflowMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Local Preview</span>
+                </button>
+                <div onClick={() => setShowOverflowMenu(false)}>
+                  <PortfolioDownloadButton
+                    data={data}
+                    variant="ghost"
+                    size="sm"
+                    label="Download ZIP"
+                    className="w-full justify-start text-left px-3 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer rounded-none font-normal border-0"
+                  />
+                </div>
+                <div className="border-t border-slate-100 my-1" />
+                <button
+                  onClick={() => {
+                    onClearAll()
+                    setShowOverflowMenu(false)
+                  }}
+                  className="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset All Data</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Primary Action Button: Publish & Export */}
           <Button
             variant="primary"
             size="sm"
             onClick={onOpenCompletionModal || onSaveDraft}
             leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-300" />}
-            className="text-xs font-bold bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-xs"
-            title="Complete, export and publish your portfolio to free platform subdomain"
+            className="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-xs px-3.5 py-1.5 h-8 rounded-lg cursor-pointer transition-all"
+            title="Complete, export and publish your portfolio"
           >
             Publish & Export
           </Button>
         </div>
       </div>
-    </div>
+    </header>
   )
 }
 

@@ -15,6 +15,7 @@ export interface GuidedStepperBarProps {
   onNext?: () => void
   onPrev?: () => void
   title?: string
+  className?: string
 }
 
 export const GuidedStepperBar: React.FC<GuidedStepperBarProps> = ({
@@ -23,7 +24,8 @@ export const GuidedStepperBar: React.FC<GuidedStepperBarProps> = ({
   onStepClick,
   onNext,
   onPrev,
-  title,
+  title = 'Portfolio Guided Builder',
+  className = '',
 }) => {
   const currentStep = steps[activeStepIndex] || steps[0]
   const isFirst = activeStepIndex === 0
@@ -31,34 +33,28 @@ export const GuidedStepperBar: React.FC<GuidedStepperBarProps> = ({
 
   return (
     <nav
-      aria-label="Workflow progress"
-      className="bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 px-4 py-3 shadow-xs"
+      aria-label="Portfolio builder progress"
+      className={`bg-white border-b border-slate-200/90 px-3 sm:px-6 py-2 shadow-xs transition-colors ${className}`}
     >
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Step Status & Quick Controls */}
-        <div className="flex items-center justify-between md:justify-start gap-3">
-          {title && (
-            <span className="hidden sm:inline-block text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mr-1">
-              {title}
-            </span>
-          )}
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        {/* Mobile View: Compact Progress "Step X of Y: Label" + Arrow Controls */}
+        <div className="flex md:hidden items-center justify-between w-full gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
               Step {activeStepIndex + 1} of {steps.length}
             </span>
-            <span className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 truncate max-w-[180px] sm:max-w-none">
-              {currentStep.label}
+            <span className="text-xs font-semibold text-slate-900 truncate">
+              {currentStep?.label}
             </span>
           </div>
 
-          {/* Mobile Prev / Next */}
-          <div className="flex items-center gap-1.5 md:hidden">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={onPrev}
               disabled={isFirst}
               aria-label="Previous step"
-              className="p-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition active:scale-95"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -67,15 +63,28 @@ export const GuidedStepperBar: React.FC<GuidedStepperBarProps> = ({
               onClick={onNext}
               disabled={isLast}
               aria-label="Next step"
-              className="p-1.5 rounded-lg bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition"
+              className="px-2.5 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-blue-700 transition active:scale-95 flex items-center gap-1"
             >
-              <ChevronRight className="w-4 h-4" />
+              <span>Next</span>
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Stepper Navigation Pills (Desktop & Tablet) */}
-        <div className="hidden md:flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+        {/* Desktop View: Left Step Indicator */}
+        <div className="hidden md:flex items-center gap-2.5 shrink-0">
+          {title && (
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              {title}
+            </span>
+          )}
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            Step {activeStepIndex + 1} / {steps.length}
+          </span>
+        </div>
+
+        {/* Desktop View: Stepper Nav Pills */}
+        <div className="hidden md:flex items-center gap-1 overflow-x-auto py-0.5 scrollbar-none">
           {steps.map((step, idx) => {
             const isActive = idx === activeStepIndex
             const isCompleted = step.isCompleted && !isActive
@@ -85,52 +94,50 @@ export const GuidedStepperBar: React.FC<GuidedStepperBarProps> = ({
                 key={step.id}
                 type="button"
                 onClick={() => onStepClick(idx)}
-                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
+                className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer shrink-0 ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                    ? 'bg-blue-600 text-white font-semibold shadow-xs'
                     : isCompleted
-                    ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                    : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800/60'
+                    ? 'bg-slate-100 text-slate-700 hover:bg-slate-200/80 hover:text-slate-900'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/70'
                 }`}
                 title={step.label}
               >
                 <span
-                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors ${
                     isActive
                       ? 'bg-white text-blue-600'
                       : isCompleted
                       ? 'bg-emerald-600 text-white'
-                      : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
+                      : 'bg-slate-200 text-slate-600 group-hover:bg-slate-300'
                   }`}
                 >
-                  {isCompleted ? <Check className="w-2.5 h-2.5" /> : idx + 1}
+                  {isCompleted ? <Check className="w-2.5 h-2.5 stroke-[3]" /> : idx + 1}
                 </span>
-                <span className="truncate max-w-[120px]">
-                  {step.shortLabel || step.label}
-                </span>
+                <span>{step.shortLabel || step.label}</span>
               </button>
             )
           })}
         </div>
 
-        {/* Desktop Prev / Next Navigation Controls */}
-        <div className="hidden md:flex items-center gap-2 shrink-0">
+        {/* Desktop View: Prev / Next Buttons */}
+        <div className="hidden md:flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={onPrev}
             disabled={isFirst}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-100 transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
-            Previous
+            <span>Prev</span>
           </button>
           <button
             type="button"
             onClick={onNext}
             disabled={isLast}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+            className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 transition disabled:opacity-30 disabled:cursor-not-allowed shadow-xs cursor-pointer"
           >
-            Next
+            <span>Next</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -138,4 +145,3 @@ export const GuidedStepperBar: React.FC<GuidedStepperBarProps> = ({
     </nav>
   )
 }
-
