@@ -4,8 +4,9 @@ import { loadPortfolioDraft, savePortfolioDraft, clearPortfolioDraft } from './s
 import { SAMPLE_PORTFOLIO_DATA, DEFAULT_EMPTY_PORTFOLIO } from './sampleData.ts'
 import { PortfolioToolbar } from './components/builder/PortfolioToolbar.tsx'
 import { PortfolioValidationBar } from './components/builder/PortfolioValidationBar.tsx'
-import { PortfolioEditor } from './components/builder/PortfolioEditor.tsx'
+import { PortfolioEditor, type PortfolioAccordionSection } from './components/builder/PortfolioEditor.tsx'
 import { PortfolioPreviewFrame } from './components/builder/PortfolioPreviewFrame.tsx'
+import { GuidedStepperBar, type StepItem } from '../../components/ui/GuidedStepperBar.tsx'
 import { ResumeImportModal } from './components/builder/ResumeImportModal.tsx'
 import { DraftMigrationModal } from '../../components/auth/DraftMigrationModal.tsx'
 import { PortfolioCompletionModal } from '../../components/portfolio/PortfolioCompletionModal.tsx'
@@ -65,6 +66,92 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
     productId: '',
     productTitle: '',
     pricePaise: 29900,
+  })
+
+  // 10-Step Guided Portfolio Builder Workflow
+  const PORTFOLIO_STEPS: StepItem[] = [
+    { id: 'profile', label: 'Profile & Bio', shortLabel: 'Profile' },
+    { id: 'skills', label: 'Core Skills', shortLabel: 'Skills' },
+    { id: 'projects', label: 'Featured Projects', shortLabel: 'Projects' },
+    { id: 'experience', label: 'Work Experience', shortLabel: 'Experience' },
+    { id: 'education', label: 'Education', shortLabel: 'Education' },
+    { id: 'contact', label: 'Contact & Links', shortLabel: 'Contact' },
+    { id: 'theme', label: 'Theme Selection', shortLabel: 'Theme' },
+    { id: 'customization', label: 'Layout & Styling', shortLabel: 'Design' },
+    { id: 'preview', label: 'Live Preview', shortLabel: 'Preview' },
+    { id: 'publish', label: 'Publish & Launch', shortLabel: 'Publish' },
+  ]
+
+  const [activeStepIndex, setActiveStepIndex] = useState<number>(0)
+  const [activeSection, setActiveSection] = useState<PortfolioAccordionSection>('profile')
+
+  const handleStepClick = (index: number) => {
+    setActiveStepIndex(index)
+    const step = PORTFOLIO_STEPS[index]
+    if (!step) return
+
+    if (
+      ['profile', 'skills', 'projects', 'experience', 'education', 'contact'].includes(
+        step.id,
+      )
+    ) {
+      setActiveSection(step.id as PortfolioAccordionSection)
+      setMobileView('editor')
+    } else if (step.id === 'theme') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } else if (step.id === 'customization') {
+      setMobileView('editor')
+    } else if (step.id === 'preview') {
+      setMobileView('preview')
+    } else if (step.id === 'publish') {
+      setIsCompletionModalOpen(true)
+    }
+  }
+
+  const handleNextStep = () => {
+    if (activeStepIndex < PORTFOLIO_STEPS.length - 1) {
+      handleStepClick(activeStepIndex + 1)
+    }
+  }
+
+  const handlePrevStep = () => {
+    if (activeStepIndex > 0) {
+      handleStepClick(activeStepIndex - 1)
+    }
+  }
+
+  const stepsWithCompletion = PORTFOLIO_STEPS.map((step) => {
+    let isCompleted = false
+    if (step.id === 'profile') {
+      isCompleted = Boolean(portfolioData.profile.fullName && portfolioData.profile.title)
+    } else if (step.id === 'skills') {
+      isCompleted =
+        (portfolioData.skills.languages.length +
+          portfolioData.skills.frameworks.length +
+          portfolioData.skills.tools.length) >
+        0
+    } else if (step.id === 'projects') {
+      isCompleted = portfolioData.projects.length > 0 && Boolean(portfolioData.projects[0]?.title)
+    } else if (step.id === 'experience') {
+      isCompleted = portfolioData.experience.length > 0
+    } else if (step.id === 'education') {
+      isCompleted = portfolioData.education.length > 0
+    } else if (step.id === 'contact') {
+      isCompleted = Boolean(
+        portfolioData.profile.email ||
+          portfolioData.contact?.email ||
+          (portfolioData.contact?.socialLinks && portfolioData.contact.socialLinks.length > 0),
+      )
+    } else if (step.id === 'theme') {
+      isCompleted = Boolean(portfolioData.theme)
+    } else if (step.id === 'customization') {
+      isCompleted = true
+    } else if (step.id === 'preview') {
+      isCompleted = false
+    } else if (step.id === 'publish') {
+      isCompleted = false
+    }
+    return { ...step, isCompleted }
   })
 
   // Tracking pending updates and async request sequence to avoid stale overwrites
@@ -342,7 +429,17 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
         </div>
       )}
 
-      {/* 2. Top Pricing & Themes Section */}
+      {/* 2. Guided 10-Step Workflow Stepper Bar */}
+      <GuidedStepperBar
+        steps={stepsWithCompletion}
+        activeStepIndex={activeStepIndex}
+        onStepClick={handleStepClick}
+        onNext={handleNextStep}
+        onPrev={handlePrevStep}
+        title="Portfolio Guided Builder"
+      />
+
+      {/* 3. Top Pricing & Themes Section */}
       <PortfolioPricingSection
         currentTheme={portfolioData.theme}
         onSelectTheme={handleChangeTheme}
@@ -398,6 +495,12 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
               data={portfolioData}
               onChange={handleDataChange}
               onOpenCompletionModal={() => setIsCompletionModalOpen(true)}
+              activeSection={activeSection}
+              onSectionChange={(sec) => {
+                setActiveSection(sec)
+                const stepIdx = PORTFOLIO_STEPS.findIndex((s) => s.id === sec)
+                if (stepIdx !== -1) setActiveStepIndex(stepIdx)
+              }}
             />
           </div>
         </div>

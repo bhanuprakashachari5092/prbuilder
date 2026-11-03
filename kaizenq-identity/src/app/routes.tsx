@@ -13,9 +13,11 @@ import { PublicPortfolioPage } from '../pages/Portfolio/components/public/Public
 import { AuthRequiredGate } from '../components/auth/AuthRequiredGate.tsx'
 import { AdminDashboard } from '../pages/Admin/index.tsx'
 import { AdminAccessDenied } from '../pages/Admin/components/AdminAccessDenied.tsx'
+import { AuthPage } from '../pages/Auth/index.tsx'
 
 export type RouteKey =
   | 'home'
+  | 'auth'
   | 'dashboard'
   | 'builder'
   | 'resume'
@@ -139,6 +141,13 @@ export const AppRoutes: React.FC = () => {
   }
 
   switch (currentRoute) {
+    case 'auth':
+      return (
+        <AuthPage
+          onSuccess={() => setCurrentRoute('dashboard')}
+          onBackHome={() => setCurrentRoute('home')}
+        />
+      )
     case 'dashboard':
       return (
         <ProtectedRoute targetRoute="dashboard" targetRouteName="Student Workspace Dashboard">

@@ -4,9 +4,10 @@ import { loadResumeDraft, saveResumeDraft, clearResumeDraft } from './storage.ts
 import { SAMPLE_RESUME_DATA, DEFAULT_EMPTY_RESUME } from './sampleData.ts'
 import { ResumeToolbar } from './components/ResumeToolbar.tsx'
 import { ResumeValidationBar } from './components/ResumeValidationBar.tsx'
-import { ResumeEditor } from './components/ResumeEditor.tsx'
+import { ResumeEditor, type AccordionSection } from './components/ResumeEditor.tsx'
 import { ResumePreview } from './components/ResumePreview.tsx'
 import { PdfInstructionsModal } from './components/PdfInstructionsModal.tsx'
+import { GuidedStepperBar, type StepItem } from '../../components/ui/GuidedStepperBar.tsx'
 import { CheckoutModal } from '../../components/payment/CheckoutModal.tsx'
 import { PremiumUpgradeModal } from '../../components/payment/PremiumUpgradeModal.tsx'
 import { useAuth } from '../../app/providers/AuthContext.tsx'
@@ -57,6 +58,89 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
     productId: '',
     productTitle: '',
     pricePaise: 19900,
+  })
+
+  // 10-Step Guided Resume Builder Workflow
+  const RESUME_STEPS: StepItem[] = [
+    { id: 'personal', label: 'Personal Details', shortLabel: 'Personal' },
+    { id: 'summary', label: 'Professional Summary', shortLabel: 'Summary' },
+    { id: 'education', label: 'Education', shortLabel: 'Education' },
+    { id: 'experience', label: 'Work Experience', shortLabel: 'Experience' },
+    { id: 'projects', label: 'Projects', shortLabel: 'Projects' },
+    { id: 'skills', label: 'Core Skills', shortLabel: 'Skills' },
+    { id: 'certifications', label: 'Certifications & Honors', shortLabel: 'Certs' },
+    { id: 'template', label: 'Template Selection', shortLabel: 'Template' },
+    { id: 'customization', label: 'Design Customization', shortLabel: 'Design' },
+    { id: 'export', label: 'Final Preview & Export', shortLabel: 'Export' },
+  ]
+
+  const [activeStepIndex, setActiveStepIndex] = useState<number>(0)
+  const [activeSection, setActiveSection] = useState<AccordionSection>('personal')
+
+  const handleStepClick = (index: number) => {
+    setActiveStepIndex(index)
+    const step = RESUME_STEPS[index]
+    if (!step) return
+
+    if (
+      ['personal', 'summary', 'education', 'experience', 'projects', 'skills', 'certifications'].includes(
+        step.id,
+      )
+    ) {
+      setActiveSection(step.id as AccordionSection)
+      setMobileView('editor')
+    } else if (step.id === 'template') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } else if (step.id === 'customization') {
+      setMobileView('editor')
+    } else if (step.id === 'export') {
+      setMobileView('preview')
+      setIsPrintModalOpen(true)
+    }
+  }
+
+  const handleNextStep = () => {
+    if (activeStepIndex < RESUME_STEPS.length - 1) {
+      handleStepClick(activeStepIndex + 1)
+    }
+  }
+
+  const handlePrevStep = () => {
+    if (activeStepIndex > 0) {
+      handleStepClick(activeStepIndex - 1)
+    }
+  }
+
+  const stepsWithCompletion = RESUME_STEPS.map((step) => {
+    let isCompleted = false
+    if (step.id === 'personal') {
+      isCompleted = Boolean(resumeData.personalInfo.fullName && resumeData.personalInfo.email)
+    } else if (step.id === 'summary') {
+      isCompleted = Boolean(resumeData.personalInfo.summary && resumeData.personalInfo.summary.trim().length > 15)
+    } else if (step.id === 'education') {
+      isCompleted = resumeData.education.length > 0 && Boolean(resumeData.education[0]?.institution)
+    } else if (step.id === 'experience') {
+      isCompleted = resumeData.experience.length > 0
+    } else if (step.id === 'projects') {
+      isCompleted = resumeData.projects.length > 0
+    } else if (step.id === 'skills') {
+      isCompleted =
+        (resumeData.skills.languages.length +
+          resumeData.skills.frameworks.length +
+          resumeData.skills.tools.length) >
+        0
+    } else if (step.id === 'certifications') {
+      isCompleted =
+        resumeData.certifications.length > 0 ||
+        (resumeData.additional?.achievements?.length || 0) > 0
+    } else if (step.id === 'template') {
+      isCompleted = Boolean(resumeData.template)
+    } else if (step.id === 'customization') {
+      isCompleted = true
+    } else if (step.id === 'export') {
+      isCompleted = false
+    }
+    return { ...step, isCompleted }
   })
 
   // Tracking pending updates and async request sequence to avoid stale overwrites
@@ -292,7 +376,17 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
         </div>
       )}
 
-      {/* 2. Top Pricing & Templates Section */}
+      {/* 2. Guided 10-Step Workflow Stepper Bar */}
+      <GuidedStepperBar
+        steps={stepsWithCompletion}
+        activeStepIndex={activeStepIndex}
+        onStepClick={handleStepClick}
+        onNext={handleNextStep}
+        onPrev={handlePrevStep}
+        title="Resume Guided Builder"
+      />
+
+      {/* 3. Top Pricing & Templates Section */}
       <ResumePricingSection
         currentTemplate={resumeData.template}
         onSelectTemplate={handleChangeTemplate}
@@ -341,7 +435,16 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
             <ResumeValidationBar data={resumeData} />
 
             {/* Interactive Section Forms */}
-            <ResumeEditor data={resumeData} onChange={handleDataChange} />
+            <ResumeEditor
+              data={resumeData}
+              onChange={handleDataChange}
+              activeSection={activeSection}
+              onSectionChange={(sec) => {
+                setActiveSection(sec)
+                const stepIdx = RESUME_STEPS.findIndex((s) => s.id === sec)
+                if (stepIdx !== -1) setActiveStepIndex(stepIdx)
+              }}
+            />
           </div>
         </div>
 

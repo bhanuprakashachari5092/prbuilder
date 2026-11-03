@@ -11,6 +11,7 @@ import {
   X,
   ExternalLink,
   ShieldCheck,
+  CreditCard,
 } from 'lucide-react'
 import { PRLogo } from '../../../components/brand/PRLogo.tsx'
 import { cn } from '../../../lib/utils.ts'
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'profile', label: 'My Profile', icon: User },
   { id: 'projects', label: 'Projects', icon: FolderGit2 },
   { id: 'publish', label: 'Publish & Domain', icon: Share2 },
+  { id: 'billing', label: 'Pricing & Passes', icon: CreditCard },
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 

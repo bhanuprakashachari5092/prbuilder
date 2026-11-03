@@ -5,6 +5,7 @@ import { getSubdomainFromHostname, isCustomDomainHost } from '../../lib/domainUt
 
 export const VALID_ROUTES = [
   'home',
+  'auth',
   'dashboard',
   'builder',
   'resume',
@@ -59,6 +60,11 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
       // 2b. Check admin route (/admin)
       if (pathname === '/admin' || pathname.startsWith('/admin/')) {
         return 'admin'
+      }
+
+      // 2c. Check auth route (/auth)
+      if (pathname === '/auth' || pathname.startsWith('/auth/')) {
+        return 'auth'
       }
 
       // 3. Check query param route (?route=...)

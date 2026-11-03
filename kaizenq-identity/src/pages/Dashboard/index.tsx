@@ -10,6 +10,8 @@ import { DomainView } from './components/DomainView.tsx'
 import { ProfileView } from './components/ProfileView.tsx'
 import { PublishShareView } from './components/PublishShareView.tsx'
 import { AdminDomainRequestsView } from './components/AdminDomainRequestsView.tsx'
+import { BillingAndEntitlementsView } from './components/BillingAndEntitlementsView.tsx'
+import { CheckoutModal } from '../../components/payment/CheckoutModal.tsx'
 import { AddProjectModal, type ProjectFormData } from './components/AddProjectModal.tsx'
 import { Button } from '../../components/ui/Button.tsx'
 import { Badge } from '../../components/ui/Badge.tsx'
@@ -65,6 +67,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
   const [activities, setActivities] = useState<DemoActivityEvent[]>([])
   const [domains, setDomains] = useState<DomainRow[]>([])
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false)
+  const [checkoutModal, setCheckoutModal] = useState<{
+    isOpen: boolean
+    productId: string
+    productTitle: string
+    pricePaise: number
+  }>({
+    isOpen: false,
+    productId: '',
+    productTitle: '',
+    pricePaise: 0,
+  })
 
   // Local additions to projects list
   const [customProjects, setCustomProjects] = useState<
@@ -704,7 +717,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
         </div>
       )}
 
-      {/* TAB 8: SETTINGS */}
+      {/* TAB 8: PRICING & ENTITLEMENTS */}
+      {activeTab === 'billing' && (
+        <div className="animate-fadeIn">
+          <BillingAndEntitlementsView
+            onOpenCheckout={({ productId, productTitle, pricePaise }) => {
+              setCheckoutModal({
+                isOpen: true,
+                productId,
+                productTitle,
+                pricePaise,
+              })
+            }}
+          />
+        </div>
+      )}
+
+      {/* TAB 9: SETTINGS */}
       {activeTab === 'settings' && (
         <div className="space-y-6 animate-fadeIn">
           <div className="p-6 sm:p-8 rounded-2xl bg-white border border-[#E2E8F0] shadow-sm">
@@ -772,6 +801,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
         isOpen={isAddProjectOpen}
         onClose={() => setIsAddProjectOpen(false)}
         onAddProject={handleAddProject}
+      />
+
+      {/* Checkout Modal for Feature Entitlements & Platform Passes */}
+      <CheckoutModal
+        isOpen={checkoutModal.isOpen}
+        onClose={() =>
+          setCheckoutModal((prev) => ({ ...prev, isOpen: false }))
+        }
+        productId={checkoutModal.productId}
+        productTitle={checkoutModal.productTitle}
+        productCategory={
+          checkoutModal.productId.includes('template')
+            ? 'resume_template'
+            : checkoutModal.productId.includes('theme')
+            ? 'portfolio_theme'
+            : checkoutModal.productId.includes('domain')
+            ? 'domain_pass'
+            : 'bundle'
+        }
+        pricePaise={checkoutModal.pricePaise}
+        onSuccess={() => {
+          setCheckoutModal((prev) => ({ ...prev, isOpen: false }))
+          if (user?.id) {
+            loadDashboardData(user.id)
+          }
+        }}
       />
     </DashboardLayout>
   )

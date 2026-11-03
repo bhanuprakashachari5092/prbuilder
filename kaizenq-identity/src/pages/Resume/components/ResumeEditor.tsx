@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   User,
   GraduationCap,
@@ -15,10 +15,13 @@ import {
   EyeOff,
   ShieldCheck,
   FileText,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { ResumeDownloadButton } from '../../../components/download/ResumeDownloadButton.tsx'
 import { hasSufficientResumeContent } from '../../../services/resumeExportService.ts'
+import { GeminiAssistantModal } from '../../../components/ai/GeminiAssistantModal.tsx'
+import type { GeminiAction, GeminiContext } from '../../../services/geminiService.ts'
 import type {
   ResumeData,
   PersonalInfo,
@@ -29,13 +32,9 @@ import type {
   SectionVisibility,
 } from '../types.ts'
 
-export interface ResumeEditorProps {
-  data: ResumeData
-  onChange: (updated: ResumeData) => void
-}
-
-type AccordionSection =
+export type AccordionSection =
   | 'personal'
+  | 'summary'
   | 'education'
   | 'skills'
   | 'experience'
@@ -43,8 +42,43 @@ type AccordionSection =
   | 'certifications'
   | 'additional'
 
-export const ResumeEditor: React.FC<ResumeEditorProps> = ({ data, onChange }) => {
-  const [openSection, setOpenSection] = useState<AccordionSection>('personal')
+export interface ResumeEditorProps {
+  data: ResumeData
+  onChange: (updated: ResumeData) => void
+  activeSection?: AccordionSection
+  onSectionChange?: (sec: AccordionSection) => void
+}
+
+export const ResumeEditor: React.FC<ResumeEditorProps> = ({
+  data,
+  onChange,
+  activeSection,
+  onSectionChange,
+}) => {
+  const [openSection, setOpenSection] = useState<AccordionSection>(activeSection || 'personal')
+
+  // Keep openSection in sync with parent guided stepper
+  useEffect(() => {
+    if (activeSection) {
+      setOpenSection(activeSection)
+    }
+  }, [activeSection])
+
+  // Gemini AI Assistant Modal state
+  const [geminiModal, setGeminiModal] = useState<{
+    isOpen: boolean
+    action: GeminiAction
+    title: string
+    originalText: string
+    context?: GeminiContext
+    onAccept: (improved: string) => void
+  }>({
+    isOpen: false,
+    action: 'improve_summary',
+    title: '',
+    originalText: '',
+    onAccept: () => {},
+  })
 
   // Skill input temporary states
   const [newLang, setNewLang] = useState('')
@@ -215,7 +249,11 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ data, onChange }) =>
   }
 
   const toggleSection = (s: AccordionSection) => {
-    setOpenSection(openSection === s ? ('' as any) : s)
+    const next = openSection === s ? ('' as any) : s
+    setOpenSection(next)
+    if (next) {
+      onSectionChange?.(next)
+    }
   }
 
   return (
@@ -406,26 +444,140 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ data, onChange }) =>
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-medium text-[#64748B]">
-                  Professional Summary (Optional)
-                </label>
+            <div className="pt-1 border-t border-[#E2E8F0]">
+              <div className="flex items-center justify-between text-xs text-[#64748B]">
+                <span>Professional Summary</span>
                 <button
                   type="button"
-                  onClick={() => toggleVisibility('summary')}
-                  className="text-[11px] text-[#2563EB] hover:underline flex items-center gap-1 cursor-pointer"
+                  onClick={() => toggleSection('summary')}
+                  className="text-xs text-[#2563EB] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  {visibleSections.summary !== false ? 'Hide from Resume' : 'Show on Resume'}
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Open Guided Summary Editor →
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 2. PROFESSIONAL SUMMARY (STEP 2) */}
+      <div id="resume-section-summary" className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => toggleSection('summary')}
+          className="w-full p-4.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center border border-[#BFDBFE]">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#111827]">Professional Summary</h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  Step 2
+                </span>
+              </div>
+              <p className="text-xs text-[#64748B]">ATS career overview, specialization, and value proposition</p>
+            </div>
+          </div>
+          {openSection === 'summary' ? (
+            <ChevronUp className="w-4 h-4 text-[#64748B]" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-[#64748B]" />
+          )}
+        </button>
+
+        {openSection === 'summary' && (
+          <div className="p-5 pt-1 border-t border-[#E2E8F0] space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#64748B]">
+                Visible on resume: {visibleSections.summary !== false ? 'Yes' : 'No'}
+              </span>
+              <button
+                type="button"
+                onClick={() => toggleVisibility('summary')}
+                className="text-xs text-[#2563EB] font-medium hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                {visibleSections.summary !== false ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                {visibleSections.summary !== false ? 'Hide from Resume' : 'Show on Resume'}
+              </button>
+            </div>
+
+            {/* AI Assistant Quick Actions Bar */}
+            <div className="flex flex-wrap items-center gap-2 p-2.5 rounded-xl bg-blue-50/60 border border-blue-200/80">
+              <span className="text-xs font-semibold text-blue-900 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                Gemini AI Writing Tools:
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setGeminiModal({
+                    isOpen: true,
+                    action: 'improve_summary',
+                    title: 'Enhance Professional Summary with Gemini AI',
+                    originalText:
+                      data.personalInfo.summary ||
+                      `${data.personalInfo.fullName || 'Software Engineer'} specializing in scalable systems.`,
+                    context: { role: data.personalInfo.title },
+                    onAccept: (improved) => updatePersonal('summary', improved),
+                  })
+                }
+                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-xs flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3" />
+                ATS Polish
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setGeminiModal({
+                    isOpen: true,
+                    action: 'fix_grammar',
+                    title: 'Fix Grammar & Tone',
+                    originalText: data.personalInfo.summary,
+                    context: { role: data.personalInfo.title },
+                    onAccept: (improved) => updatePersonal('summary', improved),
+                  })
+                }
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 transition flex items-center gap-1 cursor-pointer"
+              >
+                Fix Grammar
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setGeminiModal({
+                    isOpen: true,
+                    action: 'tailor_to_job',
+                    title: 'Tailor Summary to Job Description',
+                    originalText: data.personalInfo.summary,
+                    context: { role: data.personalInfo.title },
+                    onAccept: (improved) => updatePersonal('summary', improved),
+                  })
+                }
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 transition flex items-center gap-1 cursor-pointer"
+              >
+                Tailor to Job
+              </button>
+            </div>
+
+            <div>
               <textarea
-                rows={3}
-                placeholder="2-3 impactful sentences highlighting your technical specialization and proven results..."
+                rows={4}
+                placeholder="2-3 impactful sentences highlighting your technical specialization, engineering strengths, and proven results..."
                 value={data.personalInfo.summary}
                 onChange={(e) => updatePersonal('summary', e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs sm:text-sm text-[#111827] focus:outline-none focus:border-[#2563EB] leading-relaxed"
+                className="w-full px-3 py-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs sm:text-sm text-[#111827] focus:outline-none focus:border-[#2563EB] leading-relaxed"
               />
+              <div className="flex items-center justify-between text-[11px] text-[#64748B] mt-1.5 px-1">
+                <span>
+                  Words: {data.personalInfo.summary ? data.personalInfo.summary.trim().split(/\s+/).filter(Boolean).length : 0} • Characters: {data.personalInfo.summary.length}
+                </span>
+                <span className="text-[#2563EB]">Recommended: 40-70 words for highest ATS engagement</span>
+              </div>
             </div>
           </div>
         )}
@@ -917,9 +1069,34 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ data, onChange }) =>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[#64748B] mb-1">
-                      Bullet Points (One bullet per line)
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-[#64748B]">
+                        Bullet Points (One bullet per line)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setGeminiModal({
+                            isOpen: true,
+                            action: 'enhance_bullet',
+                            title: `Polish Experience Bullets (${exp.role || exp.organization || 'Role'})`,
+                            originalText: exp.bullets.join('\n') || 'Engineered scalable features and collaborated with team',
+                            context: { role: exp.role, company: exp.organization },
+                            onAccept: (improved) => {
+                              const cleaned = improved
+                                .split('\n')
+                                .map((b) => b.replace(/^[•\-\*]\s*/, '').trim())
+                                .filter(Boolean)
+                              updateExperience(exp.id, 'bullets', cleaned)
+                            },
+                          })
+                        }
+                        className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        AI Polish Bullets
+                      </button>
+                    </div>
                     <textarea
                       rows={3}
                       placeholder="Designed modular React components...&#10;Engineered low-latency API pipelines..."
@@ -1027,9 +1204,32 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ data, onChange }) =>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-[#64748B] mb-1">
-                        Technologies Used (Comma separated)
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-medium text-[#64748B]">
+                          Technologies Used (Comma separated)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setGeminiModal({
+                              isOpen: true,
+                              action: 'suggest_skills',
+                              title: `Suggest Tech Stack (${proj.name || 'Project'})`,
+                              originalText: `${proj.name}: ${proj.description}`,
+                              context: { technologies: proj.technologies },
+                              onAccept: (improved) => {
+                                const suggested = improved.split(',').map((s) => s.trim()).filter(Boolean)
+                                const merged = Array.from(new Set([...proj.technologies, ...suggested]))
+                                updateProject(proj.id, 'technologies', merged)
+                              },
+                            })
+                          }
+                          className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Suggest Tech
+                        </button>
+                      </div>
                       <input
                         type="text"
                         placeholder="e.g. Python, FastAPI, Redis"
@@ -1047,9 +1247,28 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ data, onChange }) =>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[#64748B] mb-1">
-                      Short Description
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-[#64748B]">
+                        Short Description
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setGeminiModal({
+                            isOpen: true,
+                            action: 'improve_project',
+                            title: `Polish Project (${proj.name || 'Project'})`,
+                            originalText: proj.description || `${proj.name} application built with modern web technologies`,
+                            context: { technologies: proj.technologies },
+                            onAccept: (improved) => updateProject(proj.id, 'description', improved),
+                          })
+                        }
+                        className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        AI Polish Description
+                      </button>
+                    </div>
                     <textarea
                       rows={2}
                       placeholder="Engineered high-throughput engine achieving sub-10ms profiling..."
@@ -1354,6 +1573,17 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({ data, onChange }) =>
           />
         </div>
       </div>
+
+      {/* Gemini AI Assistant Modal */}
+      <GeminiAssistantModal
+        isOpen={geminiModal.isOpen}
+        onClose={() => setGeminiModal((prev) => ({ ...prev, isOpen: false }))}
+        onAccept={geminiModal.onAccept}
+        action={geminiModal.action}
+        title={geminiModal.title}
+        originalText={geminiModal.originalText}
+        context={geminiModal.context}
+      />
     </div>
   )
 }

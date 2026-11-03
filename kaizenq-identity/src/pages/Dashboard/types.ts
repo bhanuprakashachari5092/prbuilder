@@ -11,6 +11,7 @@ export type DashboardTab =
   | 'projects'
   | 'domain'
   | 'publish'
+  | 'billing'
   | 'settings'
   | 'admin-domains'
 

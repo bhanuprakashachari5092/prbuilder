@@ -101,6 +101,70 @@ export const authService = {
   },
 
   /**
+   * Update current user's password (used during password recovery or in account settings).
+   */
+  async updatePassword(password: string): Promise<AuthResponse<{ user: User | null }>> {
+    if (!isSupabaseConfigured()) {
+      return {
+        data: null,
+        error: new Error('Supabase is not configured.'),
+      }
+    }
+
+    const { data, error } = await supabase.auth.updateUser({ password })
+    return { data: data.user ? { user: data.user } : null, error }
+  },
+
+  /**
+   * Resend signup verification confirmation email.
+   */
+  async resendVerificationEmail(email: string): Promise<{ error: AuthError | Error | null }> {
+    if (!isSupabaseConfigured()) {
+      return {
+        error: new Error('Supabase is not configured.'),
+      }
+    }
+
+    const redirectUrl =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : (import.meta.env.VITE_APP_URL || 'https://prbuilder.xyz')
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    })
+    return { error }
+  },
+
+  /**
+   * Authenticate student with Google OAuth if configured in Supabase.
+   */
+  async signInWithGoogle(): Promise<{ error: AuthError | Error | null }> {
+    if (!isSupabaseConfigured()) {
+      return {
+        error: new Error('Supabase is not configured.'),
+      }
+    }
+
+    const redirectUrl =
+      typeof window !== 'undefined' && window.location.origin
+        ? `${window.location.origin}/?route=dashboard`
+        : (import.meta.env.VITE_APP_URL || 'https://prbuilder.xyz')
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+      },
+    })
+    return { error }
+  },
+
+  /**
    * Fetch current active session.
    */
   async getSession(): Promise<{ session: Session | null; error: AuthError | null }> {

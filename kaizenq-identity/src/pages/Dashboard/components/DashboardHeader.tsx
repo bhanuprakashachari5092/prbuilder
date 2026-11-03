@@ -56,6 +56,10 @@ const TAB_TITLES: Record<DashboardTab, { title: string; subtitle: string }> = {
     title: 'Settings',
     subtitle: 'Account preferences and privacy controls',
   },
+  billing: {
+    title: 'Billing & Entitlements',
+    subtitle: 'Manage passes, lifetime unlocks, and payment history',
+  },
   'admin-domains': {
     title: 'Domain Claims',
     subtitle: 'Review student .xyz domain sponsorship requests',

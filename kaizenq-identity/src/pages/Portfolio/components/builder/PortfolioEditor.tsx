@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   User,
   Code2,
@@ -30,6 +30,8 @@ import { validatePortfolio } from '../../validation.ts'
 import { useAuth } from '../../../../app/providers/AuthContext.tsx'
 import { profileService } from '../../../../services/profileService.ts'
 import { portfolioService } from '../../../../services/portfolioService.ts'
+import { GeminiAssistantModal } from '../../../../components/ai/GeminiAssistantModal.tsx'
+import type { GeminiAction, GeminiContext } from '../../../../services/geminiService.ts'
 import type {
   PortfolioData,
   PersonalProfile,
@@ -42,13 +44,7 @@ import type {
   SectionVisibility,
 } from '../../types.ts'
 
-export interface PortfolioEditorProps {
-  data: PortfolioData
-  onChange: (updated: PortfolioData) => void
-  onOpenCompletionModal?: () => void
-}
-
-type AccordionSection =
+export type PortfolioAccordionSection =
   | 'visibility'
   | 'profile'
   | 'skills'
@@ -58,8 +54,48 @@ type AccordionSection =
   | 'achievements'
   | 'contact'
 
-export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange, onOpenCompletionModal }) => {
-  const [openSection, setOpenSection] = useState<AccordionSection>('profile')
+export interface PortfolioEditorProps {
+  data: PortfolioData
+  onChange: (updated: PortfolioData) => void
+  onOpenCompletionModal?: () => void
+  activeSection?: PortfolioAccordionSection
+  onSectionChange?: (sec: PortfolioAccordionSection) => void
+}
+
+export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({
+  data,
+  onChange,
+  onOpenCompletionModal,
+  activeSection,
+  onSectionChange,
+}) => {
+  const [openSection, setOpenSection] = useState<PortfolioAccordionSection>(activeSection || 'profile')
+
+  useEffect(() => {
+    if (activeSection) {
+      setOpenSection(activeSection)
+    }
+  }, [activeSection])
+
+  const handleSetOpenSection = (sec: PortfolioAccordionSection) => {
+    setOpenSection(sec)
+    onSectionChange?.(sec)
+  }
+
+  const [geminiModal, setGeminiModal] = useState<{
+    isOpen: boolean
+    action: GeminiAction
+    title: string
+    originalText: string
+    context?: GeminiContext
+    onAccept: (improved: string) => void
+  }>({
+    isOpen: false,
+    action: 'improve_project',
+    title: '',
+    originalText: '',
+    onAccept: () => {},
+  })
 
   // Real-time validation issues for inline display
   const validation = validatePortfolio(data)
@@ -468,7 +504,7 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
       {/* 0. Section Visibility Quick Controls */}
       <div className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
         <button
-          onClick={() => setOpenSection(openSection === 'visibility' ? 'profile' : 'visibility')}
+          onClick={() => handleSetOpenSection(openSection === 'visibility' ? 'profile' : 'visibility')}
           className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -538,7 +574,7 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
       {/* 1. Profile & Identity Section */}
       <div className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
         <button
-          onClick={() => setOpenSection(openSection === 'profile' ? 'skills' : 'profile')}
+          onClick={() => handleSetOpenSection(openSection === 'profile' ? 'skills' : 'profile')}
           className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -832,6 +868,51 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
 
             {/* Bios */}
             <div className="space-y-3 pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-blue-50/60 border border-blue-200/80">
+                <span className="text-xs font-semibold text-blue-900 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  Gemini AI Bio Writer:
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGeminiModal({
+                        isOpen: true,
+                        action: 'generate_intro',
+                        title: 'Generate Professional Bio & Introduction',
+                        originalText:
+                          data.profile.aboutMe ||
+                          data.profile.shortBio ||
+                          `${data.profile.fullName || 'Developer'} specializing in engineering solutions.`,
+                        context: { role: data.profile.title },
+                        onAccept: (improved) => updateProfile('aboutMe', improved),
+                      })
+                    }
+                    className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow-xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Draft Intro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGeminiModal({
+                        isOpen: true,
+                        action: 'fix_grammar',
+                        title: 'Polish Elevator Pitch',
+                        originalText: data.profile.shortBio || data.profile.aboutMe,
+                        context: { role: data.profile.title },
+                        onAccept: (improved) => updateProfile('shortBio', improved),
+                      })
+                    }
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 transition cursor-pointer"
+                  >
+                    Polish Pitch
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="text-[11px] font-medium text-[#64748B] block mb-1">
                   Short Hero Elevator Pitch (1-2 sentences)
@@ -865,7 +946,7 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
       {/* 2. Technical Skills Section */}
       <div className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
         <button
-          onClick={() => setOpenSection(openSection === 'skills' ? 'projects' : 'skills')}
+          onClick={() => handleSetOpenSection(openSection === 'skills' ? 'projects' : 'skills')}
           className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -1180,7 +1261,7 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
       {/* 3. Featured Engineering Projects */}
       <div className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
         <button
-          onClick={() => setOpenSection(openSection === 'projects' ? 'experience' : 'projects')}
+          onClick={() => handleSetOpenSection(openSection === 'projects' ? 'experience' : 'projects')}
           className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -1280,9 +1361,32 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-medium text-[#64748B] block mb-1">
-                        Technologies (comma separated)
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-medium text-[#64748B]">
+                          Technologies (comma separated)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setGeminiModal({
+                              isOpen: true,
+                              action: 'suggest_skills',
+                              title: `Suggest Tech Stack (${proj.title || 'Project'})`,
+                              originalText: `${proj.title}: ${proj.description}`,
+                              context: { technologies: proj.technologies },
+                              onAccept: (improved) => {
+                                const suggested = improved.split(',').map((s) => s.trim()).filter(Boolean)
+                                const merged = Array.from(new Set([...proj.technologies, ...suggested]))
+                                updateProject(proj.id, { technologies: merged })
+                              },
+                            })
+                          }
+                          className="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          Suggest Tech
+                        </button>
+                      </div>
                       <input
                         type="text"
                         value={proj.technologies.join(', ')}
@@ -1298,9 +1402,28 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-[#64748B] block mb-1">
-                      Project Description
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-medium text-[#64748B]">
+                        Project Description
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setGeminiModal({
+                            isOpen: true,
+                            action: 'improve_project',
+                            title: `Polish Project (${proj.title || 'Project'})`,
+                            originalText: proj.description || `${proj.title} application with modern architecture`,
+                            context: { technologies: proj.technologies },
+                            onAccept: (improved) => updateProject(proj.id, { description: improved }),
+                          })
+                        }
+                        className="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        AI Polish Description
+                      </button>
+                    </div>
                     <textarea
                       rows={2}
                       value={proj.description}
@@ -1437,7 +1560,7 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
       {/* 4. Experience & Roles Section */}
       <div className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
         <button
-          onClick={() => setOpenSection(openSection === 'experience' ? 'education' : 'experience')}
+          onClick={() => handleSetOpenSection(openSection === 'experience' ? 'education' : 'experience')}
           className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -1606,7 +1729,7 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
       {/* 5. Education Section */}
       <div className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
         <button
-          onClick={() => setOpenSection(openSection === 'education' ? 'achievements' : 'education')}
+          onClick={() => handleSetOpenSection(openSection === 'education' ? 'achievements' : 'education')}
           className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -1788,7 +1911,7 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
       {/* 6. Achievements & Certifications */}
       <div className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
         <button
-          onClick={() => setOpenSection(openSection === 'achievements' ? 'contact' : 'achievements')}
+          onClick={() => handleSetOpenSection(openSection === 'achievements' ? 'contact' : 'achievements')}
           className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -1996,7 +2119,7 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
       {/* 7. Contact & Social Channels */}
       <div className="rounded-2xl bg-white border border-[#E2E8F0] shadow-sm overflow-hidden">
         <button
-          onClick={() => setOpenSection(openSection === 'contact' ? 'profile' : 'contact')}
+          onClick={() => handleSetOpenSection(openSection === 'contact' ? 'profile' : 'contact')}
           className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#F8FAFC] transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -2172,6 +2295,17 @@ export const PortfolioEditor: React.FC<PortfolioEditorProps> = ({ data, onChange
           </div>
         </div>
       </div>
+
+      {/* Gemini AI Assistant Modal */}
+      <GeminiAssistantModal
+        isOpen={geminiModal.isOpen}
+        onClose={() => setGeminiModal((prev) => ({ ...prev, isOpen: false }))}
+        onAccept={geminiModal.onAccept}
+        action={geminiModal.action}
+        title={geminiModal.title}
+        originalText={geminiModal.originalText}
+        context={geminiModal.context}
+      />
     </div>
   )
 }
