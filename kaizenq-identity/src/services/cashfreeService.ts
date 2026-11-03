@@ -4,7 +4,7 @@
  *
  * Capabilities:
  * - Dynamic asynchronous loading of official Cashfree v3 Web SDK (https://sdk.cashfree.com/js/v3/cashfree.js)
- * - Server-side order creation via Supabase Edge Function with automatic catalog price validation
+ * - Serverless API order creation with automatic catalog price validation & secrets isolation
  * - Native Drop-in Modal checkout (Cards, UPI, NetBanking, Wallets, PayLater)
  * - Authoritative payment verification and entitlement fulfillment
  * - Webhook HMAC-SHA256 signature verification utility
@@ -145,8 +145,9 @@ export const cashfreeService = {
 
   /**
    * Creates an authoritative Cashfree order session.
-   * Priority 1: Supabase Edge Function 'cashfree-order' (secures client secret on server)
-   * Priority 2: Fallback to paymentService.createOrder with local session fallback
+   * Priority 1: Vercel serverless /api/cashfree-order
+   * Priority 2: Supabase Edge Function 'cashfree-order'
+   * Priority 3: Fallback database order
    */
   async createOrder(
     productId: string,
@@ -155,36 +156,75 @@ export const cashfreeService = {
     customer?: CashfreeCustomerDetails,
   ): Promise<{ data: CreateCashfreeOrderResult | null; error: Error | null }> {
     try {
-      if (isSupabaseConfigured()) {
-        const { data: edgeData, error: edgeError } = await supabase.functions.invoke(
-          'cashfree-order',
-          {
-            body: {
-              productId,
-              couponCode: couponCode ? couponCode.trim().toUpperCase() : undefined,
-              customerPhone: customer?.customerPhone,
-            },
-          },
-        )
+      // 1. Try Vercel Serverless API Route
+      try {
+        const apiRes = await fetch('/api/cashfree-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId,
+            couponCode: couponCode ? couponCode.trim().toUpperCase() : undefined,
+            customerPhone: customer?.customerPhone,
+          }),
+        })
 
-        if (!edgeError && edgeData && edgeData.paymentSessionId) {
-          return {
-            data: {
-              orderId: edgeData.orderId,
-              paymentSessionId: edgeData.paymentSessionId,
-              cfOrderId: edgeData.cfOrderId,
-              amountRupees: edgeData.amountRupees,
-              amountPaise: edgeData.amountPaise,
-              currency: edgeData.currency || 'INR',
-              orderStatus: edgeData.orderStatus || 'ACTIVE',
-              expiresAt: edgeData.expiresAt,
-            },
-            error: null,
+        if (apiRes.ok) {
+          const apiData = await apiRes.json()
+          if (apiData.paymentSessionId) {
+            return {
+              data: {
+                orderId: apiData.orderId,
+                paymentSessionId: apiData.paymentSessionId,
+                cfOrderId: apiData.cfOrderId,
+                amountRupees: apiData.amountRupees,
+                amountPaise: apiData.amountPaise,
+                currency: apiData.currency || 'INR',
+                orderStatus: apiData.orderStatus || 'ACTIVE',
+                expiresAt: apiData.expiresAt,
+              },
+              error: null,
+            }
           }
+        }
+      } catch (e) {
+        // Fall through
+      }
+
+      // 2. Try Supabase Edge Function
+      if (isSupabaseConfigured()) {
+        try {
+          const { data: edgeData, error: edgeError } = await supabase.functions.invoke(
+            'cashfree-order',
+            {
+              body: {
+                productId,
+                couponCode: couponCode ? couponCode.trim().toUpperCase() : undefined,
+                customerPhone: customer?.customerPhone,
+              },
+            },
+          )
+
+          if (!edgeError && edgeData && edgeData.paymentSessionId) {
+            return {
+              data: {
+                orderId: edgeData.orderId,
+                paymentSessionId: edgeData.paymentSessionId,
+                cfOrderId: edgeData.cfOrderId,
+                amountRupees: edgeData.amountRupees,
+                amountPaise: edgeData.amountPaise,
+                currency: edgeData.currency || 'INR',
+                orderStatus: edgeData.orderStatus || 'ACTIVE',
+                expiresAt: edgeData.expiresAt,
+              },
+              error: null,
+            }
+          }
+        } catch (e) {
+          // Fall through
         }
       }
 
-      // Fallback: Create DB order first
+      // 3. Fallback: Create DB order
       const orderRes = await paymentService.createOrder(productId, isSandbox, couponCode)
       if (orderRes.error || !orderRes.data) {
         return { data: null, error: orderRes.error || new Error('Failed to create order') }
@@ -257,30 +297,52 @@ export const cashfreeService = {
     orderId: string,
   ): Promise<{ success: boolean; status: string; utr?: string; error?: string }> {
     try {
-      if (isSupabaseConfigured()) {
-        const { data: edgeData, error: edgeError } = await supabase.functions.invoke(
-          'cashfree-verify',
-          {
-            body: { orderId },
-          },
-        )
-
-        if (!edgeError && edgeData) {
-          if (edgeData.status === 'paid' || edgeData.success) {
+      // 1. Try Vercel Serverless API
+      try {
+        const verifyRes = await fetch('/api/cashfree-verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId }),
+        })
+        if (verifyRes.ok) {
+          const verifyData = await verifyRes.json()
+          if (verifyData.success || verifyData.status === 'paid') {
             return {
               success: true,
               status: 'paid',
-              utr: edgeData.utr,
+              utr: verifyData.utr,
             }
           }
-          return {
-            success: false,
-            status: edgeData.status || 'pending',
+        }
+      } catch (e) {
+        // Fall through
+      }
+
+      // 2. Try Supabase Edge Function
+      if (isSupabaseConfigured()) {
+        try {
+          const { data: edgeData, error: edgeError } = await supabase.functions.invoke(
+            'cashfree-verify',
+            {
+              body: { orderId },
+            },
+          )
+
+          if (!edgeError && edgeData) {
+            if (edgeData.status === 'paid' || edgeData.success) {
+              return {
+                success: true,
+                status: 'paid',
+                utr: edgeData.utr,
+              }
+            }
           }
+        } catch (e) {
+          // Fall through
         }
       }
 
-      // Check via database order status
+      // 3. Check via database order status
       const statusRes = await paymentService.getOrderStatus(orderId)
       return {
         success: statusRes.status === 'paid',
@@ -298,7 +360,6 @@ export const cashfreeService = {
 
   /**
    * Cashfree Webhook HMAC-SHA256 Base64 Signature Calculation.
-   * Useful for unit testing, webhooks, and administrative verification.
    */
   async computeWebhookSignature(timestamp: string, rawBody: string, secret: string): Promise<string> {
     const cryptoSubtle = globalThis.crypto?.subtle

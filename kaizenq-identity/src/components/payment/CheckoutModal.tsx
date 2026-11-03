@@ -12,13 +12,13 @@ import {
   Smartphone,
   QrCode,
   RefreshCw,
-  FlaskConical,
   Tag,
   Gift,
   ArrowRight,
   CreditCard,
   Lock,
-  Zap,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import QRCode from 'qrcode'
 import { Button } from '../ui/Button.tsx'
@@ -65,15 +65,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [confirmedUtr, setConfirmedUtr] = useState<string | null>(null)
   const [isSimulating, setIsSimulating] = useState<boolean>(false)
 
-  // Payment Mode Tab (Cashfree Express vs Direct UPI QR)
-  const [activeTab, setActiveTab] = useState<'cashfree' | 'upi_qr'>(
-    isCashfreeConfigured ? 'cashfree' : 'upi_qr',
-  )
+  // Payment Options & Cashfree State
+  const [showQrCode, setShowQrCode] = useState<boolean>(!isCashfreeConfigured)
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null)
   const [isLaunchingCashfree, setIsLaunchingCashfree] = useState<boolean>(false)
   const [cashfreeError, setCashfreeError] = useState<string | null>(null)
+  const [isVerifying, setIsVerifying] = useState<boolean>(false)
 
   // Coupon State
+  const [showCouponInput, setShowCouponInput] = useState<boolean>(false)
   const [couponInput, setCouponInput] = useState<string>('')
   const [appliedCoupon, setAppliedCoupon] = useState<ValidateCouponResult | null>(null)
   const [isApplyingCoupon, setIsApplyingCoupon] = useState<boolean>(false)
@@ -86,7 +86,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const originalRupees = Math.round((pricePaise / 100) * 100) / 100
 
-  // 1. Initialize Order (with optional coupon)
+  // 1. Initialize Order
   const initOrderWithCoupon = useCallback(
     async (codeToApply?: string) => {
       setLoading(true)
@@ -99,7 +99,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       const res = await paymentService.createOrder(productId, isSandboxEnv, codeToApply)
       if (res.error || !res.data) {
-        setError(res.error?.message || 'Unable to create payment session. Please try again.')
+        setError(res.error?.message || 'Unable to establish payment session. Please try again.')
         setLoading(false)
         return
       }
@@ -107,7 +107,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setOrder(res.data)
       setLoading(false)
 
-      // Preload Cashfree payment session if Cashfree is active
+      // Preload Cashfree payment session silently in the background
       if (isCashfreeConfigured) {
         cashfreeService
           .createOrder(productId, isSandboxEnv, codeToApply)
@@ -130,7 +130,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setCouponError(null)
       setCashfreeError(null)
       setPaymentSessionId(null)
-      setActiveTab(isCashfreeConfigured ? 'cashfree' : 'upi_qr')
+      setShowQrCode(!isCashfreeConfigured)
+      setShowCouponInput(Boolean(initialCouponCode))
       if (isCashfreeConfigured) {
         cashfreeService.loadSdk().catch(() => {})
       }
@@ -142,20 +143,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setOrder(null)
       setAppliedCoupon(null)
       setPaymentSessionId(null)
+      setIsVerifying(false)
       if (pollTimerRef.current) clearInterval(pollTimerRef.current)
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current)
     }
   }, [isOpen])
 
-  // 2. Render QR Code onto Canvas
+  // 2. Render QR Code onto Canvas when visible
   useEffect(() => {
-    if (!order?.upiUri || !canvasRef.current || appliedCoupon?.isFree) return
+    if (!order?.upiUri || !canvasRef.current || appliedCoupon?.isFree || !showQrCode) return
 
     QRCode.toCanvas(
       canvasRef.current,
       order.upiUri,
       {
-        width: 200,
+        width: 180,
         margin: 2,
         color: {
           dark: '#0F172A',
@@ -169,7 +171,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         }
       },
     )
-  }, [order?.upiUri, loading, appliedCoupon, activeTab])
+  }, [order?.upiUri, loading, appliedCoupon, showQrCode])
 
   // 3. Countdown Timer (5 Minutes)
   useEffect(() => {
@@ -191,7 +193,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }, [isOpen, order, paymentStatus, appliedCoupon])
 
-  // 4. Status Auto-Polling
+  // 4. Background Status Auto-Polling
   useEffect(() => {
     if (!isOpen || !order || paymentStatus !== 'pending' || appliedCoupon?.isFree) return
 
@@ -206,7 +208,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         if (pollTimerRef.current) clearInterval(pollTimerRef.current)
         setPaymentStatus(res.status)
       }
-    }, 2500)
+    }, 3000)
 
     return () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current)
@@ -237,24 +239,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
 
       if (!currentSession) {
-        throw new Error('Unable to initialize Cashfree payment session.')
+        throw new Error('Could not establish Cashfree session. You can pay via QR below.')
       }
+
+      setIsLaunchingCashfree(false)
+      setIsVerifying(true)
 
       const checkoutRes = await cashfreeService.launchCheckout(currentSession, '_modal')
       if (checkoutRes.error) {
         setCashfreeError(checkoutRes.error.message || 'Payment window closed or cancelled')
       }
 
-      // Authoritatively verify with Cashfree and database
+      // Verify status with server
       const verifyRes = await cashfreeService.verifyOrder(order.orderId)
       if (verifyRes.success) {
         setPaymentStatus('paid')
         setConfirmedUtr(verifyRes.utr || 'CASHFREE_VERIFIED')
       }
     } catch (err: any) {
-      setCashfreeError(err?.message || 'Cashfree checkout failed to start')
+      setCashfreeError(err?.message || 'Failed to open Cashfree checkout')
     } finally {
       setIsLaunchingCashfree(false)
+      setIsVerifying(false)
     }
   }
 
@@ -284,17 +290,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         return
       }
 
-      // Valid coupon
       setAppliedCoupon(res.data)
 
       if (res.data.isFree) {
-        // 100% Free: cancel previous pending order and clear UPI QR
         if (order?.orderId) {
           paymentService.cancelOrder(order.orderId).catch(() => {})
         }
         setOrder(null)
       } else {
-        // Re-generate order with coupon discount applied
         if (order?.orderId) {
           await paymentService.cancelOrder(order.orderId).catch(() => {})
         }
@@ -358,13 +361,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }
 
-  // Handle Copy Actions
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedVpa(true)
-    setTimeout(() => setCopiedVpa(false), 2000)
-  }
-
   // Handle Sandbox Simulation
   const handleSimulatePayment = async () => {
     if (!order) return
@@ -385,6 +381,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     } else {
       setError(res.error?.message || 'Sandbox simulation failed')
     }
+  }
+
+  // Handle Copy Actions
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedVpa(true)
+    setTimeout(() => setCopiedVpa(false), 2000)
   }
 
   const formatTime = (seconds: number) => {
@@ -413,67 +416,47 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     : originalRupees.toFixed(2)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#E2E8F0] overflow-hidden max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#E2E8F0] overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#E2E8F0] bg-gradient-to-r from-[#F8FAFC] to-white shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EEF2FF] border border-[#C7D2FE] flex items-center justify-center text-[#2563EB]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#2563EB]">
               {appliedCoupon?.isFree ? (
-                <Gift className="w-5 h-5" />
-              ) : isCashfreeConfigured ? (
-                <CreditCard className="w-5 h-5" />
+                <Gift className="w-5 h-5 text-emerald-600" />
               ) : (
-                <QrCode className="w-5 h-5" />
+                <Lock className="w-4 h-4 text-[#2563EB]" />
               )}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-[#0F172A]">
-                  {appliedCoupon?.isFree
-                    ? '100% Sponsored Unlock'
-                    : isCashfreeConfigured
-                    ? 'Cashfree Express Checkout'
-                    : 'UPI Instant Checkout'}
-                </h3>
-                <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
-                  {isCashfreeConfigured ? 'Cashfree PG' : 'YouPI-PG'}
-                </span>
-              </div>
-              <p className="text-xs text-[#64748B]">
-                {appliedCoupon?.isFree
-                  ? 'Server-verified promotional sponsorship'
-                  : isCashfreeConfigured
-                  ? 'Cards, NetBanking, Google Pay, PhonePe & Wallets'
-                  : 'Scan with any UPI app for zero-fee activation'}
+              <h3 className="text-sm font-bold text-[#0F172A] leading-tight">
+                {appliedCoupon?.isFree ? 'Promotional Access Unlock' : 'Secure Checkout'}
+              </h3>
+              <p className="text-[11px] text-[#64748B]">
+                {appliedCoupon?.isFree ? '100% Sponsored coupon applied' : 'Instant activation & lifetime access'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-xl transition-colors cursor-pointer"
+            className="p-1.5 text-[#64748B] hover:text-[#0F172A] hover:bg-[#E2E8F0]/50 rounded-xl transition-colors cursor-pointer"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="p-6 overflow-y-auto space-y-5">
-          {loading ? (
-            <div className="py-16 text-center space-y-3">
-              <RefreshCw className="w-8 h-8 text-[#2563EB] animate-spin mx-auto" />
-              <p className="text-sm font-medium text-[#0F172A]">Generating secure payment session...</p>
-              <p className="text-xs text-[#64748B]">Verifying catalog pricing on PR Builder server</p>
-            </div>
-          ) : error ? (
-            <div className="py-10 text-center space-y-4">
+        <div className="p-6 overflow-y-auto space-y-4">
+          {error ? (
+            /* Error State */
+            <div className="py-8 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto border border-red-200">
                 <AlertCircle className="w-6 h-6" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-red-900">Payment Session Error</p>
-                <p className="text-xs text-red-700 mt-1 max-w-sm mx-auto">{error}</p>
+                <p className="text-xs text-red-700 mt-1">{error}</p>
               </div>
               <Button onClick={() => initOrderWithCoupon()} variant="primary" size="sm">
                 <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
@@ -482,40 +465,34 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           ) : paymentStatus === 'paid' ? (
             /* Success State */
-            <div className="py-8 text-center space-y-5 animate-in zoom-in-95 duration-200">
-              <div className="w-16 h-16 rounded-3xl bg-emerald-50 border-2 border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-10 h-10" />
+            <div className="py-6 text-center space-y-4 animate-in zoom-in-95 duration-150">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 border-2 border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-8 h-8" />
               </div>
 
               <div>
-                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-xs px-3 py-1">
-                  Access Verified & Entitlement Granted
-                </Badge>
-                <h4 className="text-xl font-bold text-[#0F172A] mt-2">Access Granted!</h4>
+                <span className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Payment Verified
+                </span>
+                <h4 className="text-lg font-bold text-[#0F172A] mt-2">Access Granted!</h4>
                 <p className="text-xs text-[#64748B] mt-1">
-                  <span className="font-semibold text-[#0F172A]">{productTitle}</span> is now permanently unlocked for your account.
+                  <span className="font-semibold text-[#0F172A]">{productTitle}</span> is now active on your account.
                 </p>
               </div>
 
-              {/* Receipt details */}
-              <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] text-left text-xs space-y-2">
+              {/* Receipt Summary */}
+              <div className="p-3.5 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] text-left text-xs space-y-1.5">
                 <div className="flex justify-between items-center text-[#64748B]">
-                  <span>Order Reference</span>
-                  <span className="font-mono text-[#0F172A]">{order?.orderId}</span>
+                  <span>Order Ref</span>
+                  <span className="font-mono text-[#0F172A] text-[11px]">{order?.orderId}</span>
                 </div>
                 {confirmedUtr && (
                   <div className="flex justify-between items-center text-[#64748B]">
                     <span>Reference / UTR</span>
-                    <span className="font-mono text-emerald-700 font-semibold">{confirmedUtr}</span>
+                    <span className="font-mono text-emerald-700 font-semibold text-[11px]">{confirmedUtr}</span>
                   </div>
                 )}
-                {appliedCoupon && (
-                  <div className="flex justify-between items-center text-[#64748B]">
-                    <span>Coupon Applied</span>
-                    <span className="font-semibold text-emerald-600">{appliedCoupon.couponCode}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-[#64748B] pt-1 border-t border-[#E2E8F0]">
+                <div className="flex justify-between items-center text-[#64748B] pt-1.5 border-t border-[#E2E8F0]">
                   <span>Amount Settled</span>
                   <span className="font-bold text-[#0F172A]">₹{displayFinalRupees}</span>
                 </div>
@@ -523,7 +500,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
               <Button
                 variant="primary"
-                className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-lg shadow-blue-500/20 py-3 rounded-2xl text-sm font-semibold"
+                className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white py-3 rounded-xl text-sm font-semibold shadow-md shadow-blue-500/20"
                 onClick={() => {
                   if (order) {
                     onSuccess(order.orderId, confirmedUtr || undefined)
@@ -537,396 +514,267 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           ) : paymentStatus === 'expired' ? (
             /* Expired State */
-            <div className="py-10 text-center space-y-4">
+            <div className="py-8 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
                 <Clock className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-[#0F172A]">Payment Session Expired</p>
+                <p className="text-sm font-semibold text-[#0F172A]">Session Expired</p>
                 <p className="text-xs text-[#64748B] mt-1">
-                  This payment session expired after 5 minutes for transaction security.
+                  Payment sessions expire after 5 minutes for transaction safety.
                 </p>
               </div>
               <Button onClick={() => initOrderWithCoupon()} variant="primary" size="sm">
                 <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                Generate New Session
+                Generate Fresh Session
               </Button>
             </div>
           ) : (
             /* Active Checkout Flow */
-            <div className="space-y-5">
-              {/* Product and Line-Item Pricing Card */}
-              <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] space-y-3">
-                <div className="flex items-center justify-between pb-2.5 border-b border-[#E2E8F0]/70">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">Item Selected</p>
-                    <p className="text-sm font-bold text-[#0F172A] mt-0.5">{productTitle}</p>
+            <div className="space-y-4">
+              {/* Product Card */}
+              <div className="p-4 bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="truncate pr-2">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-[#64748B] block">Selected Upgrade</span>
+                    <span className="text-sm font-bold text-[#0F172A] truncate block">{productTitle}</span>
                   </div>
-                  <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 text-[10px]">
-                    Lifetime Access
+                  <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 text-[10px] shrink-0">
+                    Lifetime
                   </Badge>
                 </div>
 
-                {/* Line Items Breakdown */}
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between items-center text-[#64748B]">
-                    <span>Original Price</span>
-                    <span className="font-semibold text-[#0F172A]">₹{displayOriginalRupees}</span>
+                <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]/70 text-xs">
+                  <div className="flex items-center gap-1.5 text-[#64748B]">
+                    <span>Original: ₹{displayOriginalRupees}</span>
+                    {Number(displayDiscountRupees) > 0 && (
+                      <span className="text-emerald-600 font-semibold">(-₹{displayDiscountRupees})</span>
+                    )}
                   </div>
-
-                  {(appliedCoupon || Number(displayDiscountRupees) > 0) && (
-                    <div className="flex justify-between items-center text-emerald-600 font-medium">
-                      <span className="flex items-center gap-1">
-                        <Tag className="w-3.5 h-3.5" />
-                        <span>Discount ({appliedCoupon?.couponCode || order?.couponCode})</span>
-                      </span>
-                      <span>-₹{displayDiscountRupees}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center pt-2 border-t border-[#E2E8F0] text-sm">
-                    <span className="font-bold text-[#0F172A]">Payable Total</span>
-                    <div className="text-right">
-                      <span className="text-xl font-black text-[#0F172A]">
-                        ₹{displayFinalRupees}
-                      </span>
-                      {appliedCoupon?.isFree && (
-                        <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wide">
-                          100% Free Sponsor
-                        </span>
-                      )}
-                    </div>
+                  <div className="text-right">
+                    <span className="text-lg font-black text-[#0F172A]">₹{displayFinalRupees}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Coupon Code Section */}
-              <div className="p-3.5 bg-white rounded-2xl border border-[#E2E8F0] space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-[#0F172A]">
-                  <span className="flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-[#2563EB]" />
-                    <span>Have a Promo Code or Voucher?</span>
-                  </span>
-                  {appliedCoupon && (
-                    <button
-                      onClick={handleRemoveCoupon}
-                      className="text-[11px] text-red-600 hover:text-red-700 font-medium cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-
+              {/* Coupon Bar */}
+              <div>
                 {appliedCoupon ? (
-                  <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <div>
-                        <span className="text-xs font-bold text-emerald-900 font-mono">
-                          {appliedCoupon.couponCode}
-                        </span>
-                        <span className="text-[11px] text-emerald-700 ml-2">
-                          {appliedCoupon.message || 'Applied successfully'}
-                        </span>
+                        <span className="font-mono font-bold text-emerald-900">{appliedCoupon.couponCode}</span>
+                        <span className="text-[11px] text-emerald-700 ml-1.5">Applied!</span>
                       </div>
                     </div>
+                    <button
+                      onClick={handleRemoveCoupon}
+                      className="text-[11px] text-red-600 hover:text-red-700 font-semibold cursor-pointer"
+                    >
+                      Remove
+                    </button>
                   </div>
-                ) : (
+                ) : showCouponInput ? (
                   <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        placeholder="e.g. WELCOME10, HACKATHON100"
-                        value={couponInput}
-                        onChange={(e) => {
-                          setCouponInput(e.target.value.toUpperCase())
-                          if (couponError) setCouponError(null)
-                        }}
-                        className="w-full px-3 py-2 text-xs font-mono uppercase bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      placeholder="Enter promo code (e.g. WELCOME10)"
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase())
+                        if (couponError) setCouponError(null)
+                      }}
+                      className="flex-1 px-3 py-2 text-xs font-mono uppercase bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                    />
                     <Button
                       type="submit"
                       variant="outline"
                       size="sm"
                       disabled={isApplyingCoupon || !couponInput.trim()}
-                      className="text-xs px-4 py-2 border-[#CBD5E1] hover:bg-[#F1F5F9] font-semibold"
+                      className="text-xs px-3.5 border-[#CBD5E1] font-semibold"
                     >
-                      {isApplyingCoupon ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        'Apply'
-                      )}
+                      {isApplyingCoupon ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Apply'}
                     </Button>
                   </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowCouponInput(true)}
+                    className="flex items-center gap-1.5 text-xs text-[#2563EB] hover:text-[#1D4ED8] font-semibold cursor-pointer"
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>Have a promo code or voucher?</span>
+                  </button>
                 )}
 
                 {couponError && (
-                  <div className="flex items-center gap-1.5 text-xs text-red-600 pt-0.5">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
                     <span>{couponError}</span>
-                  </div>
+                  </p>
                 )}
               </div>
 
-              {/* 100% Free Order Action OR Standard Payment View */}
+              {/* 100% Free Coupon Claim Flow */}
               {appliedCoupon?.isFree ? (
-                /* Free Order Unlock Card */
-                <div className="p-5 bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 rounded-2xl border border-emerald-300 text-center space-y-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-md">
-                    <Gift className="w-6 h-6" />
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center mx-auto">
+                    <Gift className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-base font-bold text-emerald-950">
-                      100% Free Promotional Unlock
-                    </h4>
-                    <p className="text-xs text-emerald-800 mt-1 max-w-sm mx-auto">
-                      Your coupon <span className="font-mono font-bold">{appliedCoupon.couponCode}</span> covers the full price. No card or payment transfer required!
+                    <h4 className="text-sm font-bold text-emerald-950">100% Sponsored Access</h4>
+                    <p className="text-xs text-emerald-800 mt-0.5">
+                      Code <span className="font-mono font-bold">{appliedCoupon.couponCode}</span> covers the full amount.
                     </p>
                   </div>
-
                   <Button
                     onClick={handleClaimFreeUnlock}
                     disabled={isFulfillingFree}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
                   >
-                    {isFulfillingFree ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                        Authorizing Free Access...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Claim Free Unlock Now
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </>
-                    )}
+                    {isFulfillingFree ? 'Unlocking...' : 'Claim Free Access Now'}
                   </Button>
                 </div>
               ) : (
-                /* Active Payment Gateway View */
-                <div className="space-y-4">
-                  {/* Payment Method Switcher (if Cashfree is configured) */}
-                  {isCashfreeConfigured && (
-                    <div className="grid grid-cols-2 p-1 bg-[#F1F5F9] rounded-2xl gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('cashfree')}
-                        className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          activeTab === 'cashfree'
-                            ? 'bg-white text-[#2563EB] shadow-sm'
-                            : 'text-[#64748B] hover:text-[#0F172A]'
-                        }`}
-                      >
-                        <CreditCard className="w-3.5 h-3.5" />
-                        <span>Cashfree Checkout</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('upi_qr')}
-                        className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          activeTab === 'upi_qr'
-                            ? 'bg-white text-[#2563EB] shadow-sm'
-                            : 'text-[#64748B] hover:text-[#0F172A]'
-                        }`}
-                      >
-                        <QrCode className="w-3.5 h-3.5" />
-                        <span>Direct UPI QR</span>
-                      </button>
+                /* Primary Gateway Checkout Card */
+                <div className="space-y-3 pt-1">
+                  {/* Cashfree Main Action Box */}
+                  <div className="p-4 bg-gradient-to-b from-[#F8FAFC] to-white rounded-2xl border border-[#CBD5E1] shadow-sm space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#0F172A] flex items-center gap-1.5">
+                        <CreditCard className="w-4 h-4 text-[#2563EB]" />
+                        <span>Instant Checkout</span>
+                      </span>
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Zero Convenience Fee
+                      </span>
                     </div>
-                  )}
 
-                  {activeTab === 'cashfree' && isCashfreeConfigured ? (
-                    /* Cashfree Express Checkout Flow */
-                    <div className="p-5 bg-gradient-to-b from-[#F8FAFC] to-white rounded-3xl border border-[#E2E8F0] space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
-                            <Zap className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-[#0F172A]">Instant Gateway Checkout</p>
-                            <p className="text-[10px] text-[#64748B]">All Indian payment methods accepted</p>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          Secure 256-Bit SSL
-                        </span>
+                    {/* Clean payment badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-[#475569]">
+                      <span className="px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] font-medium">Google Pay</span>
+                      <span className="px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] font-medium">PhonePe</span>
+                      <span className="px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] font-medium">Paytm</span>
+                      <span className="px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] font-medium">Cards (Visa/Mastercard/RuPay)</span>
+                      <span className="px-2 py-1 rounded-lg bg-white border border-[#E2E8F0] font-medium">NetBanking</span>
+                    </div>
+
+                    {cashfreeError && (
+                      <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                        <span className="text-[11px]">{cashfreeError}</span>
                       </div>
+                    )}
 
-                      {/* Payment method icon chips */}
-                      <div className="grid grid-cols-4 gap-1.5 text-center">
-                        <div className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[10px] font-semibold text-[#334155]">
-                          Cards (All)
-                        </div>
-                        <div className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[10px] font-semibold text-[#334155]">
-                          Google Pay
-                        </div>
-                        <div className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[10px] font-semibold text-[#334155]">
-                          PhonePe
-                        </div>
-                        <div className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[10px] font-semibold text-[#334155]">
-                          NetBanking
-                        </div>
-                      </div>
-
-                      {cashfreeError && (
-                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                          <span>{cashfreeError}</span>
-                        </div>
+                    {/* Primary Pay Button */}
+                    <Button
+                      onClick={handleLaunchCashfree}
+                      disabled={isLaunchingCashfree || loading}
+                      className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-md shadow-blue-500/20 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    >
+                      {isLaunchingCashfree ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Opening Secure Gateway...</span>
+                        </>
+                      ) : isVerifying ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Verifying Payment...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4" />
+                          <span>Proceed to Pay ₹{displayFinalRupees}</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
                       )}
+                    </Button>
 
-                      {/* Cashfree Primary Checkout Button */}
-                      <Button
-                        onClick={handleLaunchCashfree}
-                        disabled={isLaunchingCashfree}
-                        className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-lg shadow-blue-500/25 py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
-                      >
-                        {isLaunchingCashfree ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            <span>Opening Cashfree Gateway...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Lock className="w-4 h-4" />
-                            <span>Pay ₹{displayFinalRupees} via Cashfree</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </>
-                        )}
-                      </Button>
-
-                      <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#64748B]">
-                        <Clock className="w-3 h-3 text-amber-600" />
-                        <span>Session active for: </span>
-                        <span className="font-mono font-bold text-[#0F172A]">{formatTime(secondsRemaining)}</span>
-                      </div>
+                    <div className="flex items-center justify-between text-[10px] text-[#64748B] pt-0.5">
+                      <span className="flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#2563EB]" />
+                        <span>256-bit encrypted via Cashfree</span>
+                      </span>
+                      <span className="font-mono text-[#64748B]">
+                        Expires: {formatTime(secondsRemaining)}
+                      </span>
                     </div>
-                  ) : (
-                    /* Standard UPI QR Payment Gateway View */
-                    <div className="space-y-4">
-                      {/* QR and Mobile Intent Grid */}
-                      <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
-                        {/* QR Code Canvas Frame */}
-                        <div className="relative p-2.5 bg-white rounded-3xl border-2 border-[#2563EB]/20 shadow-md flex flex-col items-center shrink-0">
-                          <canvas ref={canvasRef} className="rounded-xl" />
-                          <div className="flex items-center gap-1 mt-1.5 text-[10px] font-medium text-[#64748B]">
-                            <Clock className="w-3 h-3 text-amber-600" />
-                            <span>Expires in: </span>
-                            <span className="font-mono font-bold text-[#0F172A]">{formatTime(secondsRemaining)}</span>
-                          </div>
-                        </div>
+                  </div>
 
-                        {/* Mobile Intent Actions & Manual Details */}
-                        <div className="flex-1 w-full space-y-2.5">
-                          <p className="text-xs font-semibold text-[#0F172A] flex items-center gap-1.5">
-                            <Smartphone className="w-3.5 h-3.5 text-[#2563EB]" />
-                            <span>Pay with mobile UPI app:</span>
-                          </p>
+                  {/* Collapsible Alternative: Direct UPI QR Scan */}
+                  <div className="border border-[#E2E8F0] rounded-2xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowQrCode(!showQrCode)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 bg-[#F8FAFC] text-xs font-semibold text-[#475569] hover:text-[#0F172A] transition-colors cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <QrCode className="w-3.5 h-3.5 text-[#64748B]" />
+                        <span>Or scan QR code directly with any UPI app</span>
+                      </span>
+                      {showQrCode ? <ChevronUp className="w-4 h-4 text-[#64748B]" /> : <ChevronDown className="w-4 h-4 text-[#64748B]" />}
+                    </button>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <a
-                              href={order?.upiUri}
-                              className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
-                            >
-                              <span>Google Pay</span>
-                              <ExternalLink className="w-3 h-3 text-[#64748B]" />
-                            </a>
-                            <a
-                              href={order?.upiUri}
-                              className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
-                            >
-                              <span>PhonePe</span>
-                              <ExternalLink className="w-3 h-3 text-[#64748B]" />
-                            </a>
-                            <a
-                              href={order?.upiUri}
-                              className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
-                            >
-                              <span>Paytm</span>
-                              <ExternalLink className="w-3 h-3 text-[#64748B]" />
-                            </a>
-                            <a
-                              href={order?.upiUri}
-                              className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] transition-all"
-                            >
-                              <span>Any UPI</span>
-                              <ExternalLink className="w-3 h-3 text-[#64748B]" />
-                            </a>
+                    {showQrCode && (
+                      <div className="p-4 bg-white border-t border-[#E2E8F0] space-y-3 animate-in fade-in duration-150">
+                        <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
+                          <div className="p-2 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm shrink-0">
+                            <canvas ref={canvasRef} className="rounded-lg" />
                           </div>
 
-                          {/* Copy UPI VPA Option */}
-                          <div>
-                            <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs">
-                              <div className="truncate pr-2">
-                                <span className="text-[10px] text-[#64748B] block">UPI VPA:</span>
-                                <span className="font-mono font-medium text-[#0F172A]">{order?.upiVpa}</span>
-                              </div>
+                          <div className="flex-1 w-full space-y-2">
+                            <p className="text-[11px] font-semibold text-[#0F172A] flex items-center gap-1">
+                              <Smartphone className="w-3.5 h-3.5 text-[#2563EB]" />
+                              <span>Deep links:</span>
+                            </p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <a
+                                href={order?.upiUri}
+                                className="p-1.5 rounded-lg border border-[#E2E8F0] text-[11px] font-semibold text-center text-[#334155] hover:bg-[#F8FAFC] flex items-center justify-center gap-1"
+                              >
+                                <span>GPay</span>
+                                <ExternalLink className="w-2.5 h-2.5 text-[#64748B]" />
+                              </a>
+                              <a
+                                href={order?.upiUri}
+                                className="p-1.5 rounded-lg border border-[#E2E8F0] text-[11px] font-semibold text-center text-[#334155] hover:bg-[#F8FAFC] flex items-center justify-center gap-1"
+                              >
+                                <span>PhonePe</span>
+                                <ExternalLink className="w-2.5 h-2.5 text-[#64748B]" />
+                              </a>
+                            </div>
+
+                            <div className="flex items-center justify-between p-1.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[11px]">
+                              <span className="font-mono text-[#334155] truncate pr-1">{order?.upiVpa}</span>
                               <button
                                 onClick={() => order?.upiVpa && handleCopy(order.upiVpa)}
-                                className="p-1.5 rounded-lg hover:bg-white text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer"
+                                className="p-1 text-[#64748B] hover:text-[#0F172A] cursor-pointer"
                                 title="Copy VPA"
                               >
-                                {copiedVpa ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                {copiedVpa ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-[#64748B]" />}
                               </button>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Realtime settlement listener */}
-                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-50/50 rounded-xl border border-blue-100 text-[11px] text-[#2563EB]">
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    <span>Listening for payment confirmation... Auto-activates immediately</span>
+                    )}
                   </div>
 
-                  {/* Sandbox Simulation Panel */}
-                  <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                        <FlaskConical className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Developer Sandbox Test Simulation</span>
-                      </div>
-                      <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-200/60 text-amber-900">
-                        Test Mode
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-amber-800 leading-relaxed">
-                      Safely test the atomic entitlement flow without real bank transfers. Simulates gateway settlement with verified UTR.
-                    </p>
-                    <div className="pt-0.5">
-                      <Button
-                        onClick={handleSimulatePayment}
-                        disabled={isSimulating}
-                        size="sm"
-                        className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-1.5 rounded-xl shadow-sm cursor-pointer"
-                      >
-                        {isSimulating ? (
-                          <>
-                            <RefreshCw className="w-3 h-3 animate-spin mr-1.5" />
-                            Simulating Settlement...
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-3 h-3 mr-1.5" />
-                            Simulate Successful Payment
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                  {/* Developer Sandbox Test Simulation */}
+                  <div className="pt-0.5 text-center">
+                    <button
+                      type="button"
+                      onClick={handleSimulatePayment}
+                      disabled={isSimulating}
+                      className="text-[10px] text-[#94A3B8] hover:text-[#475569] transition-colors cursor-pointer"
+                    >
+                      {isSimulating ? 'Simulating test payment...' : 'Developer Sandbox Test Simulation'}
+                    </button>
                   </div>
                 </div>
               )}
-
-              {/* Security Invariant Notice */}
-              <div className="text-[10px] text-[#64748B] text-center flex items-center justify-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#2563EB]" />
-                <span>PCI-DSS compliant • 256-bit encrypted • Authoritative server verification</span>
-              </div>
             </div>
           )}
         </div>
