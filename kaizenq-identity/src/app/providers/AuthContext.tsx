@@ -24,8 +24,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const isConfigured = isSupabaseConfigured()
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string, authUser?: User | null) => {
     try {
+      if (authUser) {
+        const { data: synced } = await profileService.syncProfileWithAuthUser(authUser)
+        if (synced) {
+          setProfile(synced)
+          return
+        }
+      }
       const { data } = await profileService.getProfile(userId)
       if (data) {
         setProfile(data)
@@ -37,9 +44,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshProfile = useCallback(async () => {
     if (user?.id) {
-      await fetchProfile(user.id)
+      await fetchProfile(user.id, user)
     }
-  }, [user?.id, fetchProfile])
+  }, [user, fetchProfile])
 
   useEffect(() => {
     if (!isConfigured) {
@@ -52,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(initialSession)
       setUser(initialSession?.user ?? null)
       if (initialSession?.user) {
-        fetchProfile(initialSession.user.id)
+        fetchProfile(initialSession.user.id, initialSession.user)
       }
       setIsLoading(false)
     })
@@ -62,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(newSession)
       setUser(newSession?.user ?? null)
       if (newSession?.user) {
-        await fetchProfile(newSession.user.id)
+        await fetchProfile(newSession.user.id, newSession.user)
       } else {
         setProfile(null)
       }

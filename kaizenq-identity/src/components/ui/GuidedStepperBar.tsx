@@ -138,3 +138,4 @@ export const GuidedStepperBar: React.FC<GuidedStepperBarProps> = ({
     </nav>
   )
 }
+

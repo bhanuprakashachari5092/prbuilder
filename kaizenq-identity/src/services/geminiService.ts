@@ -123,3 +123,4 @@ export const geminiService = {
     return this.executeAction('generate_intro', userBackground || '', { role })
   },
 }
+

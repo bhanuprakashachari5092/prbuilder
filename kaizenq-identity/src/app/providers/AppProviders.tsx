@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { AppContext } from './AppContext.ts'
 import { AuthProvider } from './AuthContext.tsx'
 import { getSubdomainFromHostname, isCustomDomainHost } from '../../lib/domainUtils.ts'
+import { authService } from '../../services/authService.ts'
 
 export const VALID_ROUTES = [
   'home',
@@ -64,6 +65,11 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2c. Check auth route (/auth)
       if (pathname === '/auth' || pathname.startsWith('/auth/')) {
+        return 'auth'
+      }
+
+      // 2d. Check if URL contains OAuth callback parameters (e.g. from Google OAuth redirect)
+      if (authService.parseOAuthCallback().isCallback) {
         return 'auth'
       }
 
@@ -141,6 +147,8 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
       if (pathname.startsWith('/p/')) {
         setCurrentRouteState('public-portfolio')
         setCurrentSlug(pathname.replace(/^\/p\//, '').replace(/\/$/, ''))
+      } else if (pathname === '/auth' || pathname.startsWith('/auth/') || authService.parseOAuthCallback().isCallback) {
+        setCurrentRouteState('auth')
       } else {
         const params = new URLSearchParams(window.location.search)
         setCurrentRouteState(sanitizeRoute(params.get('route')))

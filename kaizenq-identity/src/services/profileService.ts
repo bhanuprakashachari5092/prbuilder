@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts'
+import type { User } from '@supabase/supabase-js'
 import type { ProfileRow, ProfileInsert, ProfileUpdate } from '../types/database.types.ts'
 
 export type Profile = ProfileRow
@@ -123,6 +124,91 @@ export const profileService = {
       return { path: filePath, publicUrl, error: null }
     } catch (err) {
       return { path: null, publicUrl: null, error: err as Error }
+    }
+  },
+
+  /**
+   * Safely synchronizes or provisions the user profile after authentication (Google OAuth or email).
+   * - Uses authenticated Supabase user ID as primary identifier.
+   * - Safely populates empty fields from metadata (full_name, name, avatar_url, picture).
+   * - STRICT: Never overwrites user-edited profile details on return logins.
+   * - STRICT: Never creates duplicate profiles.
+   */
+  async syncProfileWithAuthUser(user: User): Promise<{ data: Profile | null; error: Error | null }> {
+    if (!isSupabaseConfigured()) {
+      return { data: null, error: null }
+    }
+
+    try {
+      // 1. Check if profile already exists for this authenticated user ID
+      const { data: existing, error: fetchErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (fetchErr) {
+        console.warn('profileService: Error checking existing profile:', fetchErr)
+      }
+
+      const meta = user.user_metadata || {}
+      const metaName = (meta.full_name || meta.name || user.email?.split('@')[0] || '').trim()
+      const metaAvatar = meta.avatar_url || meta.picture || null
+
+      if (existing) {
+        // Returning user: Only fill fields that are currently blank. Never overwrite existing user data!
+        const updates: ProfileUpdate = {}
+        let hasUpdates = false
+
+        if (!existing.display_name && metaName) {
+          updates.display_name = metaName
+          hasUpdates = true
+        }
+
+        if (!existing.avatar_path && metaAvatar) {
+          updates.avatar_path = metaAvatar
+          hasUpdates = true
+        }
+
+        if (hasUpdates) {
+          const { data: updated, error: updateErr } = await supabase
+            .from('profiles')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', user.id)
+            .select()
+            .maybeSingle()
+
+          if (!updateErr && updated) {
+            return { data: updated, error: null }
+          }
+        }
+
+        return { data: existing, error: null }
+      }
+
+      // 2. New user profile creation
+      const insertPayload: ProfileInsert = {
+        id: user.id,
+        display_name: metaName || 'Student Builder',
+        headline: meta.headline || 'Software Engineering Student',
+        location: '',
+        bio: '',
+        avatar_path: metaAvatar,
+        onboarding_completed: false,
+        updated_at: new Date().toISOString(),
+      }
+
+      const { data: created, error: insertErr } = await supabase
+        .from('profiles')
+        .upsert(insertPayload, { onConflict: 'id' })
+        .select()
+        .maybeSingle()
+
+      if (insertErr) throw insertErr
+      return { data: created, error: null }
+    } catch (err) {
+      console.error('profileService.syncProfileWithAuthUser failed:', err)
+      return { data: null, error: err as Error }
     }
   },
 }

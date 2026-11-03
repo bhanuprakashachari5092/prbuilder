@@ -143,25 +143,106 @@ export const authService = {
   /**
    * Authenticate student with Google OAuth if configured in Supabase.
    */
-  async signInWithGoogle(): Promise<{ error: AuthError | Error | null }> {
+  async signInWithGoogle(options?: { targetRoute?: string }): Promise<{ error: AuthError | Error | null }> {
     if (!isSupabaseConfigured()) {
       return {
-        error: new Error('Supabase is not configured.'),
+        error: new Error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'),
       }
     }
 
-    const redirectUrl =
+    const origin =
       typeof window !== 'undefined' && window.location.origin
-        ? `${window.location.origin}/?route=dashboard`
+        ? window.location.origin
         : (import.meta.env.VITE_APP_URL || 'https://prbuilder.xyz')
+
+    const targetRoute = options?.targetRoute || 'dashboard'
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('prbuilder_auth_redirect', targetRoute)
+      } catch {}
+    }
+
+    const redirectUrl = `${origin}/auth/callback?redirect=${encodeURIComponent(targetRoute)}`
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'select_account',
+        },
       },
     })
     return { error }
+  },
+
+  /**
+   * Inspects current window URL to parse OAuth callback parameters,
+   * detecting cancelled flows, provider errors, or established authorization codes.
+   */
+  parseOAuthCallback(): {
+    isCallback: boolean
+    hasError: boolean
+    errorMessage: string | null
+    targetRoute: string
+  } {
+    if (typeof window === 'undefined') {
+      return { isCallback: false, hasError: false, errorMessage: null, targetRoute: 'dashboard' }
+    }
+
+    const pathname = window.location.pathname
+    const search = window.location.search
+    const hash = window.location.hash
+
+    const searchParams = new URLSearchParams(search)
+    const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
+
+    const isCallbackPath = pathname === '/auth/callback' || pathname.startsWith('/auth/callback')
+    const hasOAuthParams =
+      searchParams.has('code') ||
+      searchParams.has('error') ||
+      hashParams.has('access_token') ||
+      hashParams.has('error')
+
+    if (!isCallbackPath && !hasOAuthParams) {
+      return { isCallback: false, hasError: false, errorMessage: null, targetRoute: 'dashboard' }
+    }
+
+    // Check for provider error (e.g. user cancelled or denied consent)
+    const errorParam = searchParams.get('error') || hashParams.get('error')
+    const errorDesc =
+      searchParams.get('error_description') ||
+      hashParams.get('error_description') ||
+      searchParams.get('message') ||
+      hashParams.get('message')
+
+    let errorMessage: string | null = null
+    if (errorParam) {
+      if (errorParam === 'access_denied') {
+        errorMessage = 'Google sign-in was cancelled or access was denied.'
+      } else {
+        errorMessage = errorDesc || `Authentication error: ${errorParam}`
+      }
+    }
+
+    // Determine target route
+    let targetRoute = searchParams.get('redirect') || ''
+    if (!targetRoute) {
+      try {
+        targetRoute = localStorage.getItem('prbuilder_auth_redirect') || 'dashboard'
+      } catch {
+        targetRoute = 'dashboard'
+      }
+    }
+
+    return {
+      isCallback: true,
+      hasError: Boolean(errorMessage),
+      errorMessage,
+      targetRoute: targetRoute || 'dashboard',
+    }
   },
 
   /**
