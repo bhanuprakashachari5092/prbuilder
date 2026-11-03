@@ -273,3 +273,4 @@ it('Security: Zero Google Client Secret or service-role keys exposed in frontend
 console.log('======================================================================')
 console.log(`  COMPLETE AUTHENTICATION SUITE: ${passed} PASSED, 0 FAILED`)
 console.log('======================================================================\n')
+

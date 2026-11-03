@@ -286,9 +286,20 @@ it('AuthCardContent in Auth/index.tsx provides accessible Continue with Google b
 it('AuthCallbackView.tsx handles OAuth verification, errors, and redirection', () => {
   const callbackCode = fs.readFileSync(path.join(rootDir, 'src', 'pages', 'Auth', 'components', 'AuthCallbackView.tsx'), 'utf8')
   assert(callbackCode.includes('processOAuthCallback'), 'Processes callback on mount')
+  assert(callbackCode.includes('setSession'), 'Directly establishes session from implicit flow tokens')
+  assert(callbackCode.includes('exchangeCodeForSession'), 'Exchanges authorization code for PKCE flow')
+  assert(callbackCode.includes('validateRedirectRoute'), 'Validates redirect parameter against known internal routes')
+  assert(callbackCode.includes('replaceState'), 'Cleans address bar of sensitive tokens and callback path')
+  assert(callbackCode.includes('isProcessingRef'), 'Guards against duplicate executions in React StrictMode')
   assert(callbackCode.includes('syncProfileWithAuthUser'), 'Synchronizes user profile from session')
-  assert(callbackCode.includes('Signing in with Google'), 'Provides loading feedback')
+  assert(callbackCode.includes('Completing Google Authentication'), 'Provides accessible loading feedback')
   assert(callbackCode.includes('Try Continue with Google Again'), 'Provides retry button on cancellation/error')
+})
+
+it('validateRedirectRoute blocks open redirect attacks and defaults safely', () => {
+  const authCode = fs.readFileSync(path.join(rootDir, 'src', 'services', 'authService.ts'), 'utf8')
+  assert(authCode.includes('export function validateRedirectRoute'), 'Exports validateRedirectRoute function')
+  assert(authCode.includes('VALID_APPLICATION_ROUTES'), 'Declares known internal routes whitelist')
 })
 
 it('Security: Zero Google Client Secrets exposed in frontend bundle', () => {

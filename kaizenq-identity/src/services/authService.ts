@@ -6,6 +6,51 @@ export interface AuthResponse<T = unknown> {
   error: AuthError | Error | null
 }
 
+export const VALID_APPLICATION_ROUTES = [
+  'home',
+  'dashboard',
+  'builder',
+  'resume',
+  'portfolio',
+  'publish',
+  'portfolio-preview',
+  'settings',
+  'admin',
+] as const
+
+export type ValidApplicationRoute = (typeof VALID_APPLICATION_ROUTES)[number]
+
+/**
+ * Validates a redirect destination route, strictly mitigating open-redirect vulnerabilities.
+ * Only permits known, safe internal application paths. Defaults to 'dashboard'.
+ */
+export function validateRedirectRoute(route: string | null | undefined): string {
+  if (!route || typeof route !== 'string') return 'dashboard'
+  const trimmed = route.trim()
+
+  // Reject external protocol schemes, relative URL escapes, and script schemes
+  if (
+    trimmed.includes('://') ||
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('\\\\') ||
+    trimmed.startsWith('javascript:') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('vbscript:') ||
+    trimmed.includes('/') ||
+    trimmed.includes('\\')
+  ) {
+    return 'dashboard'
+  }
+
+  const isKnown = VALID_APPLICATION_ROUTES.includes(trimmed as ValidApplicationRoute)
+  if (!isKnown) return 'dashboard'
+
+  // Post-auth destination defaults to 'dashboard' if pointing to public landing or auth page
+  if (trimmed === 'home') return 'dashboard'
+
+  return trimmed
+}
+
 /**
  * Returns the authoritative origin for authentication callbacks and redirects.
  * Prioritizes window.location.origin during browser runtime,
@@ -154,7 +199,7 @@ export const authService = {
     }
 
     const origin = getAuthRedirectBaseUrl()
-    const targetRoute = options?.targetRoute || 'dashboard'
+    const targetRoute = validateRedirectRoute(options?.targetRoute)
 
     if (typeof window !== 'undefined') {
       try {
@@ -236,21 +281,22 @@ export const authService = {
       }
     }
 
-    // Determine target route
-    let targetRoute = searchParams.get('redirect') || ''
-    if (!targetRoute) {
+    // Determine target route with strict open-redirect sanitization
+    let rawTarget = searchParams.get('redirect') || ''
+    if (!rawTarget) {
       try {
-        targetRoute = localStorage.getItem('prbuilder_auth_redirect') || 'dashboard'
+        rawTarget = localStorage.getItem('prbuilder_auth_redirect') || 'dashboard'
       } catch {
-        targetRoute = 'dashboard'
+        rawTarget = 'dashboard'
       }
     }
+    const targetRoute = validateRedirectRoute(rawTarget)
 
     return {
       isCallback: true,
       hasError: Boolean(errorMessage),
       errorMessage,
-      targetRoute: targetRoute || 'dashboard',
+      targetRoute,
     }
   },
 
@@ -320,14 +366,15 @@ export const authService = {
       errorMessage = errorDesc || `Authentication error: ${errorParam}`
     }
 
-    let targetRoute = searchParams.get('redirect') || ''
-    if (!targetRoute) {
+    let rawTarget = searchParams.get('redirect') || ''
+    if (!rawTarget) {
       try {
-        targetRoute = localStorage.getItem('prbuilder_auth_redirect') || 'dashboard'
+        rawTarget = localStorage.getItem('prbuilder_auth_redirect') || 'dashboard'
       } catch {
-        targetRoute = 'dashboard'
+        rawTarget = 'dashboard'
       }
     }
+    const targetRoute = validateRedirectRoute(rawTarget)
 
     return {
       isOAuthCallback,

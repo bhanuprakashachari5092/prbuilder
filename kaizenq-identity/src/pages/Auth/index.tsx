@@ -878,7 +878,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
 export const AuthPage: React.FC<{
   initialMode?: 'signin' | 'signup'
-  onSuccess?: () => void
+  onSuccess?: (targetRoute?: string) => void
   onBackHome?: () => void
 }> = ({ initialMode = 'signin', onSuccess, onBackHome }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'recovery'>(initialMode)
@@ -897,10 +897,11 @@ export const AuthPage: React.FC<{
   }, [user, isLoading, isOAuthCallback, mode, targetRouteAfterAuth, setTargetRouteAfterAuth, setCurrentRoute])
 
   const handleSuccess = (targetRoute?: string) => {
+    const destination = targetRoute || targetRouteAfterAuth || 'dashboard'
     if (onSuccess) {
-      onSuccess()
+      onSuccess(destination)
     } else {
-      setCurrentRoute(targetRoute || 'dashboard')
+      setCurrentRoute(destination)
     }
   }
 

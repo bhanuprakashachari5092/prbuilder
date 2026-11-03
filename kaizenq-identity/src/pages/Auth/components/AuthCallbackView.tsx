@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { AlertCircle, RefreshCw, CheckCircle2, ArrowRight } from 'lucide-react'
-import { authService } from '../../../services/authService.ts'
+import { authService, validateRedirectRoute } from '../../../services/authService.ts'
 import { profileService } from '../../../services/profileService.ts'
 import { useAuth } from '../../../app/providers/AuthContext.tsx'
 import { useApp } from '../../../app/providers/AppContext.ts'
-import { sanitizeRoute } from '../../../app/providers/AppProviders.tsx'
 import { supabase } from '../../../lib/supabase.ts'
 
 export interface AuthCallbackViewProps {
@@ -24,36 +23,74 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [destination, setDestination] = useState<string>('dashboard')
 
+  // Prevent duplicate execution in React StrictMode
+  const isProcessingRef = useRef<boolean>(false)
+  const isHandledRef = useRef<boolean>(false)
+
   useEffect(() => {
     let isMounted = true
 
     const processOAuthCallback = async () => {
+      if (isProcessingRef.current || isHandledRef.current) return
+      isProcessingRef.current = true
+
       const parsed = authService.parseOAuthCallback()
-      const target = sanitizeRoute(parsed.targetRoute || 'dashboard')
+      const target = validateRedirectRoute(parsed.targetRoute)
       setDestination(target)
 
-      // Handle provider cancellation or error
+      // Handle provider cancellation or error from provider
       if (parsed.hasError) {
         if (!isMounted) return
         setStatus('error')
         setErrorMessage(
           parsed.errorMessage || 'Google sign-in was cancelled or encountered an error.',
         )
+        // Clean URL to prevent error sticking on refresh
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, document.title, '/auth')
+        }
         try {
           localStorage.removeItem('prbuilder_auth_redirect')
         } catch {}
+        isProcessingRef.current = false
         return
       }
 
       try {
-        // 1. Fetch active session established by Supabase's URL fragment listener
-        const { data, error } = await supabase.auth.getSession()
+        let activeSession: Session | null = null
 
-        if (error) throw error
+        // Flow A: Implicit Flow (URL Fragment has access_token and refresh_token)
+        const hash = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : ''
+        const hashParams = new URLSearchParams(hash)
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
 
-        let activeSession = data.session
+        // Flow B: PKCE Flow (URL Query Params has authorization code)
+        const search = typeof window !== 'undefined' ? window.location.search : ''
+        const searchParams = new URLSearchParams(search)
+        const code = searchParams.get('code')
 
-        // If not immediately ready, wait up to 2.5 seconds for Supabase onAuthStateChange
+        if (accessToken) {
+          // Explicitly and deterministically set the session from the URL fragment tokens
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          })
+          if (error) throw error
+          activeSession = data.session
+        } else if (code) {
+          // Explicitly exchange the authorization code for a session
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) throw error
+          activeSession = data.session
+        } else {
+          // Fallback: Read session if already processed by client
+          const { data, error } = await supabase.auth.getSession()
+          if (error) throw error
+          activeSession = data.session
+        }
+
+        // Secondary fallback: if session is still settling, wait briefly for auth listener
         if (!activeSession) {
           const sessionPromise = new Promise<Session | null>((resolve) => {
             const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -65,7 +102,7 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
             setTimeout(() => {
               sub.subscription.unsubscribe()
               resolve(null)
-            }, 3000)
+            }, 2500)
           })
 
           activeSession = await sessionPromise
@@ -77,40 +114,44 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
           )
         }
 
-        // 2. Synchronize user profile with Google metadata without overwriting user-edited fields
+        isHandledRef.current = true
+
+        // Synchronize user profile with Google metadata (strictly non-destructive)
         await profileService.syncProfileWithAuthUser(activeSession.user)
         await refreshProfile()
 
-        // 3. Clear temporary storage
+        // Clear temporary redirect storage
         try {
           localStorage.removeItem('prbuilder_auth_redirect')
         } catch {}
 
-        // 4. Clean sensitive OAuth parameters from browser address bar
+        // Safe URL cleanup: completely remove access tokens, hash, and /auth/callback path
         if (typeof window !== 'undefined') {
-          const cleanUrl = window.location.pathname.replace(/\/callback\/?$/, '') || '/'
-          window.history.replaceState({}, document.title, cleanUrl)
+          const cleanPath = target === 'home' ? '/' : `/?route=${encodeURIComponent(target)}`
+          window.history.replaceState({ route: target }, document.title, cleanPath)
         }
 
         if (!isMounted) return
         setStatus('success')
 
-        // 5. Navigate to intended destination
+        // Navigate to intended destination
         setTimeout(() => {
           if (onSuccess) {
             onSuccess(target)
           } else {
             setCurrentRoute(target)
           }
-        }, 600)
+        }, 350)
       } catch (err: unknown) {
         if (!isMounted) return
         setStatus('error')
-        setErrorMessage(
+        const msg =
           err instanceof Error
             ? err.message
-            : 'An unexpected error occurred while verifying your Google session.',
-        )
+            : 'An unexpected error occurred while verifying your Google session.'
+        setErrorMessage(msg)
+      } finally {
+        isProcessingRef.current = false
       }
     }
 
@@ -124,6 +165,8 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
   const handleRetryGoogle = async () => {
     setStatus('verifying')
     setErrorMessage(null)
+    isProcessingRef.current = false
+    isHandledRef.current = false
     const { error } = await authService.signInWithGoogle({ targetRoute: destination })
     if (error) {
       setStatus('error')
@@ -173,10 +216,10 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
 
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Signing in with Google
+              Completing Google Authentication
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
-              Verifying your Google session and synchronizing student profile...
+              Verifying your credentials and establishing your secure session...
             </p>
           </div>
         </div>
@@ -192,7 +235,7 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
               Authentication Verified
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Welcome back! Redirecting you to your workspace...
+              Welcome to PR Builder! Navigating to your workspace...
             </p>
           </div>
         </div>

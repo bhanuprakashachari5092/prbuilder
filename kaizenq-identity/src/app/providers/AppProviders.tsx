@@ -65,6 +65,19 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2c. Check auth route (/auth)
       if (pathname === '/auth' || pathname.startsWith('/auth/')) {
+        const params = new URLSearchParams(window.location.search)
+        const routeParam = params.get('route')
+        const authUrl = authService.parseAuthUrl()
+        if (
+          routeParam &&
+          routeParam !== 'auth' &&
+          !authUrl.isOAuthCallback &&
+          !authUrl.isRecovery &&
+          !authUrl.isSignupConfirmation &&
+          !authUrl.isExpiredOtp
+        ) {
+          return sanitizeRoute(routeParam)
+        }
         return 'auth'
       }
 
@@ -121,13 +134,17 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
+      const currentPath = window.location.pathname
+      // When navigating away from /auth or /auth/callback to an internal route, normalize path to '/'
+      const basePath = currentPath === '/auth' || currentPath.startsWith('/auth/') ? '/' : currentPath
+
       if (safeRoute === 'home') {
         params.delete('route')
         const newSearch = params.toString() ? `?${params.toString()}` : ''
-        window.history.pushState({ route: 'home' }, '', `${window.location.pathname}${newSearch}`)
+        window.history.pushState({ route: 'home' }, '', `${basePath}${newSearch}`)
       } else if (safeRoute !== 'public-portfolio') {
         params.set('route', safeRoute)
-        window.history.pushState({ route: safeRoute }, '', `${window.location.pathname}?${params.toString()}`)
+        window.history.pushState({ route: safeRoute }, '', `${basePath}?${params.toString()}`)
       }
     }
   }, [])
@@ -156,7 +173,21 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
         authService.parseAuthUrl().isSignupConfirmation ||
         authService.parseAuthUrl().isExpiredOtp
       ) {
-        setCurrentRouteState('auth')
+        const params = new URLSearchParams(window.location.search)
+        const routeParam = params.get('route')
+        const authUrl = authService.parseAuthUrl()
+        if (
+          routeParam &&
+          routeParam !== 'auth' &&
+          !authUrl.isOAuthCallback &&
+          !authUrl.isRecovery &&
+          !authUrl.isSignupConfirmation &&
+          !authUrl.isExpiredOtp
+        ) {
+          setCurrentRouteState(sanitizeRoute(routeParam))
+        } else {
+          setCurrentRouteState('auth')
+        }
       } else {
         const params = new URLSearchParams(window.location.search)
         setCurrentRouteState(sanitizeRoute(params.get('route')))

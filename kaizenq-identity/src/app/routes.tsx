@@ -181,7 +181,7 @@ export const AppRoutes: React.FC = () => {
     case 'auth':
       return (
         <AuthPage
-          onSuccess={() => setCurrentRoute('dashboard')}
+          onSuccess={(targetRoute) => setCurrentRoute(targetRoute || 'dashboard')}
           onBackHome={() => setCurrentRoute('home')}
         />
       )
