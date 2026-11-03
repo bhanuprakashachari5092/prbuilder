@@ -3,6 +3,7 @@ import type { User, Session } from '@supabase/supabase-js'
 import { authService } from '../../services/authService.ts'
 import { profileService, type Profile } from '../../services/profileService.ts'
 import { isSupabaseConfigured } from '../../lib/supabase.ts'
+import { useApp } from './AppContext.ts'
 
 export interface AuthContextType {
   user: User | null
@@ -18,6 +19,7 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { setCurrentRoute } = useApp()
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -65,13 +67,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     // Listen to auth changes
-    const subscription = authService.onAuthStateChange(async (_event, newSession) => {
+    const subscription = authService.onAuthStateChange(async (event, newSession) => {
       setSession(newSession)
       setUser(newSession?.user ?? null)
       if (newSession?.user) {
         await fetchProfile(newSession.user.id, newSession.user)
       } else {
         setProfile(null)
+        if (event === 'SIGNED_OUT') {
+          setCurrentRoute('home')
+        }
       }
       setIsLoading(false)
     })
@@ -79,13 +84,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription?.unsubscribe()
     }
-  }, [isConfigured, fetchProfile])
+  }, [isConfigured, fetchProfile, setCurrentRoute])
 
   const handleSignOut = async () => {
     await authService.signOut()
     setUser(null)
     setSession(null)
     setProfile(null)
+    setCurrentRoute('home')
   }
 
   const isAdmin = Boolean(

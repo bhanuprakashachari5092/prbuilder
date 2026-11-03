@@ -12,6 +12,7 @@ const suites = [
   { name: 'Suite 4: Secure Custom Domain Management & Tenant Isolation', script: 'test-custom-domain.js' },
   { name: 'Suite 5: Client-Side ATS Resume Vector PDF Export Engine', script: 'test-resume-export.js' },
   { name: 'Suite 6: Google Authentication Integration & Profile Sync', script: 'test-google-auth.js' },
+  { name: 'Suite 7: Complete Authentication, Validation & Link Expiry Engine', script: 'test-complete-auth.js' },
 ]
 
 for (const suite of suites) {

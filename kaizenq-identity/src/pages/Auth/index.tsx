@@ -23,6 +23,7 @@ import { isSupabaseConfigured } from '../../lib/supabase.ts'
 import { ThreeDPreviewFrames } from './components/ThreeDPreviewFrames.tsx'
 import { AuthCallbackView } from './components/AuthCallbackView.tsx'
 import { useApp } from '../../app/providers/AppContext.ts'
+import { useAuth } from '../../app/providers/AuthContext.tsx'
 
 export interface AuthModalProps {
   isOpen: boolean
@@ -61,16 +62,22 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [isVerificationPending, setIsVerificationPending] = useState(false)
+  const [isExpiredLink, setIsExpiredLink] = useState(false)
 
   const isConfigured = isSupabaseConfigured()
 
-  // Detect recovery mode from URL hash/params
+  // Detect recovery mode or expired links from URL hash/params
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const hash = window.location.hash || ''
-      const search = window.location.search || ''
-      if (hash.includes('type=recovery') || search.includes('type=recovery')) {
+      const parsedAuth = authService.parseAuthUrl()
+      if (parsedAuth.isExpiredOtp) {
+        setIsExpiredLink(true)
+        setErrorMsg('This verification or password reset link has expired or has already been used. Please request a new one below.')
+      } else if (parsedAuth.isRecovery) {
         setMode('recovery')
+      } else if (parsedAuth.isSignupConfirmation) {
+        setSuccessMsg('Your email has been confirmed successfully! You can now sign in to your workspace.')
+        setMode('signin')
       }
     }
   }, [setMode])
@@ -146,8 +153,20 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading || googleLoading) return
+
     setErrorMsg(null)
     setSuccessMsg(null)
+    setIsExpiredLink(false)
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (mode !== 'recovery') {
+      if (!email.trim() || !emailRegex.test(email.trim())) {
+        setErrorMsg('Please enter a valid email address (e.g. name@university.edu).')
+        return
+      }
+    }
 
     // Handle local offline mode
     if (!isConfigured) {
@@ -163,18 +182,23 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
 
     try {
       if (mode === 'signup') {
-        if (password.length < 6) {
-          setErrorMsg('Password must be at least 6 characters.')
+        if (!displayName.trim()) {
+          setErrorMsg('Please enter your full name or display identity.')
           setLoading(false)
           return
         }
-        if (confirmPassword && password !== confirmPassword) {
-          setErrorMsg('Passwords do not match. Please verify.')
+        if (password.length < 6) {
+          setErrorMsg('Password must be at least 6 characters long.')
+          setLoading(false)
+          return
+        }
+        if (password !== confirmPassword) {
+          setErrorMsg('Passwords do not match. Please verify your password.')
           setLoading(false)
           return
         }
 
-        const { data, error } = await authService.signUp(email, password, displayName)
+        const { data, error } = await authService.signUp(email.trim(), password, displayName.trim())
         if (error) {
           setErrorMsg(error.message)
           setLoading(false)
@@ -192,9 +216,28 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
           setSuccessMsg('Account created! Please check your email for the confirmation link.')
         }
       } else if (mode === 'signin') {
-        const { error } = await authService.signIn(email, password)
+        if (!password) {
+          setErrorMsg('Please enter your account password.')
+          setLoading(false)
+          return
+        }
+
+        const { error } = await authService.signIn(email.trim(), password)
         if (error) {
-          setErrorMsg(error.message)
+          if (
+            error.message.toLowerCase().includes('not confirmed') ||
+            error.message.toLowerCase().includes('email not confirmed')
+          ) {
+            setIsVerificationPending(true)
+            setErrorMsg('Your email address has not been verified yet. Check your inbox or click below to resend confirmation.')
+          } else if (
+            error.message.toLowerCase().includes('invalid login credentials') ||
+            error.message.toLowerCase().includes('invalid credentials')
+          ) {
+            setErrorMsg('Invalid email or password. Please verify your credentials and try again.')
+          } else {
+            setErrorMsg(error.message)
+          }
           setLoading(false)
           return
         }
@@ -213,7 +256,7 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
           onClose?.()
         }, 800)
       } else if (mode === 'forgot') {
-        const { error } = await authService.resetPassword(email)
+        const { error } = await authService.resetPassword(email.trim())
         if (error) {
           setErrorMsg(error.message)
           setLoading(false)
@@ -222,12 +265,12 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
         setSuccessMsg('Password reset link sent! Check your inbox.')
       } else if (mode === 'recovery') {
         if (password.length < 6) {
-          setErrorMsg('New password must be at least 6 characters.')
+          setErrorMsg('New password must be at least 6 characters long.')
           setLoading(false)
           return
         }
-        if (confirmPassword && password !== confirmPassword) {
-          setErrorMsg('Passwords do not match. Please verify.')
+        if (password !== confirmPassword) {
+          setErrorMsg('Passwords do not match. Please verify your password.')
           setLoading(false)
           return
         }
@@ -418,10 +461,55 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2.5"
+                className="mb-4 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 space-y-2.5"
               >
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
-                <div className="leading-relaxed font-medium">{errorMsg}</div>
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                  <div className="leading-relaxed font-medium">{errorMsg}</div>
+                </div>
+
+                {/* Instant Recovery Actions for Expired Links */}
+                {isExpiredLink && (
+                  <div className="pt-1 flex flex-wrap gap-2 border-t border-rose-200/60 dark:border-rose-900/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMsg(null)
+                        setIsExpiredLink(false)
+                        setMode('forgot')
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-rose-100 dark:bg-rose-900/40 hover:bg-rose-200 text-rose-800 dark:text-rose-200 font-semibold text-[11px] transition cursor-pointer"
+                    >
+                      Request Password Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErrorMsg(null)
+                        setIsExpiredLink(false)
+                        handleResendVerification()
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 font-semibold text-[11px] transition cursor-pointer"
+                    >
+                      Resend Verification Email
+                    </button>
+                  </div>
+                )}
+
+                {/* Action to Resend Verification Email when unconfirmed in Sign In */}
+                {isVerificationPending && mode === 'signin' && !isExpiredLink && (
+                  <div className="pt-1 border-t border-rose-200/60 dark:border-rose-900/60">
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={loading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-[11px] transition shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                      <span>Resend Verification Email</span>
+                    </button>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -794,9 +882,19 @@ export const AuthPage: React.FC<{
   onBackHome?: () => void
 }> = ({ initialMode = 'signin', onSuccess, onBackHome }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'recovery'>(initialMode)
-  const { setCurrentRoute } = useApp()
+  const { setCurrentRoute, targetRouteAfterAuth, setTargetRouteAfterAuth } = useApp()
+  const { user, isLoading } = useAuth()
 
   const isOAuthCallback = typeof window !== 'undefined' && authService.parseOAuthCallback().isCallback
+
+  // If user is already authenticated and not in password recovery, redirect to destination
+  useEffect(() => {
+    if (!isLoading && user && !isOAuthCallback && mode !== 'recovery') {
+      const dest = targetRouteAfterAuth || 'dashboard'
+      setTargetRouteAfterAuth(null)
+      setCurrentRoute(dest)
+    }
+  }, [user, isLoading, isOAuthCallback, mode, targetRouteAfterAuth, setTargetRouteAfterAuth, setCurrentRoute])
 
   const handleSuccess = (targetRoute?: string) => {
     if (onSuccess) {

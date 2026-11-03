@@ -68,8 +68,9 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
         return 'auth'
       }
 
-      // 2d. Check if URL contains OAuth callback parameters (e.g. from Google OAuth redirect)
-      if (authService.parseOAuthCallback().isCallback) {
+      // 2d. Check if URL contains OAuth callback, password recovery, or email confirmation parameters
+      const authUrl = authService.parseAuthUrl()
+      if (authUrl.isOAuthCallback || authUrl.isRecovery || authUrl.isSignupConfirmation || authUrl.isExpiredOtp) {
         return 'auth'
       }
 
@@ -147,7 +148,14 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
       if (pathname.startsWith('/p/')) {
         setCurrentRouteState('public-portfolio')
         setCurrentSlug(pathname.replace(/^\/p\//, '').replace(/\/$/, ''))
-      } else if (pathname === '/auth' || pathname.startsWith('/auth/') || authService.parseOAuthCallback().isCallback) {
+      } else if (
+        pathname === '/auth' ||
+        pathname.startsWith('/auth/') ||
+        authService.parseOAuthCallback().isCallback ||
+        authService.parseAuthUrl().isRecovery ||
+        authService.parseAuthUrl().isSignupConfirmation ||
+        authService.parseAuthUrl().isExpiredOtp
+      ) {
         setCurrentRouteState('auth')
       } else {
         const params = new URLSearchParams(window.location.search)
@@ -160,23 +168,23 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   return (
-    <AuthProvider>
-      <AppContext.Provider
-        value={{
-          currentRoute,
-          setCurrentRoute,
-          currentSlug,
-          setCurrentSlug,
-          isAuthOpen,
-          setIsAuthOpen,
-          authMode,
-          setAuthMode,
-          targetRouteAfterAuth,
-          setTargetRouteAfterAuth,
-        }}
-      >
+    <AppContext.Provider
+      value={{
+        currentRoute,
+        setCurrentRoute,
+        currentSlug,
+        setCurrentSlug,
+        isAuthOpen,
+        setIsAuthOpen,
+        authMode,
+        setAuthMode,
+        targetRouteAfterAuth,
+        setTargetRouteAfterAuth,
+      }}
+    >
+      <AuthProvider>
         {children}
-      </AppContext.Provider>
-    </AuthProvider>
+      </AuthProvider>
+    </AppContext.Provider>
   )
 }

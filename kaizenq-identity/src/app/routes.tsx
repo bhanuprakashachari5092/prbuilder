@@ -32,11 +32,17 @@ interface ProtectedRouteProps {
   children: React.ReactNode
   targetRoute?: RouteKey
   targetRouteName?: string
+  requireAuth?: boolean
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  targetRoute = 'dashboard',
+  targetRouteName = 'Workspace',
+  requireAuth = true,
+}) => {
   const { user, isAdmin, isLoading } = useAuth()
-  const { setCurrentRoute } = useApp()
+  const { setCurrentRoute, setTargetRouteAfterAuth, setIsAuthOpen, setAuthMode } = useApp()
 
   useEffect(() => {
     if (!isLoading && user && isAdmin) {
@@ -55,7 +61,38 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     )
   }
 
-  // Direct open access for all users: no login or signup required to build resumes and portfolios
+  // When route strictly requires authentication and session is still initializing:
+  if (requireAuth && isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#2563EB] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#64748B] font-medium">Verifying authentication session...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // When route strictly requires authentication and user is unauthenticated:
+  if (requireAuth && !user) {
+    return (
+      <AuthRequiredGate
+        targetRouteName={targetRouteName}
+        onOpenSignup={() => {
+          setTargetRouteAfterAuth(targetRoute)
+          setAuthMode('signup')
+          setIsAuthOpen(true)
+        }}
+        onOpenSignin={() => {
+          setTargetRouteAfterAuth(targetRoute)
+          setAuthMode('signin')
+          setIsAuthOpen(true)
+        }}
+        onGoHome={() => setCurrentRoute('home')}
+      />
+    )
+  }
+
   return <>{children}</>
 }
 
@@ -150,13 +187,13 @@ export const AppRoutes: React.FC = () => {
       )
     case 'dashboard':
       return (
-        <ProtectedRoute targetRoute="dashboard" targetRouteName="Student Workspace Dashboard">
+        <ProtectedRoute requireAuth={true} targetRoute="dashboard" targetRouteName="Student Workspace Dashboard">
           <Dashboard onNavigate={(route) => setCurrentRoute(route as RouteKey)} />
         </ProtectedRoute>
       )
     case 'publish':
       return (
-        <ProtectedRoute targetRoute="publish" targetRouteName="Publish & Domain Studio">
+        <ProtectedRoute requireAuth={true} targetRoute="publish" targetRouteName="Publish & Domain Studio">
           <Dashboard
             initialTab="publish"
             onNavigate={(route) => setCurrentRoute(route as RouteKey)}
@@ -165,7 +202,7 @@ export const AppRoutes: React.FC = () => {
       )
     case 'builder':
       return (
-        <ProtectedRoute targetRoute="builder" targetRouteName="Portfolio Studio">
+        <ProtectedRoute requireAuth={false} targetRoute="builder" targetRouteName="Portfolio Studio">
           <PageContainer
             onOpenAuth={handleOpenAuth}
             onOpenBuilder={() => handleOpenBuilder('portfolio')}
@@ -176,13 +213,13 @@ export const AppRoutes: React.FC = () => {
       )
     case 'resume':
       return (
-        <ProtectedRoute targetRoute="resume" targetRouteName="ATS Resume Builder">
+        <ProtectedRoute requireAuth={false} targetRoute="resume" targetRouteName="ATS Resume Builder">
           <Resume onBack={() => setCurrentRoute('dashboard')} />
         </ProtectedRoute>
       )
     case 'portfolio':
       return (
-        <ProtectedRoute targetRoute="portfolio" targetRouteName="Portfolio Studio">
+        <ProtectedRoute requireAuth={false} targetRoute="portfolio" targetRouteName="Portfolio Studio">
           <PortfolioPage
             onBack={() => setCurrentRoute('dashboard')}
             onViewPublic={() => setCurrentRoute('portfolio-preview')}
@@ -191,7 +228,7 @@ export const AppRoutes: React.FC = () => {
       )
     case 'portfolio-preview':
       return (
-        <ProtectedRoute targetRoute="portfolio-preview" targetRouteName="Portfolio Studio">
+        <ProtectedRoute requireAuth={false} targetRoute="portfolio-preview" targetRouteName="Portfolio Studio">
           <LocalPortfolioPreviewPage
             onBackToEditor={() => setCurrentRoute('portfolio')}
             onBackToDashboard={() => setCurrentRoute('dashboard')}
@@ -209,7 +246,7 @@ export const AppRoutes: React.FC = () => {
       )
     case 'settings':
       return (
-        <ProtectedRoute targetRoute="settings" targetRouteName="Account Settings">
+        <ProtectedRoute requireAuth={true} targetRoute="settings" targetRouteName="Account Settings">
           <PageContainer
             onOpenAuth={handleOpenAuth}
             onOpenBuilder={() => handleOpenBuilder('portfolio')}

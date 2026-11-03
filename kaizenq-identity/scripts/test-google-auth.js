@@ -304,3 +304,4 @@ it('Security: Zero Google Client Secrets exposed in frontend bundle', () => {
 console.log('\n======================================================================')
 console.log(`  GOOGLE AUTHENTICATION TEST SUITE: ${passed} PASSED, 0 FAILED`)
 console.log('======================================================================\n')
+

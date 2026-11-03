@@ -6,6 +6,18 @@ export interface AuthResponse<T = unknown> {
   error: AuthError | Error | null
 }
 
+/**
+ * Returns the authoritative origin for authentication callbacks and redirects.
+ * Prioritizes window.location.origin during browser runtime,
+ * falling back to VITE_APP_URL or the production site https://www.prbuilder.xyz.
+ */
+export const getAuthRedirectBaseUrl = (): string => {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin
+  }
+  return import.meta.env.VITE_APP_URL || 'https://www.prbuilder.xyz'
+}
+
 export const authService = {
   /**
    * Register a new student account using email and password.
@@ -18,10 +30,7 @@ export const authService = {
       }
     }
 
-    const redirectUrl =
-      typeof window !== 'undefined' && window.location.origin
-        ? window.location.origin
-        : (import.meta.env.VITE_APP_URL || 'https://prbuilder.xyz')
+    const redirectUrl = `${getAuthRedirectBaseUrl()}/auth?type=signup`
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -77,20 +86,17 @@ export const authService = {
       }
     }
 
-    // Security: Restrict redirectTo to trusted same-origin URL to prevent open redirect
-    let safeRedirectUrl: string | undefined = undefined
-    if (typeof window !== 'undefined' && window.location?.origin) {
-      if (redirectTo) {
-        try {
-          const parsed = new URL(redirectTo, window.location.origin)
-          safeRedirectUrl = parsed.origin === window.location.origin
-            ? parsed.toString()
-            : `${window.location.origin}/?route=settings`
-        } catch {
-          safeRedirectUrl = `${window.location.origin}/?route=settings`
+    const baseUrl = getAuthRedirectBaseUrl()
+    let safeRedirectUrl = `${baseUrl}/auth?type=recovery`
+
+    if (redirectTo) {
+      try {
+        const parsed = new URL(redirectTo, baseUrl)
+        if (parsed.origin === baseUrl) {
+          safeRedirectUrl = parsed.toString()
         }
-      } else {
-        safeRedirectUrl = `${window.location.origin}/?route=settings`
+      } catch {
+        // Fall back to standard recovery endpoint
       }
     }
 
@@ -125,10 +131,7 @@ export const authService = {
       }
     }
 
-    const redirectUrl =
-      typeof window !== 'undefined' && window.location.origin
-        ? window.location.origin
-        : (import.meta.env.VITE_APP_URL || 'https://prbuilder.xyz')
+    const redirectUrl = `${getAuthRedirectBaseUrl()}/auth?type=signup`
 
     const { error } = await supabase.auth.resend({
       type: 'signup',
@@ -150,11 +153,7 @@ export const authService = {
       }
     }
 
-    const origin =
-      typeof window !== 'undefined' && window.location.origin
-        ? window.location.origin
-        : (import.meta.env.VITE_APP_URL || 'https://prbuilder.xyz')
-
+    const origin = getAuthRedirectBaseUrl()
     const targetRoute = options?.targetRoute || 'dashboard'
 
     if (typeof window !== 'undefined') {
@@ -200,6 +199,13 @@ export const authService = {
     const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
 
     const isCallbackPath = pathname === '/auth/callback' || pathname.startsWith('/auth/callback')
+    const typeParam = searchParams.get('type') || hashParams.get('type')
+
+    // If explicitly a recovery flow and not on the OAuth callback path, let recovery handler process it
+    if (typeParam === 'recovery' && !isCallbackPath) {
+      return { isCallback: false, hasError: false, errorMessage: null, targetRoute: 'dashboard' }
+    }
+
     const hasOAuthParams =
       searchParams.has('code') ||
       searchParams.has('error') ||
@@ -212,6 +218,7 @@ export const authService = {
 
     // Check for provider error (e.g. user cancelled or denied consent)
     const errorParam = searchParams.get('error') || hashParams.get('error')
+    const errorCode = searchParams.get('error_code') || hashParams.get('error_code')
     const errorDesc =
       searchParams.get('error_description') ||
       hashParams.get('error_description') ||
@@ -220,7 +227,9 @@ export const authService = {
 
     let errorMessage: string | null = null
     if (errorParam) {
-      if (errorParam === 'access_denied') {
+      if (errorCode === 'otp_expired' || errorDesc?.toLowerCase().includes('expired') || errorDesc?.toLowerCase().includes('invalid')) {
+        errorMessage = 'This verification or password reset link has expired or has already been used. Please request a new one.'
+      } else if (errorParam === 'access_denied') {
         errorMessage = 'Google sign-in was cancelled or access was denied.'
       } else {
         errorMessage = errorDesc || `Authentication error: ${errorParam}`
@@ -241,6 +250,93 @@ export const authService = {
       isCallback: true,
       hasError: Boolean(errorMessage),
       errorMessage,
+      targetRoute: targetRoute || 'dashboard',
+    }
+  },
+
+  /**
+   * Detailed URL inspector for authentication events, password recoveries,
+   * signup confirmations, and expired links.
+   */
+  parseAuthUrl(): {
+    isOAuthCallback: boolean
+    isRecovery: boolean
+    isSignupConfirmation: boolean
+    isExpiredOtp: boolean
+    hasError: boolean
+    errorMessage: string | null
+    errorCode: string | null
+    targetRoute: string
+  } {
+    if (typeof window === 'undefined') {
+      return {
+        isOAuthCallback: false,
+        isRecovery: false,
+        isSignupConfirmation: false,
+        isExpiredOtp: false,
+        hasError: false,
+        errorMessage: null,
+        errorCode: null,
+        targetRoute: 'dashboard',
+      }
+    }
+
+    const pathname = window.location.pathname
+    const search = window.location.search
+    const hash = window.location.hash
+
+    const searchParams = new URLSearchParams(search)
+    const hashParams = new URLSearchParams(hash.replace(/^#/, ''))
+
+    const isCallbackPath = pathname === '/auth/callback' || pathname.startsWith('/auth/callback')
+    const typeParam = searchParams.get('type') || hashParams.get('type')
+    const errorCode = searchParams.get('error_code') || hashParams.get('error_code')
+    const errorParam = searchParams.get('error') || hashParams.get('error')
+    const errorDesc =
+      searchParams.get('error_description') ||
+      hashParams.get('error_description') ||
+      searchParams.get('message') ||
+      hashParams.get('message')
+
+    const isExpiredOtp = Boolean(
+      errorCode === 'otp_expired' ||
+      errorDesc?.toLowerCase().includes('expired') ||
+      errorDesc?.toLowerCase().includes('invalid')
+    )
+
+    const isRecovery = typeParam === 'recovery' || hash.includes('type=recovery') || search.includes('type=recovery')
+    const isSignupConfirmation = typeParam === 'signup' || hash.includes('type=signup') || search.includes('type=signup')
+    const isOAuthCallback =
+      isCallbackPath ||
+      searchParams.has('code') ||
+      (!isRecovery && !isSignupConfirmation && (hashParams.has('access_token') || errorParam === 'access_denied'))
+
+    let errorMessage: string | null = null
+    if (isExpiredOtp) {
+      errorMessage = 'This verification or password reset link has expired or has already been used. Please request a new one.'
+    } else if (errorParam === 'access_denied') {
+      errorMessage = 'Google sign-in was cancelled or access was denied.'
+    } else if (errorParam) {
+      errorMessage = errorDesc || `Authentication error: ${errorParam}`
+    }
+
+    let targetRoute = searchParams.get('redirect') || ''
+    if (!targetRoute) {
+      try {
+        targetRoute = localStorage.getItem('prbuilder_auth_redirect') || 'dashboard'
+      } catch {
+        targetRoute = 'dashboard'
+      }
+    }
+
+    return {
+      isOAuthCallback,
+      isRecovery,
+      isSignupConfirmation,
+      isExpiredOtp,
+      hasError: Boolean(errorMessage),
+      errorMessage,
+      errorCode,
       targetRoute: targetRoute || 'dashboard',
     }
   },
