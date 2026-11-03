@@ -18,10 +18,16 @@ export const authService = {
       }
     }
 
+    const redirectUrl =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : (import.meta.env.VITE_APP_URL || 'https://prelevate.xyz')
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: redirectUrl,
         data: {
           display_name: displayName || email.split('@')[0],
         },
