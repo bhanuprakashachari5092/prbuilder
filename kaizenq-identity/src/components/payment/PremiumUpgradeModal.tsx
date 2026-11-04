@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   X,
-  Sparkles,
-  Check,
   ShieldCheck,
   Zap,
   CheckCircle2,
@@ -126,10 +124,8 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
   onProceedToCheckout,
   onApplyOwned,
 }) => {
-  const { hasAllAccessPass, hasDomainPass, isTemplateUnlocked, isThemeUnlocked } = useEntitlements()
+  const { hasAllAccessPass, isTemplateUnlocked, isThemeUnlocked } = useEntitlements()
   const [product, setProduct] = useState<PaymentProduct | null>(null)
-  const [includeDomainAddon, setIncludeDomainAddon] = useState<boolean>(false)
-  const [upgradeToLifetimePass, setUpgradeToLifetimePass] = useState<boolean>(false)
   const [couponCodeInput, setCouponCodeInput] = useState<string>('')
   const [activeCouponCode, setActiveCouponCode] = useState<string | undefined>(undefined)
   const [cartCalculation, setCartCalculation] = useState<CartPricingResult | null>(null)
@@ -158,13 +154,9 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
     (itemType === 'portfolio_theme' && isThemeUnlocked(itemId as never))
   const isOwned = isReallyOwned
 
-  // Determine active product ID based on user selection
-  const effectiveProductId = upgradeToLifetimePass ? 'pro-all-access-pass' : meta.productId
-
-  // Memoize addon IDs array so reference is stable and prevents infinite re-render loops
-  const effectiveAddonIds = useMemo(() => {
-    return !upgradeToLifetimePass && includeDomainAddon && !hasDomainPass ? ['custom-domain-pass'] : []
-  }, [upgradeToLifetimePass, includeDomainAddon, hasDomainPass])
+  // Direct product ID for item unlock
+  const effectiveProductId = meta.productId
+  const effectiveAddonIds = useMemo<string[]>(() => [], [])
 
   // Load product catalog info
   useEffect(() => {
@@ -230,8 +222,6 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
       setCartCalculation(initial)
       refreshCartPricing()
     } else {
-      setIncludeDomainAddon(false)
-      setUpgradeToLifetimePass(false)
       setCouponCodeInput('')
       setActiveCouponCode(undefined)
       setCartCalculation(null)
@@ -310,7 +300,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
           {/* Included Features Grid */}
           <div className="space-y-2.5">
             <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-blue-600" />
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
               Included with this unlock
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -325,92 +315,6 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
               ))}
             </div>
           </div>
-
-          {/* Bundle & Add-On Customization Selector */}
-          {!isReallyOwned && (
-            <div className="space-y-2.5 pt-1">
-              <div className="flex items-center justify-between">
-                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Bundle & Customization Options
-                </h4>
-                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  Optional Add-Ons
-                </span>
-              </div>
-
-              {/* Pro All-Access Pass Bundle Card */}
-              <div
-                onClick={() => setUpgradeToLifetimePass(!upgradeToLifetimePass)}
-                className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                  upgradeToLifetimePass
-                    ? 'bg-gradient-to-r from-blue-50/90 to-indigo-50/60 border-blue-500 shadow-sm ring-1 ring-blue-500/20'
-                    : 'bg-slate-50/60 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors border ${
-                      upgradeToLifetimePass
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
-                        : 'border-slate-300 bg-white'
-                    }`}
-                  >
-                    {upgradeToLifetimePass && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-slate-900">
-                        PR Builder Pro All-Access Lifetime Pass
-                      </span>
-                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 border border-amber-200 px-2 py-0.5 rounded-full">
-                        Save ₹496
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
-                      Unlocks all premium templates, portfolio themes, and custom domain pass forever.
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-black text-slate-900 font-mono block">₹999</span>
-                  <span className="text-[10px] text-slate-400 line-through font-mono block">₹1495</span>
-                </div>
-              </div>
-
-              {/* Custom Domain Pass Add-On */}
-              {!upgradeToLifetimePass && !hasDomainPass && (
-                <div
-                  onClick={() => setIncludeDomainAddon(!includeDomainAddon)}
-                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    includeDomainAddon
-                      ? 'bg-gradient-to-r from-blue-50/90 to-indigo-50/60 border-blue-500 shadow-sm ring-1 ring-blue-500/20'
-                      : 'bg-slate-50/60 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors border ${
-                        includeDomainAddon
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
-                          : 'border-slate-300 bg-white'
-                      }`}
-                    >
-                      {includeDomainAddon && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-900">
-                        Add Instant Custom Domain Pass
-                      </span>
-                      <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
-                        Connect your personal top-level domain (yourname.dev) with automated SSL.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-slate-900 font-mono shrink-0">+₹499</span>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Coupon / Promo Code Input */}
           {!isReallyOwned && (
@@ -575,10 +479,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                 variant="primary"
                 size="sm"
                 onClick={() => {
-                  const targetTitle = upgradeToLifetimePass
-                    ? 'PR Builder Pro All-Access Lifetime Pass'
-                    : meta.title
-                  onProceedToCheckout(effectiveProductId, payablePaise, targetTitle, activeCouponCode)
+                  onProceedToCheckout(effectiveProductId, payablePaise, meta.title, activeCouponCode)
                 }}
                 className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/25 px-5 py-2.5 rounded-xl transition-all active:scale-[0.98]"
               >
