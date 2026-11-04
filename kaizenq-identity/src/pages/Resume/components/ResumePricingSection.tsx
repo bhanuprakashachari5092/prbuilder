@@ -363,21 +363,26 @@ export const ResumePricingSection: React.FC<ResumePricingSectionProps> = ({
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2">
                           {/* Preview Action */}
                           <button
                             type="button"
                             onClick={() => setPreviewTemplate(tmpl)}
-                            className="px-2.5 py-1 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#475569] hover:text-[#0F172A] text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-lg border border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs font-medium transition-all shadow-2xs flex items-center gap-1.5 active:scale-95 cursor-pointer"
                             title={`Preview ${tmpl.name}`}
                           >
-                            <Eye className="w-3 h-3" />
+                            <Eye className="w-3.5 h-3.5 text-slate-500" />
                             <span>Preview</span>
                           </button>
 
                           {/* Select Action */}
                           {isActive ? (
-                            <Button variant="outline" size="sm" disabled className="text-[11px] py-1 px-2.5 h-7">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled
+                              className="text-xs font-semibold py-1.5 px-3 rounded-lg border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed"
+                            >
                               Selected
                             </Button>
                           ) : isUnlocked || tmpl.isFree ? (
@@ -385,21 +390,20 @@ export const ResumePricingSection: React.FC<ResumePricingSectionProps> = ({
                               variant="primary"
                               size="sm"
                               onClick={() => onSelectTemplate(tmpl.id)}
-                              className="text-[11px] py-1 px-2.5 h-7 bg-[#2563EB] hover:bg-[#1D4ED8]"
+                              className="text-xs font-semibold py-1.5 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all active:scale-[0.98]"
                             >
                               Select Template
                             </Button>
                           ) : (
                             <Button
-                              variant="glow"
+                              variant="primary"
                               size="sm"
                               onClick={() => {
                                 onSelectTemplate(tmpl.id)
                               }}
-                              className="text-[11px] py-1 px-2.5 h-7 flex items-center gap-1"
+                              className="text-xs font-semibold py-1.5 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all active:scale-[0.98]"
                             >
-                              <Sparkles className="w-3 h-3 text-amber-300" />
-                              <span>Unlock {priceInfo.formatted}</span>
+                              Select (Pro)
                             </Button>
                           )}
                         </div>

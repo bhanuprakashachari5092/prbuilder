@@ -2,7 +2,6 @@ import React from 'react'
 import {
   X,
   CheckCircle2,
-  Sparkles,
   ShieldCheck,
   Check,
   ArrowRight,
@@ -341,15 +340,14 @@ export const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
               </Button>
             ) : (
               <Button
-                variant="glow"
+                variant="primary"
                 size="sm"
                 onClick={() => {
                   onClose()
                   onUpgrade?.()
                 }}
-                className="text-xs flex items-center gap-1.5"
+                className="text-xs font-semibold py-1.5 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all active:scale-[0.98] flex items-center gap-1.5"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
                 <span>Unlock for {priceFormatted}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>

@@ -580,9 +580,8 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                     : meta.title
                   onProceedToCheckout(effectiveProductId, payablePaise, targetTitle, activeCouponCode)
                 }}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/25 px-4.5 py-2.5 rounded-xl transition-all active:scale-[0.98]"
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/25 px-5 py-2.5 rounded-xl transition-all active:scale-[0.98]"
               >
-                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                 {payablePaise === 0
                   ? 'Fulfill Free with Promo (₹0.00)'
                   : `Unlock with UPI (₹${payableRupees.toFixed(2)})`}
