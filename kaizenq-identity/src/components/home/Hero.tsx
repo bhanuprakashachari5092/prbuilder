@@ -193,49 +193,49 @@ export const Hero: React.FC<HeroProps> = () => {
   }
 
   // =========================================================================
-  // Accessibility: prefers-reduced-motion fallback
-  // When reduced motion is requested, render the standard hero cleanly without
-  // the sticky scroll-linked track or elaborate transforms.
+  // Accessibility & Mobile: prefers-reduced-motion or Mobile view
+  // Renders the standard hero cleanly, immediately visible, and responsive
+  // without the sticky scroll-linked track on mobile devices.
   // =========================================================================
-  if (shouldReduceMotion) {
+  if (shouldReduceMotion || !isDesktop) {
     return (
       <section
-        className="relative pt-16 sm:pt-20 lg:pt-24 pb-16 sm:pb-20 lg:pb-24 overflow-hidden bg-[#F7F9FC]"
+        className="relative pt-20 sm:pt-24 lg:pt-28 pb-14 sm:pb-20 lg:pb-24 overflow-hidden bg-[#F7F9FC]"
         aria-label="PR Builder Hero"
       >
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[520px] bg-gradient-to-b from-[#EFF6FF] via-[#EEF2FF]/40 to-transparent blur-3xl pointer-events-none -z-10" />
 
         <Container size="xl">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 lg:gap-14 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
             {/* Left Column */}
             <div className="lg:col-span-6 flex flex-col text-left z-30">
-              <div className="inline-flex items-center gap-1.5 sm:gap-2 self-start px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] shadow-sm mb-2.5 sm:mb-4">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 self-start px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] shadow-xs mb-3 sm:mb-4">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
                 <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-[#2563EB]">
                   YOUR PROFESSIONAL IDENTITY, REIMAGINED
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-4xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-extrabold tracking-tight font-sans text-[#111827] leading-[1.15] sm:leading-[1.12]">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight font-sans text-[#111827] leading-[1.12]">
                 Your Skills. Your Story.{' '}
-                <span className="block mt-0.5 sm:mt-1.5 bg-gradient-to-r from-[#111827] via-[#2563EB] to-[#1D4ED8] bg-clip-text text-transparent">
+                <span className="block mt-1 sm:mt-1.5 bg-gradient-to-r from-[#111827] via-[#2563EB] to-[#1D4ED8] bg-clip-text text-transparent">
                   Your Future.
                 </span>
               </h1>
 
-              <p className="mt-2.5 sm:mt-4 text-xs sm:text-base text-[#334155] font-normal leading-relaxed max-w-xl">
+              <p className="mt-3 sm:mt-4 text-sm sm:text-base text-[#334155] font-normal leading-relaxed max-w-xl">
                 Create an ATS-optimized resume and a live personal portfolio that showcases your work,
                 skills, and potential — all in one unified workspace.
               </p>
 
-              <div className="mt-4 sm:mt-6 flex flex-row items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+              <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 <Button
                   variant="primary"
                   size="md"
                   onClick={handleResumeClick}
-                  leftIcon={<FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />}
-                  rightIcon={<ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />}
-                  className="flex-1 sm:flex-initial text-xs sm:text-base px-3.5 sm:px-6 py-2.5 sm:py-3.5 shadow-md shadow-blue-600/20 whitespace-nowrap"
+                  leftIcon={<FileText className="w-4 h-4 shrink-0" />}
+                  rightIcon={<ArrowRight className="w-4 h-4 shrink-0" />}
+                  className="w-full sm:w-auto text-sm sm:text-base px-5 py-3 shadow-md shadow-blue-600/20 justify-center"
                 >
                   Build My Resume
                 </Button>
@@ -244,14 +244,14 @@ export const Hero: React.FC<HeroProps> = () => {
                   variant="secondary"
                   size="md"
                   onClick={handlePortfolioClick}
-                  leftIcon={<Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#2563EB] shrink-0" />}
-                  className="flex-1 sm:flex-initial text-xs sm:text-base px-3.5 sm:px-6 py-2.5 sm:py-3.5 whitespace-nowrap"
+                  leftIcon={<Globe className="w-4 h-4 text-[#2563EB] shrink-0" />}
+                  className="w-full sm:w-auto text-sm sm:text-base px-5 py-3 justify-center"
                 >
                   Create My Portfolio
                 </Button>
               </div>
 
-              <div className="mt-3.5 sm:mt-6 pt-2.5 sm:pt-4 border-t border-[#E2E8F0] flex flex-wrap items-center gap-y-1.5 gap-x-4 sm:gap-x-8 text-[11px] sm:text-sm text-[#64748B]">
+              <div className="mt-5 sm:mt-6 pt-3 sm:pt-4 border-t border-[#E2E8F0] flex flex-wrap items-center gap-y-2 gap-x-4 sm:gap-x-8 text-xs sm:text-sm text-[#64748B]">
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#2563EB] shrink-0" />
                   <span>LaTeX-Grade ATS Templates</span>
@@ -268,11 +268,11 @@ export const Hero: React.FC<HeroProps> = () => {
             </div>
 
             {/* Right Column: Settled Cards */}
-            <div className="lg:col-span-6 relative w-full flex items-center justify-center lg:justify-end min-h-[220px] sm:min-h-[280px] md:min-h-[340px] lg:min-h-[410px] xl:min-h-[430px]">
-              <div className="relative w-full max-w-[340px] sm:max-w-[420px] lg:max-w-[470px] xl:max-w-[490px] 2xl:max-w-none h-[220px] sm:h-[280px] md:h-[340px] lg:h-[410px] xl:h-[430px]">
+            <div className="lg:col-span-6 relative w-full flex items-center justify-center lg:justify-end min-h-[250px] sm:min-h-[300px] md:min-h-[340px] lg:min-h-[410px] xl:min-h-[430px] mt-4 sm:mt-0">
+              <div className="relative w-full max-w-[320px] sm:max-w-[420px] lg:max-w-[470px] xl:max-w-[490px] h-[240px] sm:h-[300px] md:h-[340px] lg:h-[410px] xl:h-[430px]">
                 {/* Resume Card */}
                 <div
-                  className="absolute top-2 sm:top-5 lg:top-10 right-1 sm:right-2 lg:right-0 z-10 w-[165px] sm:w-[215px] md:w-[255px] lg:w-[275px] xl:w-[290px] rotate-3 cursor-pointer group"
+                  className="absolute top-1 sm:top-5 lg:top-10 right-0 sm:right-2 lg:right-0 z-10 w-[160px] sm:w-[215px] md:w-[255px] lg:w-[275px] xl:w-[290px] rotate-2 cursor-pointer group"
                   onClick={handleResumeClick}
                 >
                   <div className="relative rounded-xl sm:rounded-2xl p-1 bg-white border border-[#E2E8F0] shadow-xl hover:shadow-2xl transition-shadow duration-300">
@@ -298,7 +298,7 @@ export const Hero: React.FC<HeroProps> = () => {
 
                 {/* Portfolio Card */}
                 <div
-                  className="absolute bottom-1 sm:bottom-2 lg:bottom-3 left-1 sm:left-2 lg:left-0 z-20 w-[195px] sm:w-[250px] md:w-[315px] lg:w-[340px] xl:w-[365px] -rotate-2.5 cursor-pointer group"
+                  className="absolute bottom-1 sm:bottom-2 lg:bottom-3 left-0 sm:left-2 lg:left-0 z-20 w-[190px] sm:w-[250px] md:w-[315px] lg:w-[340px] xl:w-[365px] -rotate-2 cursor-pointer group"
                   onClick={handlePortfolioClick}
                 >
                   <div className="relative rounded-xl sm:rounded-2xl p-1 bg-white border border-[#E2E8F0] shadow-xl hover:shadow-2xl transition-shadow duration-300">

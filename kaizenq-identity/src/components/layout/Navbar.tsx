@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Menu, X, ArrowRight, Shield } from 'lucide-react'
+import { Menu, X, ArrowRight, Shield, FileText, Globe, Sparkles } from 'lucide-react'
 import { PRLogo } from '../brand/PRLogo.tsx'
 import { Button } from '../ui/Button.tsx'
 import { Container } from '../ui/Container.tsx'
@@ -25,7 +25,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { isAdmin } = useAuth()
   const shouldReduceMotion = useReducedMotion()
   const [isScrolled, setIsScrolled] = useState(false)
-  const [isHeroRevealed, setIsHeroRevealed] = useState(!revealOnScroll || shouldReduceMotion)
+  const [isHeroRevealed, setIsHeroRevealed] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return true
+    return !revealOnScroll || shouldReduceMotion
+  })
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -33,7 +36,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       const scrollY = window.scrollY
       setIsScrolled(scrollY > 15)
       if (revealOnScroll && !shouldReduceMotion) {
-        // Reveal navbar smoothly as user begins scroll transition, fully visible in settled hero
+        if (window.innerWidth < 768) {
+          setIsHeroRevealed(true)
+          return
+        }
         const revealThreshold = Math.max(window.innerHeight * 0.08, 40)
         setIsHeroRevealed(scrollY >= revealThreshold)
       }
@@ -43,6 +49,18 @@ export const Navbar: React.FC<NavbarProps> = ({
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [revealOnScroll, shouldReduceMotion])
+
+  // Prevent background scrolling when mobile menu is active
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileMenuOpen])
 
   // Close mobile menu on resize to desktop
   useEffect(() => {
@@ -154,25 +172,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Admin Console
               </Button>
             ) : (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentRoute('resume')}
-                  className="text-xs lg:text-sm border-[#E2E8F0] text-[#111827] hover:bg-[#F8FAFC]"
-                >
-                  ATS Resume
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={handleGetStarted}
-                  rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                  className="text-xs lg:text-sm bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-xs"
-                >
-                  Workspace
-                </Button>
-              </>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleGetStarted}
+                rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                className="text-xs lg:text-sm bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-xs font-semibold px-4 py-2"
+              >
+                Workspace
+              </Button>
             )}
           </div>
 
@@ -180,7 +188,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex md:hidden items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[#111827] hover:bg-[#F1F5F9] focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+              className="p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[#111827] hover:bg-[#F1F5F9] focus:outline-none focus:ring-2 focus:ring-[#2563EB] cursor-pointer"
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileMenuOpen}
             >
@@ -197,73 +205,62 @@ export const Navbar: React.FC<NavbarProps> = ({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="md:hidden bg-white/98 border-b border-[#E2E8F0] backdrop-blur-xl px-4 pt-3 pb-6 overflow-hidden shadow-lg"
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="md:hidden bg-white/98 border-b border-[#E2E8F0] backdrop-blur-xl px-4 pt-3 pb-6 overflow-hidden shadow-xl"
           >
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <a
                 href="#features"
                 onClick={(e) => {
                   e.preventDefault()
                   handleNavClick('#features')
                 }}
-                className="px-3 py-2.5 text-sm font-medium text-[#64748B] hover:text-[#111827] hover:bg-[#F8FAFC] rounded-lg transition-colors"
+                className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 rounded-xl transition-all"
               >
-                Features
+                <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Features</span>
               </a>
               <button
                 onClick={() => handleBuilderClick('resume')}
-                className="w-full text-left px-3 py-2.5 text-sm font-medium text-[#64748B] hover:text-[#111827] hover:bg-[#F8FAFC] rounded-lg transition-colors cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 rounded-xl transition-all cursor-pointer text-left"
               >
-                Resume Builder
+                <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Resume Builder</span>
               </button>
               <button
                 onClick={() => handleBuilderClick('portfolio')}
-                className="w-full text-left px-3 py-2.5 text-sm font-medium text-[#64748B] hover:text-[#111827] hover:bg-[#F8FAFC] rounded-lg transition-colors cursor-pointer"
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 rounded-xl transition-all cursor-pointer text-left"
               >
-                Portfolio Builder
+                <Globe className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Portfolio Builder</span>
               </button>
 
-              <div className="pt-3 mt-2 border-t border-[#E2E8F0] flex flex-col gap-2.5">
+              <div className="pt-3 mt-1.5 border-t border-slate-200">
                 {isAdmin ? (
                   <Button
                     variant="primary"
                     fullWidth
-                    size="sm"
+                    size="md"
                     onClick={() => {
                       setMobileMenuOpen(false)
                       setCurrentRoute('admin')
                     }}
                     leftIcon={<Shield className="w-4 h-4 text-white" />}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm justify-center py-2.5"
                   >
                     Admin Console
                   </Button>
                 ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      fullWidth
-                      size="sm"
-                      onClick={() => {
-                        setMobileMenuOpen(false)
-                        setCurrentRoute('resume')
-                      }}
-                      className="border-[#E2E8F0] text-[#111827] hover:bg-[#F8FAFC]"
-                    >
-                      ATS Resume Builder
-                    </Button>
-                    <Button
-                      variant="primary"
-                      fullWidth
-                      size="sm"
-                      onClick={handleGetStarted}
-                      rightIcon={<ArrowRight className="w-4 h-4" />}
-                      className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold shadow-xs"
-                    >
-                      Open Workspace
-                    </Button>
-                  </>
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    size="md"
+                    onClick={handleGetStarted}
+                    rightIcon={<ArrowRight className="w-4 h-4" />}
+                    className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold shadow-xs justify-center py-2.5"
+                  >
+                    Open Workspace
+                  </Button>
                 )}
               </div>
             </div>
