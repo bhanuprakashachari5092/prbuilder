@@ -482,36 +482,6 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
                   )
                 })}
               </div>
-
-              {/* Custom Domain Pass & Pro All-Access Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
-                <CustomDomainPricingCard
-                  priceRupees={domainPass.rupees}
-                  isOwned={entitlements.hasDomainPass || entitlements.hasAllAccessPass}
-                  onUnlock={() => {
-                    onProceedToCheckout(
-                      'custom-domain-pass',
-                      domainPass.paise,
-                      'Custom Domain Pass',
-                    )
-                  }}
-                  onNavigateToDomainManager={onNavigateToDomainManager}
-                />
-
-                <PRBuilderProBundleCard
-                  proPassPriceRupees={proPass.rupees}
-                  componentSumRupees={proPass.componentSumRupees}
-                  savingsRupees={proPass.savingsRupees}
-                  isOwned={entitlements.hasAllAccessPass}
-                  onUnlock={() => {
-                    onProceedToCheckout(
-                      'pro-all-access-pass',
-                      proPass.paise,
-                      'PR Builder Pro All-Access Lifetime Pass',
-                    )
-                  }}
-                />
-              </div>
             </div>
           )}
 
