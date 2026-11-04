@@ -40,7 +40,7 @@ function verifyCashfreeSignature(timestamp, rawBody, secret, signatureHeader) {
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(actual))
 }
 
-const testSecret = 'cfsk_ma_prod_test_secret_key_84ea076faa89f4a7337'
+const testSecret = 'mock_test_secret_key_84ea076faa89f4a7337'
 const testTimestamp = '1793720284837'
 const testRawPayload = JSON.stringify({
   type: 'PAYMENT_SUCCESS_WEBHOOK',

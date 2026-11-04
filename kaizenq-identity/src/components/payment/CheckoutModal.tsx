@@ -253,6 +253,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       // Verify status with server
       const verifyRes = await cashfreeService.verifyOrder(order.orderId)
       if (verifyRes.success) {
+        await paymentService.verifyAndFulfill(
+          order.orderId,
+          verifyRes.utr || 'CASHFREE_VERIFIED',
+          undefined,
+          undefined,
+          false,
+        )
         setPaymentStatus('paid')
         setConfirmedUtr(verifyRes.utr || 'CASHFREE_VERIFIED')
       }

@@ -13,8 +13,37 @@ export default async function handler(req, res) {
     const { orderId } = req.body || {}
     if (!orderId) return res.status(400).json({ error: 'orderId is required' })
 
-    const appId = process.env.CASHFREE_APP_ID || process.env.VITE_CASHFREE_APP_ID
-    const secretKey = process.env.CASHFREE_SECRET_KEY
+    let appId = process.env.CASHFREE_APP_ID || process.env.VITE_CASHFREE_APP_ID
+    let secretKey = process.env.CASHFREE_SECRET_KEY
+
+    if (!appId || !secretKey) {
+      try {
+        const fs = await import('node:fs')
+        const path = await import('node:path')
+        const envCandidates = [
+          path.resolve(process.cwd(), '.env'),
+          path.resolve(process.cwd(), 'kaizenq-identity', '.env'),
+        ]
+        for (const envPath of envCandidates) {
+          if (fs.existsSync(envPath)) {
+            const lines = fs.readFileSync(envPath, 'utf8').split('\n')
+            for (const line of lines) {
+              const m = line.match(/^([^=]+)=(.*)$/)
+              if (m) {
+                const k = m[1].trim()
+                const v = m[2].trim()
+                if (k === 'CASHFREE_APP_ID' && !appId) appId = v
+                if (k === 'CASHFREE_SECRET_KEY' && !secretKey) secretKey = v
+                if (k === 'VITE_CASHFREE_APP_ID' && !appId) appId = v
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Fall through
+      }
+    }
+
     const apiVersion = process.env.CASHFREE_API_VERSION || '2023-08-01'
     const isSandbox = (process.env.CASHFREE_ENV || 'production') === 'sandbox'
 
