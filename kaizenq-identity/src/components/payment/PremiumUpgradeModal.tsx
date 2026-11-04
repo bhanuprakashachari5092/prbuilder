@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   X,
   Sparkles,
@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Tag,
   Gift,
+  Crown,
 } from 'lucide-react'
 import { Button } from '../ui/Button.tsx'
 import {
@@ -134,16 +135,20 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
   const [cartCalculation, setCartCalculation] = useState<CartPricingResult | null>(null)
   const [isCalculating, setIsCalculating] = useState<boolean>(false)
 
-  const meta = METADATA_MAP[itemId] || {
-    productId: `pro-${itemId}`,
-    title: 'Premium Customization Feature',
-    categoryLabel: 'Premium Add-On',
-    tagline: 'Unlock enhanced layouts and custom design presentation.',
-    highlights: ['Bespoke visual styling', 'Lifetime access', 'Unlimited edits and exports'],
-    freeComparison: ['Standard layouts', 'Standard export options'],
-    proComparison: ['Premium layouts', 'Enhanced presentation styling'],
-    fallbackPaise: itemType === 'resume_template' ? 19900 : 29900,
-  }
+  const meta = useMemo(() => {
+    return (
+      METADATA_MAP[itemId] || {
+        productId: `pro-${itemId}`,
+        title: 'Premium Customization Feature',
+        categoryLabel: 'Premium Add-On',
+        tagline: 'Unlock enhanced layouts and custom design presentation.',
+        highlights: ['Bespoke visual styling', 'Lifetime access', 'Unlimited edits and exports', 'Zero recurring subscriptions'],
+        freeComparison: ['Standard layouts', 'Standard export options'],
+        proComparison: ['Premium layouts', 'Enhanced presentation styling'],
+        fallbackPaise: itemType === 'resume_template' ? 19900 : 29900,
+      }
+    )
+  }, [itemId, itemType])
 
   // Authoritative ownership check
   const isReallyOwned =
@@ -155,36 +160,74 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
 
   // Determine active product ID based on user selection
   const effectiveProductId = upgradeToLifetimePass ? 'pro-all-access-pass' : meta.productId
-  const effectiveAddonIds =
-    !upgradeToLifetimePass && includeDomainAddon && !hasDomainPass ? ['custom-domain-pass'] : []
+
+  // Memoize addon IDs array so reference is stable and prevents infinite re-render loops
+  const effectiveAddonIds = useMemo(() => {
+    return !upgradeToLifetimePass && includeDomainAddon && !hasDomainPass ? ['custom-domain-pass'] : []
+  }, [upgradeToLifetimePass, includeDomainAddon, hasDomainPass])
 
   // Load product catalog info
   useEffect(() => {
     if (!isOpen) return
+    let isSubscribed = true
     paymentService.getProducts().then(({ data }) => {
-      if (data) {
+      if (isSubscribed && data) {
         const matched = data.find((p) => p.id === meta.productId)
         if (matched) setProduct(matched)
       }
     })
+    return () => {
+      isSubscribed = false
+    }
   }, [isOpen, meta.productId])
 
   // Recalculate authoritative server cart pricing whenever selection or coupon changes
   const refreshCartPricing = useCallback(async () => {
     setIsCalculating(true)
-    const res = await paymentService.calculateCartPricing(
-      effectiveProductId,
-      effectiveAddonIds,
-      activeCouponCode,
-    )
-    if (res.data) {
-      setCartCalculation(res.data)
+    try {
+      const res = await paymentService.calculateCartPricing(
+        effectiveProductId,
+        effectiveAddonIds,
+        activeCouponCode,
+      )
+      if (res.data) {
+        const safeData = { ...res.data }
+        // Guard against accidental ₹0 calculation for pro items unless a genuine 100% coupon is active
+        const isLegit100Coupon =
+          activeCouponCode === 'HACKATHON100' ||
+          (safeData.couponDiscountPaise > 0 && safeData.couponDiscountPaise >= safeData.subtotalPaise)
+
+        if (safeData.payablePaise === 0 && !isLegit100Coupon && meta.fallbackPaise > 0) {
+          safeData.payablePaise = meta.fallbackPaise
+          safeData.finalAmountPaise = meta.fallbackPaise
+          safeData.finalAmountRupees = Math.round((meta.fallbackPaise / 100) * 100) / 100
+          safeData.isFree = false
+        }
+        setCartCalculation(safeData)
+      }
+    } catch (err) {
+      console.warn('[PremiumUpgradeModal] Cart calculation warning:', err)
+      // Fall back to clean local calculation
+      const fallback = paymentService.computeLocalCartPricing(
+        effectiveProductId,
+        effectiveAddonIds,
+        activeCouponCode,
+      )
+      setCartCalculation(fallback)
+    } finally {
+      setIsCalculating(false)
     }
-    setIsCalculating(false)
-  }, [effectiveProductId, effectiveAddonIds, activeCouponCode])
+  }, [effectiveProductId, effectiveAddonIds, activeCouponCode, meta.fallbackPaise])
 
   useEffect(() => {
     if (isOpen) {
+      // Seed initial calculation immediately so UI is instantly populated without flashing
+      const initial = paymentService.computeLocalCartPricing(
+        effectiveProductId,
+        effectiveAddonIds,
+        activeCouponCode,
+      )
+      setCartCalculation(initial)
       refreshCartPricing()
     } else {
       setIncludeDomainAddon(false)
@@ -197,7 +240,15 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
 
   if (!isOpen) return null
 
-  const payablePaise = cartCalculation?.payablePaise ?? product?.price_paise ?? meta.fallbackPaise
+  // Authoritative payable price calculation with zero-paise guard
+  const rawPayablePaise = cartCalculation?.payablePaise ?? product?.price_paise ?? meta.fallbackPaise
+  const isLegitimatelyFree =
+    rawPayablePaise === 0 &&
+    (activeCouponCode === 'HACKATHON100' ||
+      ((cartCalculation?.couponDiscountPaise ?? 0) > 0 &&
+        (cartCalculation?.couponDiscountPaise ?? 0) >= (cartCalculation?.subtotalPaise ?? 1)))
+
+  const payablePaise = isLegitimatelyFree ? 0 : rawPayablePaise === 0 ? meta.fallbackPaise : rawPayablePaise
   const payableRupees = Math.round((payablePaise / 100) * 100) / 100
 
   const handleApplyCoupon = (e: React.FormEvent) => {
@@ -207,52 +258,68 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-[#E2E8F0] overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[92vh] font-sans">
+        
         {/* Top Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#E2E8F0] bg-gradient-to-r from-[#F8FAFC] to-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#EEF2FF] to-[#DBEAFE] border border-[#BFDBFE] flex items-center justify-center text-[#2563EB] shadow-xs">
-              <Sparkles className="w-5 h-5" />
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 bg-white/95">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500/15 via-indigo-500/10 to-blue-600/5 border border-blue-200/70 flex items-center justify-center text-blue-600 shadow-xs">
+              <Crown className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-[#0F172A]">{meta.title}</h3>
-                <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
+                  {meta.title}
+                </h3>
+                <span
+                  className={`text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-0.5 rounded-full border ${
+                    isReallyOwned
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}
+                >
                   {isReallyOwned ? 'OWNED' : 'PREMIUM'}
                 </span>
               </div>
-              <p className="text-xs text-[#64748B]">{meta.categoryLabel}</p>
+              <p className="text-xs text-slate-500 font-medium">{meta.categoryLabel}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-xl transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
-          {/* Tagline Card */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/60 to-indigo-50/40 border border-blue-100 flex items-start gap-3">
-            <Zap className="w-5 h-5 text-[#2563EB] shrink-0 mt-0.5" />
-            <p className="text-xs text-[#1E293B] leading-relaxed font-medium">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-5">
+          
+          {/* Refined Tagline Banner */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-50/70 via-indigo-50/35 to-sky-50/50 border border-blue-100/90 flex items-start gap-3 shadow-2xs">
+            <div className="p-1.5 rounded-xl bg-blue-600 text-white shadow-xs shrink-0 mt-0.5">
+              <Zap className="w-3.5 h-3.5 fill-current" />
+            </div>
+            <p className="text-xs sm:text-[13px] text-slate-800 leading-relaxed font-medium">
               {meta.tagline}
             </p>
           </div>
 
-          {/* Key Benefits */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">
+          {/* Included Features Grid */}
+          <div className="space-y-2.5">
+            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-blue-600" />
               Included with this unlock
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {meta.highlights.map((h, i) => (
-                <div key={i} className="flex items-start gap-2 p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]/70 text-xs text-[#334155]">
-                  <CheckCircle2 className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5" />
+                <div
+                  key={i}
+                  className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50/80 hover:bg-slate-100/70 border border-slate-200/70 text-xs text-slate-700 font-medium transition-colors shadow-2xs"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                   <span className="leading-snug">{h}</span>
                 </div>
               ))}
@@ -261,83 +328,85 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
 
           {/* Bundle & Add-On Customization Selector */}
           {!isReallyOwned && (
-            <div className="space-y-3 pt-1">
-              <h4 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center justify-between">
-                <span>Bundle & Customization Options</span>
-                <span className="text-[11px] text-emerald-600 font-semibold normal-case">
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Bundle & Customization Options
+                </h4>
+                <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   Optional Add-Ons
                 </span>
-              </h4>
+              </div>
 
-              {/* Bundle Upgrade Card */}
+              {/* Pro All-Access Pass Bundle Card */}
               <div
                 onClick={() => setUpgradeToLifetimePass(!upgradeToLifetimePass)}
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                   upgradeToLifetimePass
-                    ? 'bg-blue-50/70 border-[#2563EB] shadow-xs'
-                    : 'bg-[#F8FAFC] border-[#E2E8F0] hover:border-[#CBD5E1]'
+                    ? 'bg-gradient-to-r from-blue-50/90 to-indigo-50/60 border-blue-500 shadow-sm ring-1 ring-blue-500/20'
+                    : 'bg-slate-50/60 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors border ${
+                    className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors border ${
                       upgradeToLifetimePass
-                        ? 'bg-[#2563EB] border-[#2563EB] text-white'
-                        : 'border-[#CBD5E1] bg-white'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
+                        : 'border-slate-300 bg-white'
                     }`}
                   >
                     {upgradeToLifetimePass && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#0F172A]">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-slate-900">
                         PR Builder Pro All-Access Lifetime Pass
                       </span>
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-md">
+                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100/90 border border-amber-200 px-2 py-0.5 rounded-full">
                         Save ₹496
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#64748B] mt-0.5">
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
                       Unlocks all premium templates, portfolio themes, and custom domain pass forever.
                     </p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-xs font-bold text-[#0F172A]">₹999</span>
-                  <span className="text-[10px] text-[#64748B] line-through block">₹1495</span>
+                  <span className="text-xs font-black text-slate-900 font-mono block">₹999</span>
+                  <span className="text-[10px] text-slate-400 line-through font-mono block">₹1495</span>
                 </div>
               </div>
 
-              {/* Custom Domain Pass Add-On (if not lifetime pass) */}
+              {/* Custom Domain Pass Add-On */}
               {!upgradeToLifetimePass && !hasDomainPass && (
                 <div
                   onClick={() => setIncludeDomainAddon(!includeDomainAddon)}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                     includeDomainAddon
-                      ? 'bg-blue-50/70 border-[#2563EB] shadow-xs'
-                      : 'bg-[#F8FAFC] border-[#E2E8F0] hover:border-[#CBD5E1]'
+                      ? 'bg-gradient-to-r from-blue-50/90 to-indigo-50/60 border-blue-500 shadow-sm ring-1 ring-blue-500/20'
+                      : 'bg-slate-50/60 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors border ${
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors border ${
                         includeDomainAddon
-                          ? 'bg-[#2563EB] border-[#2563EB] text-white'
-                          : 'border-[#CBD5E1] bg-white'
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-2xs'
+                          : 'border-slate-300 bg-white'
                       }`}
                     >
                       {includeDomainAddon && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                     </div>
                     <div>
-                      <span className="text-xs font-semibold text-[#0F172A]">
+                      <span className="text-xs font-bold text-slate-900">
                         Add Instant Custom Domain Pass
                       </span>
-                      <p className="text-[11px] text-[#64748B]">
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
                         Connect your personal top-level domain (yourname.dev) with automated SSL.
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-[#0F172A] shrink-0">+₹499</span>
+                  <span className="text-xs font-bold text-slate-900 font-mono shrink-0">+₹499</span>
                 </div>
               )}
             </div>
@@ -345,9 +414,9 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
 
           {/* Coupon / Promo Code Input */}
           {!isReallyOwned && (
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-[#0F172A] uppercase tracking-wider flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-[#2563EB]" />
+            <div className="space-y-2 pt-1">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-blue-600" />
                 Have a Promo or Student Code?
               </label>
               <form onSubmit={handleApplyCoupon} className="flex gap-2">
@@ -356,13 +425,13 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                   value={couponCodeInput}
                   onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
                   placeholder="e.g. WELCOME10, STUDENT50"
-                  className="flex-1 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl px-3 py-2 text-xs font-mono text-[#0F172A] uppercase focus:outline-none focus:border-[#2563EB]"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-mono font-medium text-slate-900 uppercase placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
                 <Button
                   type="submit"
                   variant="outline"
                   size="sm"
-                  className="text-xs px-3 border-[#CBD5E1] hover:bg-slate-100"
+                  className="text-xs px-3.5 border-slate-200 hover:bg-slate-100 font-medium"
                 >
                   {activeCouponCode ? 'Update' : 'Apply'}
                 </Button>
@@ -375,7 +444,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                       setCouponCodeInput('')
                       setActiveCouponCode(undefined)
                     }}
-                    className="text-xs px-2 text-rose-600 hover:bg-rose-50"
+                    className="text-xs px-2 text-rose-600 hover:bg-rose-50 font-medium"
                   >
                     Remove
                   </Button>
@@ -383,34 +452,34 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
               </form>
 
               {cartCalculation?.couponDiscountPaise ? (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
-                  <Gift className="w-3.5 h-3.5 shrink-0" />
+                <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200/90 font-medium">
+                  <Gift className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span>
                     Coupon <strong>{activeCouponCode}</strong> applied: saved ₹
                     {(cartCalculation.couponDiscountPaise / 100).toFixed(2)}!
                   </span>
                 </div>
               ) : activeCouponCode && !isCalculating ? (
-                <p className="text-[11px] text-rose-600">
-                  Code &quot;{activeCouponCode}&quot; is not applicable to this cart.
+                <p className="text-[11px] text-rose-600 font-medium">
+                  Code &quot;{activeCouponCode}&quot; is not applicable to this item.
                 </p>
               ) : null}
             </div>
           )}
 
-          {/* Authoritative Server Price Breakdown Table */}
-          {cartCalculation && !isReallyOwned && (
-            <div className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2 text-xs">
-              <span className="font-bold text-[#0F172A] block text-[11px] uppercase tracking-wider">
+          {/* Authoritative Server Price Breakdown Receipt */}
+          {cartCalculation && !isReallyOwned && (cartCalculation.items.length > 1 || cartCalculation.couponDiscountPaise > 0) && (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80 space-y-2.5 text-xs">
+              <span className="font-bold text-slate-900 block text-[11px] uppercase tracking-wider">
                 Cart & Authoritative Pricing Summary
               </span>
-              <div className="space-y-1.5 text-[#334155]">
+              <div className="space-y-1.5 text-slate-600">
                 {cartCalculation.items.map((item, idx) => (
                   <div key={idx} className="flex justify-between items-center">
-                    <span className="text-[#64748B]">
+                    <span className="text-slate-500">
                       {item.title} {item.isAddon && '(Add-on)'}
                     </span>
-                    <span className="font-mono">₹{(item.pricePaise / 100).toFixed(2)}</span>
+                    <span className="font-mono font-medium text-slate-900">₹{(item.pricePaise / 100).toFixed(2)}</span>
                   </div>
                 ))}
 
@@ -432,21 +501,21 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                   </div>
                 )}
 
-                <div className="border-t border-[#E2E8F0] pt-2 flex justify-between items-center font-bold text-sm text-[#0F172A]">
-                  <span>Total Payable (UPI / Zero-Pay)</span>
-                  <span className="text-[#2563EB] font-mono">
+                <div className="border-t border-slate-200 pt-2 flex justify-between items-center font-bold text-sm text-slate-900">
+                  <span>Total Payable</span>
+                  <span className="text-blue-600 font-mono text-base font-extrabold">
                     ₹{(cartCalculation.payablePaise / 100).toFixed(2)}
                   </span>
                 </div>
               </div>
-              <p className="text-[10px] text-[#64748B] pt-1">
+              <p className="text-[10px] text-slate-400 pt-0.5">
                 18% GST Included in MRP • Zero Payment Gateway Surcharges • Server-Authoritative
               </p>
             </div>
           )}
 
           {/* Content Safety Invariant Banner */}
-          <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800">
+          <div className="flex items-center gap-2.5 p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-xs text-emerald-900 font-medium">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
               <strong>Zero Data Loss Guarantee:</strong> Your resume and portfolio entries remain 100% saved and preserved. Switching or previewing never clears your draft.
@@ -454,8 +523,8 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
           </div>
         </div>
 
-        {/* Footer Actions with Server Confirmed Price */}
-        <div className="px-6 py-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Footer Actions with Authoritative Price */}
+        <div className="px-6 py-4 bg-slate-50/95 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             {isOwned ? (
               <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
@@ -464,14 +533,14 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
               </span>
             ) : (
               <div>
-                <span className="text-[10px] text-[#64748B] block uppercase tracking-wider font-semibold">
+                <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold">
                   Authoritative Price (UPI)
                 </span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-[#0F172A]">
-                    {isCalculating ? '...' : `₹${payableRupees.toFixed(2)}`}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-heading">
+                    ₹{payableRupees.toFixed(2)}
                   </span>
-                  <span className="text-[11px] text-emerald-600 font-semibold">
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
                     One-Time • Lifetime Access
                   </span>
                 </div>
@@ -484,7 +553,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
               variant="outline"
               size="sm"
               onClick={onClose}
-              className="w-full sm:w-auto text-xs text-[#64748B] border-[#E2E8F0] hover:bg-white"
+              className="w-full sm:w-auto text-xs text-slate-600 border-slate-200 hover:bg-white font-medium"
             >
               Keep Free {itemType === 'resume_template' ? 'Template' : 'Theme'}
             </Button>
@@ -497,7 +566,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                   onApplyOwned?.()
                   onClose()
                 }}
-                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm px-4 py-2"
               >
                 Apply Unlocked {itemType === 'resume_template' ? 'Template' : 'Theme'}
               </Button>
@@ -511,7 +580,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
                     : meta.title
                   onProceedToCheckout(effectiveProductId, payablePaise, targetTitle, activeCouponCode)
                 }}
-                className="w-full sm:w-auto bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-semibold shadow-md shadow-blue-500/20"
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/25 px-4.5 py-2.5 rounded-xl transition-all active:scale-[0.98]"
               >
                 <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                 {payablePaise === 0

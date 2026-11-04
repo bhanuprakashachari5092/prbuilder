@@ -958,6 +958,118 @@ export const paymentService = {
   },
 
   /**
+   * Internal pure calculation engine for default products when offline or as database fallback.
+   */
+  computeLocalCartPricing(
+    effectiveBaseId: string,
+    rawAddonIds: string[],
+    couponCode?: string,
+  ): CartPricingResult {
+    let baseProduct = DEFAULT_PRODUCTS.find((p) => p.id === effectiveBaseId)
+    let effectiveAddons = [...rawAddonIds]
+
+    // If base item is free or not in catalog, promote first addon if available
+    if (!baseProduct && effectiveAddons.length > 0) {
+      baseProduct = DEFAULT_PRODUCTS.find((p) => p.id === effectiveAddons[0])
+      effectiveAddons = effectiveAddons.slice(1)
+    }
+
+    // If still no paid product selected, cart is 100% free
+    if (!baseProduct) {
+      return {
+        items: [],
+        subtotalPaise: 0,
+        subtotalRupees: 0,
+        bundleSavingsPaise: 0,
+        bundleSavingsRupees: 0,
+        discountPaise: 0,
+        discountRupees: 0,
+        couponDiscountPaise: 0,
+        taxesPaise: 0,
+        taxesRupees: 0,
+        taxesNote: 'GST Included',
+        finalAmountPaise: 0,
+        finalAmountRupees: 0,
+        payablePaise: 0,
+        isFree: true,
+      }
+    }
+
+    const items: CartItemBreakdown[] = [
+      {
+        productId: baseProduct.id,
+        name: baseProduct.name,
+        category: baseProduct.category,
+        pricePaise: baseProduct.price_paise,
+        priceRupees: Math.round((baseProduct.price_paise / 100) * 100) / 100,
+        isBase: true,
+      },
+    ]
+    let subtotalPaise = baseProduct.price_paise
+    let bundleSavingsPaise = 0
+
+    if (baseProduct.id === 'pro-all-access-pass') {
+      bundleSavingsPaise = 49600 // Saves ₹496 vs individual items (₹1,495 vs ₹999)
+    } else {
+      for (const addonId of effectiveAddons) {
+        if (addonId !== baseProduct.id) {
+          const addon = DEFAULT_PRODUCTS.find((p) => p.id === addonId)
+          if (addon) {
+            items.push({
+              productId: addon.id,
+              name: addon.name,
+              category: addon.category,
+              pricePaise: addon.price_paise,
+              priceRupees: Math.round((addon.price_paise / 100) * 100) / 100,
+              isBase: false,
+            })
+            subtotalPaise += addon.price_paise
+          }
+        }
+      }
+    }
+
+    let discountPaise = 0
+    const normCoupon = couponCode ? couponCode.trim().toUpperCase() : null
+    if (normCoupon) {
+      if (normCoupon === 'WELCOME10') {
+        discountPaise = Math.round((subtotalPaise * 10) / 100)
+      } else if (normCoupon === 'RESUME50' && (baseProduct.id.includes('template') || effectiveAddons.some((a) => a.includes('template')))) {
+        discountPaise = 5000
+      } else if (normCoupon === 'PORTFOLIO20' && (baseProduct.id.includes('theme') || effectiveAddons.some((a) => a.includes('theme')))) {
+        discountPaise = Math.round((subtotalPaise * 20) / 100)
+      } else if (normCoupon === 'HACKATHON100') {
+        discountPaise = subtotalPaise
+      }
+    }
+
+    discountPaise = Math.min(subtotalPaise, discountPaise)
+    const finalAmountPaise = Math.max(0, subtotalPaise - discountPaise)
+
+    return {
+      items: items.map((it) => ({
+        ...it,
+        title: it.name,
+        isAddon: !it.isBase,
+      })),
+      subtotalPaise,
+      subtotalRupees: Math.round((subtotalPaise / 100) * 100) / 100,
+      bundleSavingsPaise,
+      bundleSavingsRupees: Math.round((bundleSavingsPaise / 100) * 100) / 100,
+      discountPaise,
+      discountRupees: Math.round((discountPaise / 100) * 100) / 100,
+      couponDiscountPaise: discountPaise,
+      taxesPaise: 0,
+      taxesRupees: 0,
+      taxesNote: 'GST Included',
+      finalAmountPaise,
+      finalAmountRupees: Math.round((finalAmountPaise / 100) * 100) / 100,
+      payablePaise: finalAmountPaise,
+      isFree: finalAmountPaise === 0,
+    }
+  },
+
+  /**
    * Authoritatively calculates itemized pricing, bundle savings, tax notes, and coupon discounts.
    */
   async calculateCartPricing(
@@ -975,113 +1087,8 @@ export const paymentService = {
       : addonIds.filter((id) => id !== effectiveBaseId)
 
     if (!isSupabaseConfigured()) {
-      // Offline fallback simulation
-      let baseProduct = DEFAULT_PRODUCTS.find((p) => p.id === effectiveBaseId)
-      let effectiveAddons = [...rawAddonIds]
-
-      // If base item is free or not in catalog, promote first addon if available
-      if (!baseProduct && effectiveAddons.length > 0) {
-        baseProduct = DEFAULT_PRODUCTS.find((p) => p.id === effectiveAddons[0])
-        effectiveAddons = effectiveAddons.slice(1)
-      }
-
-      // If still no paid product selected, cart is 100% free
-      if (!baseProduct) {
-        return {
-          data: {
-            items: [],
-            subtotalPaise: 0,
-            subtotalRupees: 0,
-            bundleSavingsPaise: 0,
-            bundleSavingsRupees: 0,
-            discountPaise: 0,
-            discountRupees: 0,
-            couponDiscountPaise: 0,
-            taxesPaise: 0,
-            taxesRupees: 0,
-            taxesNote: 'GST Included',
-            finalAmountPaise: 0,
-            finalAmountRupees: 0,
-            payablePaise: 0,
-            isFree: true,
-          },
-          error: null,
-        }
-      }
-
-      const items: CartItemBreakdown[] = [
-        {
-          productId: baseProduct.id,
-          name: baseProduct.name,
-          category: baseProduct.category,
-          pricePaise: baseProduct.price_paise,
-          priceRupees: Math.round((baseProduct.price_paise / 100) * 100) / 100,
-          isBase: true,
-        },
-      ]
-      let subtotalPaise = baseProduct.price_paise
-      let bundleSavingsPaise = 0
-
-      if (baseProduct.id === 'pro-all-access-pass') {
-        bundleSavingsPaise = 49600 // Saves ₹496 vs individual items (₹1,495 vs ₹999)
-      } else {
-        for (const addonId of effectiveAddons) {
-          if (addonId !== baseProduct.id) {
-            const addon = DEFAULT_PRODUCTS.find((p) => p.id === addonId)
-            if (addon) {
-              items.push({
-                productId: addon.id,
-                name: addon.name,
-                category: addon.category,
-                pricePaise: addon.price_paise,
-                priceRupees: Math.round((addon.price_paise / 100) * 100) / 100,
-                isBase: false,
-              })
-              subtotalPaise += addon.price_paise
-            }
-          }
-        }
-      }
-
-      let discountPaise = 0
-      const normCoupon = couponCode ? couponCode.trim().toUpperCase() : null
-      if (normCoupon) {
-        if (normCoupon === 'WELCOME10') {
-          discountPaise = Math.round((subtotalPaise * 10) / 100)
-        } else if (normCoupon === 'RESUME50' && (baseProduct.id.includes('template') || effectiveAddons.some((a) => a.includes('template')))) {
-          discountPaise = 5000
-        } else if (normCoupon === 'PORTFOLIO20' && (baseProduct.id.includes('theme') || effectiveAddons.some((a) => a.includes('theme')))) {
-          discountPaise = Math.round((subtotalPaise * 20) / 100)
-        } else if (normCoupon === 'HACKATHON100') {
-          discountPaise = subtotalPaise
-        }
-      }
-
-      discountPaise = Math.min(subtotalPaise, discountPaise)
-      const finalAmountPaise = Math.max(0, subtotalPaise - discountPaise)
-
       return {
-        data: {
-          items: items.map((it) => ({
-            ...it,
-            title: it.name,
-            isAddon: !it.isBase,
-          })),
-          subtotalPaise,
-          subtotalRupees: Math.round((subtotalPaise / 100) * 100) / 100,
-          bundleSavingsPaise,
-          bundleSavingsRupees: Math.round((bundleSavingsPaise / 100) * 100) / 100,
-          discountPaise,
-          discountRupees: Math.round((discountPaise / 100) * 100) / 100,
-          couponDiscountPaise: discountPaise,
-          taxesPaise: 0,
-          taxesRupees: 0,
-          taxesNote: 'GST Included',
-          finalAmountPaise,
-          finalAmountRupees: Math.round((finalAmountPaise / 100) * 100) / 100,
-          payablePaise: finalAmountPaise,
-          isFree: finalAmountPaise === 0,
-        },
+        data: this.computeLocalCartPricing(effectiveBaseId, rawAddonIds, couponCode),
         error: null,
       }
     }
@@ -1091,38 +1098,29 @@ export const paymentService = {
       let rpcProductId = effectiveBaseId
       let rpcAddonIds = [...rawAddonIds]
 
-      // Check if rpcProductId is an active catalog product
-      const { data: prodCheck } = await supabase
+      // Check if rpcProductId is an active catalog product in remote database
+      const { data: prodCheck, error: prodErr } = await supabase
         .from('payment_products')
         .select('id')
         .eq('id', rpcProductId)
         .eq('is_active', true)
         .maybeSingle()
 
-      if (!prodCheck) {
+      if (prodErr || !prodCheck) {
+        // If product is registered in canonical DEFAULT_PRODUCTS, compute with authoritative local engine
+        if (DEFAULT_PRODUCTS.some((p) => p.id === rpcProductId)) {
+          return {
+            data: this.computeLocalCartPricing(effectiveBaseId, rawAddonIds, couponCode),
+            error: null,
+          }
+        }
         if (rpcAddonIds.length > 0) {
           rpcProductId = rpcAddonIds[0]
           rpcAddonIds = rpcAddonIds.slice(1)
         } else {
           // Zero paid items
           return {
-            data: {
-              items: [],
-              subtotalPaise: 0,
-              subtotalRupees: 0,
-              bundleSavingsPaise: 0,
-              bundleSavingsRupees: 0,
-              discountPaise: 0,
-              discountRupees: 0,
-              couponDiscountPaise: 0,
-              taxesPaise: 0,
-              taxesRupees: 0,
-              taxesNote: 'GST Included',
-              finalAmountPaise: 0,
-              finalAmountRupees: 0,
-              payablePaise: 0,
-              isFree: true,
-            },
+            data: this.computeLocalCartPricing('', [], couponCode),
             error: null,
           }
         }
@@ -1149,8 +1147,12 @@ export const paymentService = {
         },
         error: null,
       }
-    } catch (err) {
-      return { data: null, error: err as Error }
+    } catch (_err) {
+      // Fail-safe: Always fall back to authoritative local calculation so the UI never drops prices or crashes
+      return {
+        data: this.computeLocalCartPricing(effectiveBaseId, rawAddonIds, couponCode),
+        error: null,
+      }
     }
   },
 
