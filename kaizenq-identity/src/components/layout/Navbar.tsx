@@ -21,8 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenBuilder: _onOpenBuilder,
   revealOnScroll = false,
 }) => {
-  const { setCurrentRoute } = useApp()
-  const { isAdmin } = useAuth()
+  const { setCurrentRoute, setIsAuthOpen, setAuthMode, setTargetRouteAfterAuth } = useApp()
+  const { user, isAdmin } = useAuth()
   const shouldReduceMotion = useReducedMotion()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isHeroRevealed, setIsHeroRevealed] = useState(() => {
@@ -90,6 +90,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       setCurrentRoute('admin')
       return
     }
+    if (!user) {
+      setTargetRouteAfterAuth(target)
+      setAuthMode('signin')
+      setIsAuthOpen(true)
+      return
+    }
     setCurrentRoute(target)
   }
 
@@ -97,6 +103,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     setMobileMenuOpen(false)
     if (isAdmin) {
       setCurrentRoute('admin')
+      return
+    }
+    if (!user) {
+      setTargetRouteAfterAuth('dashboard')
+      setAuthMode('signin')
+      setIsAuthOpen(true)
       return
     }
     setCurrentRoute('dashboard')

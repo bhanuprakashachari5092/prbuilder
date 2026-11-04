@@ -21,6 +21,7 @@ import {
 import { Container } from '../ui/Container.tsx'
 import { Button } from '../ui/Button.tsx'
 import { useApp } from '../../app/providers/AppContext.ts'
+import { useAuth } from '../../app/providers/AuthContext.tsx'
 
 interface TiltCardWrapperProps {
   children: React.ReactNode
@@ -146,7 +147,8 @@ const TiltCardWrapper: React.FC<TiltCardWrapperProps> = ({
 }
 
 export const BuilderShowcase: React.FC = () => {
-  const { setCurrentRoute } = useApp()
+  const { setCurrentRoute, setIsAuthOpen, setAuthMode, setTargetRouteAfterAuth } = useApp()
+  const { user } = useAuth()
 
   // Interactive template preview state for Resume Card
   const [activeResumeTemplate, setActiveResumeTemplate] = useState<'Modern' | 'Classic' | 'Minimal'>('Modern')
@@ -155,10 +157,22 @@ export const BuilderShowcase: React.FC = () => {
   const [activePortfolioTheme, setActivePortfolioTheme] = useState<'Developer' | 'Minimal' | 'Creative'>('Developer')
 
   const handleOpenResume = () => {
+    if (!user) {
+      setTargetRouteAfterAuth('resume')
+      setAuthMode('signup')
+      setIsAuthOpen(true)
+      return
+    }
     setCurrentRoute('resume')
   }
 
   const handleOpenPortfolio = () => {
+    if (!user) {
+      setTargetRouteAfterAuth('portfolio')
+      setAuthMode('signup')
+      setIsAuthOpen(true)
+      return
+    }
     setCurrentRoute('portfolio')
   }
 

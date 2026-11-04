@@ -166,7 +166,9 @@ export const AppRoutes: React.FC = () => {
     currentSlug,
     setIsAuthOpen,
     setAuthMode,
+    setTargetRouteAfterAuth,
   } = useApp()
+  const { user } = useAuth()
 
   const handleOpenAuth = (mode: 'signin' | 'signup' = 'signup') => {
     setAuthMode(mode)
@@ -174,6 +176,12 @@ export const AppRoutes: React.FC = () => {
   }
 
   const handleOpenBuilder = (target: RouteKey = 'portfolio') => {
+    if (!user) {
+      setTargetRouteAfterAuth(target)
+      setAuthMode('signup')
+      setIsAuthOpen(true)
+      return
+    }
     setCurrentRoute(target)
   }
 
@@ -202,7 +210,7 @@ export const AppRoutes: React.FC = () => {
       )
     case 'builder':
       return (
-        <ProtectedRoute requireAuth={false} targetRoute="builder" targetRouteName="Portfolio Studio">
+        <ProtectedRoute requireAuth={true} targetRoute="builder" targetRouteName="Portfolio Studio">
           <PageContainer
             onOpenAuth={handleOpenAuth}
             onOpenBuilder={() => handleOpenBuilder('portfolio')}
@@ -213,13 +221,13 @@ export const AppRoutes: React.FC = () => {
       )
     case 'resume':
       return (
-        <ProtectedRoute requireAuth={false} targetRoute="resume" targetRouteName="ATS Resume Builder">
+        <ProtectedRoute requireAuth={true} targetRoute="resume" targetRouteName="ATS Resume Builder">
           <Resume onBack={() => setCurrentRoute('dashboard')} />
         </ProtectedRoute>
       )
     case 'portfolio':
       return (
-        <ProtectedRoute requireAuth={false} targetRoute="portfolio" targetRouteName="Portfolio Studio">
+        <ProtectedRoute requireAuth={true} targetRoute="portfolio" targetRouteName="Portfolio Studio">
           <PortfolioPage
             onBack={() => setCurrentRoute('dashboard')}
             onViewPublic={() => setCurrentRoute('portfolio-preview')}
@@ -228,7 +236,7 @@ export const AppRoutes: React.FC = () => {
       )
     case 'portfolio-preview':
       return (
-        <ProtectedRoute requireAuth={false} targetRoute="portfolio-preview" targetRouteName="Portfolio Studio">
+        <ProtectedRoute requireAuth={true} targetRoute="portfolio-preview" targetRouteName="Portfolio Studio">
           <LocalPortfolioPreviewPage
             onBackToEditor={() => setCurrentRoute('portfolio')}
             onBackToDashboard={() => setCurrentRoute('dashboard')}

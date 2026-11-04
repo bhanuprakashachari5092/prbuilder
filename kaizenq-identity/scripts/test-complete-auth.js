@@ -238,10 +238,10 @@ it('routes.tsx protects dashboard, publish, and settings with requireAuth={true}
   assert(content.includes("requireAuth={true} targetRoute=\"settings\""), 'Protects settings')
 })
 
-it('routes.tsx keeps resume and portfolio builders freely accessible (requireAuth={false})', () => {
+it('routes.tsx protects resume and portfolio builders with requireAuth={true}', () => {
   const content = fs.readFileSync(path.join(rootDir, 'src/app/routes.tsx'), 'utf-8')
-  assert(content.includes("requireAuth={false} targetRoute=\"resume\""), 'Free resume builder access')
-  assert(content.includes("requireAuth={false} targetRoute=\"portfolio\""), 'Free portfolio builder access')
+  assert(content.includes("requireAuth={true} targetRoute=\"resume\""), 'Protected resume builder access')
+  assert(content.includes("requireAuth={true} targetRoute=\"portfolio\""), 'Protected portfolio builder access')
 })
 
 it('AuthCardContent includes password visibility toggles on password and confirmPassword fields', () => {
