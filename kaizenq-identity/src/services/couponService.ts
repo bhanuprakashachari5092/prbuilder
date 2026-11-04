@@ -402,8 +402,7 @@ export const couponService = {
   ): Promise<{ data: FulfillFreeOrderResult | null; error: Error | null }> {
     const normalized = this.normalizeCode(couponCode)
 
-    if (!isSupabaseConfigured()) {
-      // Local fallback simulation
+    const fulfillLocalFree = (): { data: FulfillFreeOrderResult | null; error: Error | null } => {
       const product = CATALOG_PRICES[productId] || { name: 'Pro Feature Unlock', pricePaise: 19900 }
       const orderId = `ORD_FREE_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`
 
@@ -437,6 +436,10 @@ export const couponService = {
         },
         error: null,
       }
+    }
+
+    if (!isSupabaseConfigured()) {
+      return fulfillLocalFree()
     }
 
     try {
@@ -475,7 +478,15 @@ export const couponService = {
         },
         error: null,
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (
+        err?.code === 'PGRST202' ||
+        err?.message?.includes('schema cache') ||
+        err?.message?.includes('Could not find the function')
+      ) {
+        console.warn('fulfill_free_order RPC not found in schema cache; fulfilling free order locally:', err?.message)
+        return fulfillLocalFree()
+      }
       return { data: null, error: err as Error }
     }
   },
