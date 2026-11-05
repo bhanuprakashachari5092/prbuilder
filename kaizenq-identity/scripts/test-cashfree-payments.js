@@ -174,6 +174,22 @@ assert(
   'CheckoutModal.tsx contains robust handleLaunchCashfree action handler',
 )
 assert(
+  checkoutModalCode.includes('handleRetryCashfree'),
+  'CheckoutModal.tsx contains dedicated handleRetryCashfree action for resilient recovery',
+)
+assert(
+  cashfreeServiceCode.includes('resetSdk'),
+  'cashfreeService.ts provides resetSdk() to safely reset SDK state for clean retries',
+)
+assert(
+  cashfreeServiceCode.includes('Unable to load the secure payment service'),
+  'cashfreeService.ts maps network/SDK errors to user-friendly message',
+)
+assert(
+  !cashfreeServiceCode.includes("script.crossOrigin = 'anonymous'"),
+  'cashfreeService.ts avoids crossOrigin=anonymous (CORS) on script tags since Cashfree CDN omits CORS headers',
+)
+assert(
   edgeOrderCode.includes("x-api-version") && edgeOrderCode.includes("x-client-id") && edgeOrderCode.includes("x-client-secret"),
   'backend cashfree-order Edge Function securely supplies Cashfree production headers',
 )
