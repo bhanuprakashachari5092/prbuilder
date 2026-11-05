@@ -311,6 +311,58 @@ export const paymentService = {
   ): Promise<{ data: CreateOrderResult | null; error: Error | null }> {
     const normalizedCoupon = couponCode ? couponCode.trim().toUpperCase() : undefined
 
+    // 1. Authoritative Cashfree API Integration (Primary Gateway)
+    if (this.isCashfreeActive() && typeof window !== 'undefined') {
+      try {
+        const cfRes = await fetch('/api/cashfree-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId,
+            couponCode: normalizedCoupon,
+          }),
+        })
+
+        if (cfRes.ok) {
+          const cfData = await cfRes.json()
+          if (cfData.paymentSessionId) {
+            const product = DEFAULT_PRODUCTS.find((p) => p.id === productId) || {
+              id: productId,
+              name: 'PR Builder Pro Upgrade',
+              description: 'Premium unlock',
+              price_paise: cfData.amountPaise,
+              currency: 'INR',
+              is_active: true,
+            }
+
+            const order: CreateOrderResult = {
+              orderId: cfData.orderId,
+              productId: product.id,
+              productName: product.name,
+              originalAmountPaise: product.price_paise,
+              discountAmountPaise: Math.max(0, product.price_paise - cfData.amountPaise),
+              amountPaise: cfData.amountPaise,
+              amountRupees: cfData.amountRupees,
+              currency: cfData.currency || 'INR',
+              status: 'pending',
+              upiVpa: 'merchant@youpi',
+              upiUri: `upi://pay?pa=merchant@youpi&pn=PR+Builder&am=${cfData.amountRupees.toFixed(2)}&cu=INR&tn=${cfData.orderId}`,
+              couponCode: normalizedCoupon || null,
+              expiresAt: cfData.expiresAt || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+              isSandbox,
+              paymentSessionId: cfData.paymentSessionId,
+              gateway: 'cashfree',
+            }
+
+            localOrdersMap.set(order.orderId, order)
+            return { data: order, error: null }
+          }
+        }
+      } catch {
+        // Fall through to database or local order fallback
+      }
+    }
+
     const buildLocalOrder = (): { data: CreateOrderResult | null; error: Error | null } => {
       const product = DEFAULT_PRODUCTS.find((p) => p.id === productId) || {
         id: productId,

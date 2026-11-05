@@ -23,7 +23,7 @@ exports.handler = async function (event, context) {
       body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body
     }
 
-    const { orderId } = body
+    const orderId = (body && (body.orderId || body.order_id)) || ''
     if (!orderId) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'orderId is required' }) }
     }
@@ -58,17 +58,8 @@ exports.handler = async function (event, context) {
         // Fall through
       }
     }
-
     const apiVersion = process.env.CASHFREE_API_VERSION || '2023-08-01'
     const isSandbox = (process.env.CASHFREE_ENV || 'production') === 'sandbox'
-
-    if (!appId || !secretKey) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'Cashfree credentials not configured in server environment' }),
-      }
-    }
 
     const baseUrl = isSandbox ? 'https://sandbox.cashfree.com/pg' : 'https://api.cashfree.com/pg'
 
@@ -133,3 +124,4 @@ exports.handler = async function (event, context) {
     }
   }
 }
+

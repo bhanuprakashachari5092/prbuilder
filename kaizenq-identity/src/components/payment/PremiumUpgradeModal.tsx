@@ -485,7 +485,7 @@ export const PremiumUpgradeModal: React.FC<PremiumUpgradeModalProps> = ({
               >
                 {payablePaise === 0
                   ? 'Fulfill Free with Promo (₹0.00)'
-                  : `Unlock with UPI (₹${payableRupees.toFixed(2)})`}
+                  : `Proceed to Payment (₹${payableRupees.toFixed(2)})`}
               </Button>
             )}
           </div>

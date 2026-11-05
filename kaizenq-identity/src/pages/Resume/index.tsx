@@ -52,6 +52,7 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
     productTitle: string
     pricePaise: number
     couponCode?: string
+    autoLaunchCashfree?: boolean
     targetTemplate?: ResumeTemplateId
   }>({
     isOpen: false,
@@ -398,6 +399,7 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
             productTitle: title,
             pricePaise: amountPaise,
             couponCode,
+            autoLaunchCashfree: true,
             targetTemplate: productId.includes('template')
               ? (productId.replace('pro-template-', '') as ResumeTemplateId)
               : undefined,
@@ -531,6 +533,7 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
             productTitle: title,
             pricePaise,
             couponCode,
+            autoLaunchCashfree: true,
             targetTemplate: upgradeModal.itemId,
           })
         }}
@@ -544,6 +547,7 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
         productCategory={checkoutModal.productId.startsWith('pro-all-access') ? 'bundle' : 'resume_template'}
         pricePaise={checkoutModal.pricePaise}
         initialCouponCode={checkoutModal.couponCode}
+        autoLaunchCashfree={checkoutModal.autoLaunchCashfree}
         onClose={() => setCheckoutModal((prev) => ({ ...prev, isOpen: false }))}
         onSuccess={async () => {
           await refreshEntitlements()

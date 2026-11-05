@@ -60,6 +60,7 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
     productTitle: string
     pricePaise: number
     couponCode?: string
+    autoLaunchCashfree?: boolean
     targetTheme?: PortfolioThemeId
   }>({
     isOpen: false,
@@ -451,6 +452,7 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
             productTitle: title,
             pricePaise: amountPaise,
             couponCode,
+            autoLaunchCashfree: true,
             targetTheme: productId.includes('theme')
               ? (productId.replace('pro-theme-', '') as PortfolioThemeId)
               : undefined,
@@ -622,6 +624,7 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
             productTitle: title,
             pricePaise,
             couponCode,
+            autoLaunchCashfree: true,
             targetTheme: upgradeModal.itemId,
           })
         }}
@@ -635,6 +638,7 @@ export const PortfolioPage: React.FC<PortfolioProps> = ({ onBack, onViewPublic }
         productCategory={checkoutModal.productId.startsWith('pro-all-access') ? 'bundle' : 'portfolio_theme'}
         pricePaise={checkoutModal.pricePaise}
         initialCouponCode={checkoutModal.couponCode}
+        autoLaunchCashfree={checkoutModal.autoLaunchCashfree}
         onClose={() => setCheckoutModal((prev) => ({ ...prev, isOpen: false }))}
         onSuccess={async () => {
           await refreshEntitlements()

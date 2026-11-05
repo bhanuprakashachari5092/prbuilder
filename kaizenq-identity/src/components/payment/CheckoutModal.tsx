@@ -41,6 +41,7 @@ export interface CheckoutModalProps {
   productCategory: 'resume_template' | 'portfolio_theme' | 'domain_pass' | 'bundle'
   pricePaise: number
   initialCouponCode?: string
+  autoLaunchCashfree?: boolean
   onClose: () => void
   onSuccess: (orderId: string, utr?: string) => void
 }
@@ -51,6 +52,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   productTitle,
   pricePaise,
   initialCouponCode,
+  autoLaunchCashfree = false,
   onClose,
   onSuccess,
 }) => {
@@ -107,10 +109,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setOrder(res.data)
       setLoading(false)
 
-      // Preload Cashfree payment session silently in the background
-      if (isCashfreeConfigured) {
+      if (res.data.paymentSessionId) {
+        setPaymentSessionId(res.data.paymentSessionId)
+      } else if (isCashfreeConfigured) {
+        // Preload Cashfree payment session silently in the background
         cashfreeService
-          .createOrder(productId, isSandboxEnv, codeToApply)
+          .createOrder(productId, isSandboxEnv, codeToApply, undefined, res.data.orderId)
           .then((cfRes) => {
             if (cfRes.data?.paymentSessionId) {
               setPaymentSessionId(cfRes.data.paymentSessionId)
@@ -222,13 +226,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setCashfreeError(null)
 
     try {
-      let currentSession = paymentSessionId
+      let currentSession = paymentSessionId || order.paymentSessionId
       if (!currentSession) {
         const isSandboxEnv = import.meta.env.VITE_PAYMENT_MODE !== 'live'
         const cfRes = await cashfreeService.createOrder(
           productId,
           isSandboxEnv,
           appliedCoupon?.couponCode || initialCouponCode,
+          undefined,
+          order.orderId,
         )
         if (cfRes.data?.paymentSessionId) {
           currentSession = cfRes.data.paymentSessionId
@@ -250,18 +256,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setCashfreeError(checkoutRes.error.message || 'Payment window closed or cancelled')
       }
 
-      // Verify status with server
-      const verifyRes = await cashfreeService.verifyOrder(order.orderId)
-      if (verifyRes.success) {
-        await paymentService.verifyAndFulfill(
-          order.orderId,
-          verifyRes.utr || 'CASHFREE_VERIFIED',
-          undefined,
-          undefined,
-          false,
-        )
-        setPaymentStatus('paid')
-        setConfirmedUtr(verifyRes.utr || 'CASHFREE_VERIFIED')
+      // Verify status with server (up to 4 attempts to handle bank confirmation propagation)
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const verifyRes = await cashfreeService.verifyOrder(order.orderId)
+        if (verifyRes.success) {
+          await paymentService.verifyAndFulfill(
+            order.orderId,
+            verifyRes.utr || 'CASHFREE_VERIFIED',
+            undefined,
+            undefined,
+            false,
+          )
+          setPaymentStatus('paid')
+          setConfirmedUtr(verifyRes.utr || 'CASHFREE_VERIFIED')
+          break
+        }
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 1500))
+        }
       }
     } catch (err: any) {
       setCashfreeError(err?.message || 'Failed to open Cashfree checkout')
@@ -270,6 +282,31 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setIsVerifying(false)
     }
   }
+
+  // Auto-launch Cashfree if requested
+  const hasAutoLaunchedRef = useRef(false)
+  useEffect(() => {
+    if (isOpen) {
+      hasAutoLaunchedRef.current = false
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (
+      autoLaunchCashfree &&
+      isOpen &&
+      order &&
+      (paymentSessionId || order.paymentSessionId) &&
+      paymentStatus === 'pending' &&
+      !appliedCoupon?.isFree &&
+      !isLaunchingCashfree &&
+      !isVerifying &&
+      !hasAutoLaunchedRef.current
+    ) {
+      hasAutoLaunchedRef.current = true
+      handleLaunchCashfree()
+    }
+  }, [autoLaunchCashfree, isOpen, order, paymentSessionId, paymentStatus, appliedCoupon])
 
   // Apply Coupon Action
   const handleApplyCoupon = async (e?: React.FormEvent) => {
@@ -683,7 +720,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       {isLaunchingCashfree ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Opening Secure Gateway...</span>
+                          <span>Connecting to Cashfree...</span>
                         </>
                       ) : isVerifying ? (
                         <>
@@ -693,7 +730,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       ) : (
                         <>
                           <Lock className="w-4 h-4" />
-                          <span>Proceed to Pay ₹{displayFinalRupees}</span>
+                          <span>Proceed to Payment (₹{displayFinalRupees})</span>
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}

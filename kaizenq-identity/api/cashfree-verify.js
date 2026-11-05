@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
-    const { orderId } = req.body || {}
+    const orderId = (req.body && (req.body.orderId || req.body.order_id)) || ''
     if (!orderId) return res.status(400).json({ error: 'orderId is required' })
 
     let appId = process.env.CASHFREE_APP_ID || process.env.VITE_CASHFREE_APP_ID

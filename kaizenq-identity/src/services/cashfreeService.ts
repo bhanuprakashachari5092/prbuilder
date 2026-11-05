@@ -65,9 +65,9 @@ export const cashfreeService = {
    * Checks if Cashfree gateway is configured in the environment.
    */
   isConfigured(): boolean {
-    const appId = import.meta.env.VITE_CASHFREE_APP_ID
     const gateway = import.meta.env.VITE_PAYMENT_GATEWAY
-    return Boolean(appId || gateway === 'cashfree')
+    if (gateway === 'mock' || gateway === 'youpi_only') return false
+    return true
   },
 
   /**
@@ -154,9 +154,10 @@ export const cashfreeService = {
     isSandbox = false,
     couponCode?: string,
     customer?: CashfreeCustomerDetails,
+    orderId?: string,
   ): Promise<{ data: CreateCashfreeOrderResult | null; error: Error | null }> {
     try {
-      // 1. Try Vercel Serverless API Route
+      // 1. Try Vercel / Netlify Serverless API Route
       try {
         const apiRes = await fetch('/api/cashfree-order', {
           method: 'POST',
@@ -165,6 +166,10 @@ export const cashfreeService = {
             productId,
             couponCode: couponCode ? couponCode.trim().toUpperCase() : undefined,
             customerPhone: customer?.customerPhone,
+            customerEmail: customer?.customerEmail,
+            customerName: customer?.customerName,
+            customerId: customer?.customerId,
+            orderId,
           }),
         })
 

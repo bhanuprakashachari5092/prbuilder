@@ -84,20 +84,45 @@ exports.handler = async function (event, context) {
     }
 
     const orderId =
+      (body && body.orderId) ||
       'ORD_PRB_' + Date.now() + '_' + Math.random().toString(16).slice(2, 8).toUpperCase()
 
     let phone = String(customerPhone || '9999999999').replace(/\D/g, '')
     if (phone.length < 10) phone = '9999999999'
     if (phone.length > 10) phone = phone.slice(-10)
 
+    const customerEmail = (body && body.customerEmail) || 'customer@prbuilder.xyz'
+    const customerName = (body && body.customerName) || 'PR Builder Customer'
+    const customerId = (body && body.customerId) || ('cust_' + Date.now())
+
+    let origin = 'https://www.prbuilder.xyz'
+    if (event.headers) {
+      if (event.headers.origin) {
+        origin = event.headers.origin
+      } else if (event.headers.referer) {
+        try {
+          origin = new URL(event.headers.referer).origin
+        } catch {
+          // Fall back
+        }
+      }
+    }
+
     const cfPayload = {
       order_id: orderId,
       order_amount: finalAmount,
       order_currency: 'INR',
       customer_details: {
-        customer_id: 'cust_' + Date.now(),
-        customer_email: 'customer@prbuilder.xyz',
+        customer_id: customerId,
+        customer_email: customerEmail,
         customer_phone: phone,
+        customer_name: customerName,
+      },
+      order_meta: {
+        return_url: `${origin}/dashboard?order_id=${orderId}`,
+      },
+      order_note: productTitle || 'PR Builder Pro Upgrade',
+    }
         customer_name: 'PR Builder Customer',
       },
       order_meta: {

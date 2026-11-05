@@ -477,7 +477,7 @@ export const LivePricingSummary: React.FC<LivePricingSummaryProps> = ({
               >
                 <Sparkles className="w-4 h-4 text-amber-300" />
                 <span>
-                  Continue to Checkout ({formatINR(finalPayableRupees)})
+                  Proceed to Payment ({formatINR(finalPayableRupees)})
                 </span>
                 <ArrowRight className="w-4 h-4" />
               </Button>
