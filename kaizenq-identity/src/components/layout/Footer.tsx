@@ -98,10 +98,10 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Legal & Compliance */}
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-[#111827] mb-4">
-              Legal & Privacy
+              Legal & Compliance
             </h4>
             <ul className="space-y-2.5 text-xs sm:text-sm text-[#64748B]">
               <li>
@@ -111,7 +111,10 @@ export const Footer: React.FC = () => {
                 <span>Terms of Service</span>
               </li>
               <li>
-                <span>Local Draft Protection</span>
+                <span>Refund & Cancellation Policy</span>
+              </li>
+              <li>
+                <span>Contact: support@prbuilder.xyz</span>
               </li>
             </ul>
           </div>
