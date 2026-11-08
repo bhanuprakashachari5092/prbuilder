@@ -46,6 +46,36 @@ export const geminiService = {
       }
     }
 
+    // 1. Try Vercel / Netlify / Vite Dev Serverless API Route
+    try {
+      const apiRes = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          text: trimmed,
+          context,
+        }),
+      })
+
+      const apiData = await apiRes.json().catch(() => ({}))
+      if (apiRes.ok && (apiData.result || apiData.skills)) {
+        return {
+          success: true,
+          result: apiData.result,
+          skills: apiData.skills,
+        }
+      }
+      if (!apiRes.ok && apiData.error && !isSupabaseConfigured()) {
+        return {
+          success: false,
+          error: apiData.error,
+        }
+      }
+    } catch {
+      // Fall through to Supabase Edge Function
+    }
+
     if (!isSupabaseConfigured()) {
       return {
         success: false,

@@ -178,8 +178,8 @@ Deno.serve(async (req: Request) => {
 
     const prompt = buildPrompt(action, text, context)
 
-    // Call Google Gemini API (gemini-2.5-flash or gemini-1.5-flash)
-    const model = 'gemini-2.5-flash'
+    // Call Google Gemini API (gemini-3.8-flash)
+    const model = 'gemini-3.8-flash'
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
 
     const geminiPayload = {
