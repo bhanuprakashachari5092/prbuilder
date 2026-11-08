@@ -5,6 +5,7 @@ import type { ResumeData } from '../../pages/Resume/types.ts'
 import { SAMPLE_RESUME_DATA } from '../../pages/Resume/sampleData.ts'
 import { downloadResumePdf, hasSufficientResumeContent } from '../../services/resumeExportService.ts'
 import { adminService } from '../../services/adminService.ts'
+import { useAuth } from '../../app/providers/AuthContext.tsx'
 
 export interface ResumeDownloadButtonProps {
   data: ResumeData
@@ -23,13 +24,36 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
   label = 'Download Resume PDF',
   showIcon = true,
 }) => {
+  const { user, profile } = useAuth()
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showEmptyModal, setShowEmptyModal] = useState<boolean>(false)
   const [showMenu, setShowMenu] = useState<boolean>(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const isSufficient = hasSufficientResumeContent(data)
+  // Resolve best candidate profile name from resume data, auth profile, or user metadata
+  const resolvedProfileName =
+    data.personalInfo?.fullName?.trim() ||
+    profile?.display_name?.trim() ||
+    user?.user_metadata?.full_name?.trim() ||
+    user?.user_metadata?.name?.trim() ||
+    ''
+
+  const effectiveData = React.useMemo(() => {
+    if ((!data.personalInfo?.fullName || data.personalInfo.fullName.trim() === '') && resolvedProfileName) {
+      return {
+        ...data,
+        personalInfo: {
+          ...data.personalInfo,
+          fullName: resolvedProfileName,
+          email: data.personalInfo?.email || user?.email || '',
+        },
+      }
+    }
+    return data
+  }, [data, resolvedProfileName, user?.email])
+
+  const isSufficient = hasSufficientResumeContent(effectiveData)
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -50,13 +74,25 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
     setShowMenu(false)
 
     try {
-      const result = await downloadResumePdf(targetData, { mode })
+      const dataToExport =
+        (!targetData.personalInfo?.fullName || targetData.personalInfo.fullName.trim() === '') && resolvedProfileName
+          ? {
+              ...targetData,
+              personalInfo: {
+                ...targetData.personalInfo,
+                fullName: resolvedProfileName,
+                email: targetData.personalInfo?.email || user?.email || '',
+              },
+            }
+          : targetData
+
+      const result = await downloadResumePdf(dataToExport, { mode, profileName: resolvedProfileName })
 
       if (result.success) {
         setStatus('success')
         adminService.recordDownloadEvent('resume_pdf', {
-          title: targetData.title || targetData.personalInfo?.fullName || 'ATS Resume',
-          ownerEmail: targetData.personalInfo?.email || 'student@prbuilder.me',
+          title: dataToExport.title || dataToExport.personalInfo?.fullName || 'ATS Resume',
+          ownerEmail: dataToExport.personalInfo?.email || 'student@prbuilder.me',
         })
         setTimeout(() => {
           setStatus('idle')
@@ -82,7 +118,7 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
       setShowEmptyModal(true)
       return
     }
-    triggerExport(data, 'direct')
+    triggerExport(effectiveData, 'direct')
   }
 
   const isOutline = variant === 'outline' || variant === 'secondary'
@@ -212,7 +248,7 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
                   setShowEmptyModal(true)
                   return
                 }
-                triggerExport(data, 'direct')
+                triggerExport(effectiveData, 'direct')
               }}
               className="w-full flex items-start gap-2.5 px-3 py-2 text-left rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
             >
@@ -241,7 +277,7 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
                   setShowEmptyModal(true)
                   return
                 }
-                triggerExport(data, 'print')
+                triggerExport(effectiveData, 'print')
               }}
               className="w-full flex items-start gap-2.5 px-3 py-2 text-left rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
             >
@@ -301,7 +337,7 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
                 size="sm"
                 onClick={() => {
                   setShowEmptyModal(false)
-                  triggerExport(data, 'direct')
+                  triggerExport(effectiveData, 'direct')
                 }}
                 className="text-xs"
                 title="Download whatever content is currently typed"

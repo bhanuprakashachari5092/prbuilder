@@ -23,7 +23,7 @@ export interface ResumeProps {
 type SaveState = 'saving' | 'saved_cloud' | 'saved_local' | 'offline' | 'error'
 
 export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
-  const { user, isConfigured } = useAuth()
+  const { user, profile, isConfigured } = useAuth()
   const entitlements = useEntitlements()
   const { isTemplateUnlocked, refreshEntitlements } = entitlements
 
@@ -179,6 +179,48 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
       checkCloudResume(user.id)
     }
   }, [user?.id, isConfigured, checkCloudResume])
+
+  // Auto-populate empty resume personalInfo from authenticated user profile or portfolio
+  useEffect(() => {
+    let candidateName = profile?.display_name?.trim() || user?.user_metadata?.full_name?.trim()
+    if (!candidateName) {
+      try {
+        const portRaw = window.localStorage?.getItem('kaizenq_portfolio_draft_v1')
+        if (portRaw) {
+          const parsed = JSON.parse(portRaw)
+          if (parsed?.profile?.fullName?.trim()) {
+            candidateName = parsed.profile.fullName.trim()
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const candidateEmail = user?.email?.trim()
+    if (!candidateName && !candidateEmail) return
+
+    setResumeData((prev) => {
+      let changed = false
+      const updatedPersonal = { ...prev.personalInfo }
+
+      if ((!updatedPersonal.fullName || updatedPersonal.fullName.trim() === '') && candidateName) {
+        updatedPersonal.fullName = candidateName
+        changed = true
+      }
+      if ((!updatedPersonal.email || updatedPersonal.email.trim() === '') && candidateEmail) {
+        updatedPersonal.email = candidateEmail
+        changed = true
+      }
+
+      if (changed) {
+        const nextData = { ...prev, personalInfo: updatedPersonal }
+        pendingDataRef.current = nextData
+        saveResumeDraft(nextData)
+        return nextData
+      }
+      return prev
+    })
+  }, [profile?.display_name, user?.user_metadata?.full_name, user?.email])
 
   // Resilient Cloud & Local Persistence with Sequence ID
   const persistData = useCallback(

@@ -44,11 +44,41 @@ export function hasSufficientResumeContent(data: ResumeData): boolean {
 }
 
 /**
- * Computes a standardized, meaningful filename for the exported PDF.
+ * Helper to extract profile name from storage if available in browser context.
  */
-export function getResumePdfFilename(data: ResumeData): string {
-  const base = data.personalInfo?.fullName || data.title || 'my-resume'
-  return `${sanitizeFilename(base, 'my-resume')}-resume.pdf`
+export function getStoredProfileName(): string | undefined {
+  if (typeof window === 'undefined') return undefined
+  try {
+    // 1. Try portfolio draft profile
+    const portRaw = window.localStorage?.getItem('kaizenq_portfolio_draft_v1')
+    if (portRaw) {
+      const parsed = JSON.parse(portRaw)
+      if (parsed?.profile?.fullName?.trim()) {
+        return parsed.profile.fullName.trim()
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return undefined
+}
+
+/**
+ * Computes a standardized, meaningful filename for the exported PDF.
+ * Uses candidate profile name (e.g. rahul-sharma-resume.pdf or banu-prakash-resume.pdf).
+ */
+export function getResumePdfFilename(data: ResumeData, profileNameFallback?: string): string {
+  const resumeName = data.personalInfo?.fullName?.trim()
+  const candidateName =
+    (resumeName && resumeName.toLowerCase() !== 'your name' ? resumeName : null) ||
+    (profileNameFallback && profileNameFallback.trim() ? profileNameFallback.trim() : null) ||
+    getStoredProfileName() ||
+    (data.title && data.title !== 'My Professional Resume' ? data.title : null) ||
+    data.personalInfo?.fullName ||
+    data.title ||
+    'my-resume'
+
+  return `${sanitizeFilename(candidateName, 'my-resume')}-resume.pdf`
 }
 
 /**
@@ -59,7 +89,7 @@ export function generateResumePrintHtml(data: ResumeData): string {
   const { personalInfo, education, skills, projects, experience, certifications, additional, visibleSections, template } =
     data
 
-  const fullName = personalInfo.fullName || 'Professional Resume'
+  const fullName = personalInfo.fullName?.trim() || getStoredProfileName() || 'Professional Resume'
   const title = personalInfo.title || ''
   const location = personalInfo.location || ''
   const phone = personalInfo.phone || ''
@@ -467,7 +497,7 @@ export function generateResumePdfDoc(data: ResumeData): jsPDF {
   }
 
   // --- 1. HEADER ---
-  const fullName = data.personalInfo?.fullName?.trim() || 'Professional Resume'
+  const fullName = data.personalInfo?.fullName?.trim() || getStoredProfileName() || 'Professional Resume'
   const title = data.personalInfo?.title?.trim() || ''
 
   doc.setFont(fontMain, 'bold')
@@ -846,8 +876,9 @@ export async function downloadResumePdfDirect(
  */
 export async function printResumePdf(
   data: ResumeData,
+  customFilename?: string,
 ): Promise<{ success: boolean; filename: string; error?: string }> {
-  const filename = getResumePdfFilename(data)
+  const filename = customFilename || getResumePdfFilename(data)
   const targetDocTitle = filename.replace(/\.pdf$/, '')
 
   // 1. If currently on the Resume page with #printable-resume mounted
@@ -916,22 +947,25 @@ export async function printResumePdf(
  */
 export async function downloadResumePdf(
   data: ResumeData,
-  options?: { mode?: 'direct' | 'print'; preferDirect?: boolean },
+  options?: { mode?: 'direct' | 'print'; preferDirect?: boolean; customFilename?: string; profileName?: string },
 ): Promise<{ success: boolean; filename: string; error?: string }> {
   const mode = options?.mode || (options?.preferDirect === false ? 'print' : 'direct')
+  const customFilename =
+    options?.customFilename ||
+    (options?.profileName ? getResumePdfFilename(data, options.profileName) : undefined)
 
   if (mode === 'print') {
-    return printResumePdf(data)
+    return printResumePdf(data, customFilename)
   }
 
   // Default: Direct vector PDF download
-  const directResult = await downloadResumePdfDirect(data)
+  const directResult = await downloadResumePdfDirect(data, customFilename)
   if (directResult.success) {
     return directResult
   }
 
   // Fallback to browser print if direct download encountered an unexpected issue
   console.warn('Direct PDF download failed, falling back to browser print:', directResult.error)
-  return printResumePdf(data)
+  return printResumePdf(data, customFilename)
 }
 

@@ -154,11 +154,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
   }, [cloudPortfolio])
 
   const activeResumeData = useMemo<ResumeData>(() => {
+    let rData: ResumeData
     if (cloudResume?.resume_data) {
-      return cloudResume.resume_data as unknown as ResumeData
+      rData = cloudResume.resume_data as unknown as ResumeData
+    } else {
+      rData = loadResumeDraft().data
     }
-    return loadResumeDraft().data
-  }, [cloudResume])
+
+    const candidateName = profile?.display_name?.trim() || user?.user_metadata?.full_name?.trim()
+    if ((!rData.personalInfo?.fullName || rData.personalInfo.fullName.trim() === '') && candidateName) {
+      return {
+        ...rData,
+        personalInfo: {
+          ...rData.personalInfo,
+          fullName: candidateName,
+          email: rData.personalInfo?.email || user?.email || '',
+        },
+      }
+    }
+    return rData
+  }, [cloudResume, profile?.display_name, user?.user_metadata?.full_name, user?.email])
 
   // Compute genuine completion percentages
   const completion = useMemo(() => {
