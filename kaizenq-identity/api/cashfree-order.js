@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { productId, amountRupees, productTitle, couponCode, customerPhone } = req.body || {}
+    const { productId, amountRupees, productTitle, couponCode, customerPhone, returnUrl: clientReturnUrl } = req.body || {}
 
     let appId = process.env.CASHFREE_APP_ID || process.env.VITE_CASHFREE_APP_ID
     let secretKey = process.env.CASHFREE_SECRET_KEY
@@ -117,7 +117,7 @@ export default async function handler(req, res) {
         customer_name: customerName,
       },
       order_meta: {
-        return_url: `${origin}/dashboard?order_id=${orderId}`,
+        return_url: clientReturnUrl || `${origin}/dashboard?order_id=${orderId}`,
       },
       order_note: productTitle || 'PR Builder Pro Upgrade',
     }

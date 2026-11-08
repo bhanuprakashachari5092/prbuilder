@@ -262,26 +262,30 @@ export const cashfreeService = {
           }),
         })
 
-        if (apiRes.ok) {
-          const apiData = await apiRes.json()
-          if (apiData.paymentSessionId) {
-            return {
-              data: {
-                orderId: apiData.orderId,
-                paymentSessionId: apiData.paymentSessionId,
-                cfOrderId: apiData.cfOrderId,
-                amountRupees: apiData.amountRupees,
-                amountPaise: apiData.amountPaise,
-                currency: apiData.currency || 'INR',
-                orderStatus: apiData.orderStatus || 'ACTIVE',
-                expiresAt: apiData.expiresAt,
-              },
-              error: null,
-            }
+        const apiData = await apiRes.json().catch(() => ({}))
+        if (apiRes.ok && apiData.paymentSessionId) {
+          return {
+            data: {
+              orderId: apiData.orderId,
+              paymentSessionId: apiData.paymentSessionId,
+              cfOrderId: apiData.cfOrderId,
+              amountRupees: apiData.amountRupees,
+              amountPaise: apiData.amountPaise,
+              currency: apiData.currency || 'INR',
+              orderStatus: apiData.orderStatus || 'ACTIVE',
+              expiresAt: apiData.expiresAt,
+            },
+            error: null,
           }
         }
-      } catch (e) {
-        // Fall through
+        if (!apiRes.ok && apiData.error) {
+          throw new Error(apiData.error)
+        }
+      } catch (e: any) {
+        if (!isSandbox && this.getMode() === 'production') {
+          return { data: null, error: e instanceof Error ? e : new Error(String(e)) }
+        }
+        // Fall through for local simulation
       }
 
       // 2. Try Supabase Edge Function
@@ -318,7 +322,17 @@ export const cashfreeService = {
         }
       }
 
-      // 3. Fallback: Create DB order
+      // 3. In production mode, do not generate mock sessions
+      if (!isSandbox && this.getMode() === 'production') {
+        return {
+          data: null,
+          error: new Error(
+            'Unable to initialize secure Cashfree payment session. Please check your network and try again.',
+          ),
+        }
+      }
+
+      // 4. Fallback: Create DB order for local sandbox simulation
       const orderRes = await paymentService.createOrder(productId, isSandbox, couponCode)
       if (orderRes.error || !orderRes.data) {
         return { data: null, error: orderRes.error || new Error('Failed to create order') }

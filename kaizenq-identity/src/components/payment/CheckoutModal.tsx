@@ -231,21 +231,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
 
       setIsLaunchingCashfree(false)
-      setIsVerifying(true)
 
       const checkoutRes = await cashfreeService.launchCheckout(currentSession, '_modal')
       if (checkoutRes.error) {
         const msg = checkoutRes.error.message || ''
         if (msg.includes('closed') || msg.includes('cancelled') || msg.includes('USER_DROPPED')) {
           setCashfreeError('Payment window was closed before completion. You can try again below.')
+        } else if (msg.includes('not enabled') || msg.includes('whitelist') || msg.includes('Broken Link')) {
+          setCashfreeError(
+            'Cashfree Domain Whitelisting Required: Please whitelist https://prbuilder.xyz in merchant.cashfree.com > Developers > Whitelisting.',
+          )
         } else {
           setCashfreeError(
             'Unable to load the secure payment service. Please check your connection and try again.',
           )
         }
+        return
       }
 
-      // Verify status with server (up to 4 attempts to handle bank confirmation propagation)
+      // Verify status with server only after user completed payment (up to 4 attempts to handle bank confirmation propagation)
+      setIsVerifying(true)
       for (let attempt = 0; attempt < 4; attempt++) {
         const verifyRes = await cashfreeService.verifyOrder(order.orderId)
         if (verifyRes.success) {

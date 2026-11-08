@@ -320,6 +320,7 @@ export const paymentService = {
           body: JSON.stringify({
             productId,
             couponCode: normalizedCoupon,
+            returnUrl: `${window.location.origin}/dashboard`,
           }),
         })
 
