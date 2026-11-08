@@ -230,3 +230,4 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_admin_audit_logs(TEXT, TEXT, INT, INT) TO authenticated;
+
