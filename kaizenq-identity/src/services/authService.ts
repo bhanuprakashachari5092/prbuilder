@@ -204,7 +204,9 @@ export const authService = {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('prbuilder_auth_redirect', targetRoute)
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
 
     const redirectUrl = `${origin}/auth/callback?redirect=${encodeURIComponent(targetRoute)}`

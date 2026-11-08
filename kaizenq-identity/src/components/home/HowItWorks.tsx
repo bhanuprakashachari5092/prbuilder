@@ -393,7 +393,7 @@ export const HowItWorks: React.FC<HowItWorksProps> = ({ onOpenBuilder }) => {
                   let rotation = isTop ? 0 : isMiddle ? 3.5 : 7
                   let scale = isTop ? 1 : isMiddle ? 0.95 : 0.90
                   let zIndex = isTop ? 30 : isMiddle ? 20 : 10
-                  let opacity = isTop ? 1 : isMiddle ? 0.88 : 0.65
+                  const opacity = isTop ? 1 : isMiddle ? 0.88 : 0.65
 
                   // Card being shuffled away animation
                   if (isShuffling && isTop) {

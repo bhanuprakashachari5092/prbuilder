@@ -1085,7 +1085,7 @@ export const ResumeEditor: React.FC<ResumeEditorProps> = ({
                             onAccept: (improved) => {
                               const cleaned = improved
                                 .split('\n')
-                                .map((b) => b.replace(/^[•\-\*]\s*/, '').trim())
+                                .map((b) => b.replace(/^[•\-*]\s*/, '').trim())
                                 .filter(Boolean)
                               updateExperience(exp.id, 'bullets', cleaned)
                             },

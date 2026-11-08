@@ -52,17 +52,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
     }
   }, [isAdmin, onNavigate])
 
-  if (isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-slate-500 font-medium">Redirecting to Platform Admin Console...</p>
-        </div>
-      </div>
-    )
-  }
-
   // Cloud data state
   const [cloudPortfolio, setCloudPortfolio] = useState<PortfolioRow | null>(null)
   const [cloudResume, setCloudResume] = useState<ResumeRow | null>(null)
@@ -466,6 +455,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
     cloudPortfolio ||
     projectsList.length > 0
   )
+
+  if (isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F7F9FC]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-500 font-medium">Redirecting to Platform Admin Console...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <DashboardLayout

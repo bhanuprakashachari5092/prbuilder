@@ -51,7 +51,9 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
         }
         try {
           localStorage.removeItem('prbuilder_auth_redirect')
-        } catch {}
+        } catch {
+          // ignore
+        }
         isProcessingRef.current = false
         return
       }
@@ -136,7 +138,9 @@ export const AuthCallbackView: React.FC<AuthCallbackViewProps> = ({
         // Clear temporary redirect storage
         try {
           localStorage.removeItem('prbuilder_auth_redirect')
-        } catch {}
+        } catch {
+          // ignore
+        }
 
         // Safe URL cleanup: completely remove access tokens, hash, and /auth/callback path
         if (typeof window !== 'undefined') {

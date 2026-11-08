@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   Tag,
   Plus,
@@ -65,6 +65,7 @@ export const AdminCouponsView: React.FC = () => {
   const [isRedemptionsLoading, setIsRedemptionsLoading] = useState<boolean>(false)
 
   // Form State
+  const currentTimestamp = useMemo(() => Date.now(), [])
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [formData, setFormData] = useState<AdminCouponFormData>({
@@ -424,7 +425,7 @@ export const AdminCouponsView: React.FC = () => {
               ) : (
                 filteredCoupons.map((coupon) => {
                   const isExpired =
-                    coupon.expiry_date && new Date(coupon.expiry_date).getTime() < Date.now()
+                    coupon.expiry_date && new Date(coupon.expiry_date).getTime() < currentTimestamp
 
                   return (
                     <tr key={coupon.id} className="hover:bg-[#F8FAFC] transition-colors">

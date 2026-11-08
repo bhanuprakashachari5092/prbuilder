@@ -37,10 +37,10 @@ export const activityService = {
       }
 
       const activities: UserActivity[] = data.map((evt) => {
-        let title = 'Document Event'
-        let description = 'Cloud state updated'
-        let category: UserActivity['category'] = 'portfolio'
-        let iconType: UserActivity['iconType'] = 'globe'
+        let title: string
+        let description: string
+        let category: UserActivity['category']
+        let iconType: UserActivity['iconType']
         const meta = (evt.metadata || {}) as Record<string, unknown>
 
         switch (evt.event_type) {

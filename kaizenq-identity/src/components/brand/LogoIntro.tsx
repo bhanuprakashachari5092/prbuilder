@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useReducedMotion } from '../../hooks/useReducedMotion.ts'
 import { PRLogoReveal } from './PRLogoReveal.tsx'
@@ -20,7 +20,17 @@ export const LogoIntro: React.FC<LogoIntroProps> = ({ onComplete, enabled = true
   const shouldReduceMotion = useReducedMotion()
   const [exiting, setExiting] = useState(false)
   const onCompleteRef = useRef(onComplete)
-  onCompleteRef.current = onComplete
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete
+  }, [onComplete])
+
+  const handleFinish = useCallback(() => {
+    setExiting(true)
+    setTimeout(() => {
+      onCompleteRef.current()
+    }, 300)
+  }, [])
 
   useEffect(() => {
     if (!enabled || shouldReduceMotion) {
@@ -45,17 +55,10 @@ export const LogoIntro: React.FC<LogoIntroProps> = ({ onComplete, enabled = true
       window.removeEventListener('keydown', handleKeyDown)
       clearTimeout(timer)
     }
-  }, [enabled, shouldReduceMotion])
+  }, [enabled, shouldReduceMotion, handleFinish])
 
   if (!enabled || shouldReduceMotion) {
     return null
-  }
-
-  const handleFinish = () => {
-    setExiting(true)
-    setTimeout(() => {
-      onCompleteRef.current()
-    }, 300)
   }
 
   return (

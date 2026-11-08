@@ -294,7 +294,7 @@ export const couponService = {
       }
 
       // Calculate discount
-      let discountPaise = 0
+      let discountPaise: number
       if (coupon.discountType === 'percentage') {
         discountPaise = Math.round((product.pricePaise * coupon.discountValue) / 100)
       } else {
