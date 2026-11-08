@@ -49,12 +49,31 @@ export function hasSufficientResumeContent(data: ResumeData): boolean {
 export function getStoredProfileName(): string | undefined {
   if (typeof window === 'undefined') return undefined
   try {
-    // 1. Try portfolio draft profile
+    // 1. Try auth session from localStorage
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)
+      if (key && (key.includes('auth-token') || key === 'kaizenq_auth_token_v1')) {
+        const raw = window.localStorage.getItem(key)
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          const user = parsed?.user || parsed?.currentSession?.user
+          const name = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.user_metadata?.display_name
+          if (name && typeof name === 'string' && name.trim()) {
+            return name.trim()
+          }
+        }
+      }
+    }
+
+    // 2. Try portfolio draft profile
     const portRaw = window.localStorage?.getItem('kaizenq_portfolio_draft_v1')
     if (portRaw) {
       const parsed = JSON.parse(portRaw)
       if (parsed?.profile?.fullName?.trim()) {
-        return parsed.profile.fullName.trim()
+        const portName = parsed.profile.fullName.trim()
+        if (portName.toLowerCase() !== 'rahul varma' && portName.toLowerCase() !== 'rahul sharma') {
+          return portName
+        }
       }
     }
   } catch {
@@ -66,12 +85,29 @@ export function getStoredProfileName(): string | undefined {
 /**
  * Computes a standardized, meaningful filename for the exported PDF.
  * Uses candidate profile name (e.g. rahul-sharma-resume.pdf or banu-prakash-resume.pdf).
+ * Prioritizes authenticated user profile name whenever sample/placeholder names are detected.
  */
 export function getResumePdfFilename(data: ResumeData, profileNameFallback?: string): string {
   const resumeName = data.personalInfo?.fullName?.trim()
+  const fallback = profileNameFallback?.trim()
+
+  const isSampleOrPlaceholder = (name?: string | null) => {
+    if (!name) return true
+    const l = name.trim().toLowerCase()
+    return (
+      l === '' ||
+      l === 'your name' ||
+      l === 'rahul sharma' ||
+      l === 'rahul varma' ||
+      l.startsWith('rahul ') ||
+      l === 'rahul'
+    )
+  }
+
   const candidateName =
+    (fallback && isSampleOrPlaceholder(resumeName) ? fallback : null) ||
     (resumeName && resumeName.toLowerCase() !== 'your name' ? resumeName : null) ||
-    (profileNameFallback && profileNameFallback.trim() ? profileNameFallback.trim() : null) ||
+    fallback ||
     getStoredProfileName() ||
     (data.title && data.title !== 'My Professional Resume' ? data.title : null) ||
     data.personalInfo?.fullName ||

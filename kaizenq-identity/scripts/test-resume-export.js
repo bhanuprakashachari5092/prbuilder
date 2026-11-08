@@ -41,6 +41,9 @@ assert(hasSufficientResumeContent({
 // 2. Filename Generation
 console.log('--- 2. PDF Filename Generation ---')
 assert(getResumePdfFilename(SAMPLE_RESUME_DATA) === 'rahul-sharma-resume.pdf', 'Generates clean sanitized filename from full name')
+assert(getResumePdfFilename(SAMPLE_RESUME_DATA, 'Banu Prakash') === 'banu-prakash-resume.pdf', 'Overrides sample placeholder name with authenticated profile name')
+assert(getResumePdfFilename(DEFAULT_EMPTY_RESUME, 'Banu Prakash') === 'banu-prakash-resume.pdf', 'Uses authenticated profile name when resume name is blank')
+assert(getResumePdfFilename({ ...SAMPLE_RESUME_DATA, personalInfo: { fullName: 'Sai Charan' } }, 'Banu Prakash') === 'sai-charan-resume.pdf', 'Preserves user custom entered name over fallback')
 assert(getResumePdfFilename({ ...DEFAULT_EMPTY_RESUME, title: 'My Custom Resume' }) === 'my-custom-resume-resume.pdf', 'Falls back to resume title when name is empty')
 assert(getResumePdfFilename(DEFAULT_EMPTY_RESUME) === 'my-professional-resume-resume.pdf', 'Default fallback filename is safe')
 

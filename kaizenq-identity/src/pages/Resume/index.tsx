@@ -180,16 +180,23 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
     }
   }, [user?.id, isConfigured, checkCloudResume])
 
-  // Auto-populate empty resume personalInfo from authenticated user profile or portfolio
+  // Auto-populate empty or sample resume personalInfo from authenticated user profile or portfolio
   useEffect(() => {
-    let candidateName = profile?.display_name?.trim() || user?.user_metadata?.full_name?.trim()
+    let candidateName =
+      profile?.display_name?.trim() ||
+      user?.user_metadata?.full_name?.trim() ||
+      user?.user_metadata?.name?.trim() ||
+      user?.user_metadata?.display_name?.trim()
     if (!candidateName) {
       try {
         const portRaw = window.localStorage?.getItem('kaizenq_portfolio_draft_v1')
         if (portRaw) {
           const parsed = JSON.parse(portRaw)
           if (parsed?.profile?.fullName?.trim()) {
-            candidateName = parsed.profile.fullName.trim()
+            const pName = parsed.profile.fullName.trim()
+            if (pName.toLowerCase() !== 'rahul varma' && pName.toLowerCase() !== 'rahul sharma') {
+              candidateName = pName
+            }
           }
         }
       } catch {
@@ -203,11 +210,24 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
       let changed = false
       const updatedPersonal = { ...prev.personalInfo }
 
-      if ((!updatedPersonal.fullName || updatedPersonal.fullName.trim() === '') && candidateName) {
+      const currentName = updatedPersonal.fullName?.trim()
+      const isSampleOrEmpty =
+        !currentName ||
+        currentName === '' ||
+        currentName.toLowerCase() === 'rahul sharma' ||
+        currentName.toLowerCase() === 'rahul varma' ||
+        currentName.toLowerCase() === 'your name'
+
+      if (isSampleOrEmpty && candidateName) {
         updatedPersonal.fullName = candidateName
         changed = true
       }
-      if ((!updatedPersonal.email || updatedPersonal.email.trim() === '') && candidateEmail) {
+      if (
+        (!updatedPersonal.email ||
+          updatedPersonal.email.trim() === '' ||
+          updatedPersonal.email === 'rahul.sharma@example.edu') &&
+        candidateEmail
+      ) {
         updatedPersonal.email = candidateEmail
         changed = true
       }
@@ -220,7 +240,7 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
       }
       return prev
     })
-  }, [profile?.display_name, user?.user_metadata?.full_name, user?.email])
+  }, [profile?.display_name, user?.user_metadata?.full_name, user?.user_metadata?.name, user?.user_metadata?.display_name, user?.email])
 
   // Resilient Cloud & Local Persistence with Sequence ID
   const persistData = useCallback(
@@ -340,9 +360,27 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
     })
   }
 
-  // Load Authentic Sample Demo Data
+  // Load Authentic Sample Demo Data (preserving signed-in user's profile name and email)
   const handleLoadSample = () => {
-    handleDataChange(SAMPLE_RESUME_DATA)
+    const candidateName =
+      profile?.display_name?.trim() ||
+      user?.user_metadata?.full_name?.trim() ||
+      user?.user_metadata?.name?.trim() ||
+      user?.user_metadata?.display_name?.trim()
+    const candidateEmail = user?.email?.trim()
+
+    if (candidateName || candidateEmail) {
+      handleDataChange({
+        ...SAMPLE_RESUME_DATA,
+        personalInfo: {
+          ...SAMPLE_RESUME_DATA.personalInfo,
+          fullName: candidateName || SAMPLE_RESUME_DATA.personalInfo.fullName,
+          email: candidateEmail || SAMPLE_RESUME_DATA.personalInfo.email,
+        },
+      })
+    } else {
+      handleDataChange(SAMPLE_RESUME_DATA)
+    }
   }
 
   // Confirmed Clear All
@@ -359,10 +397,22 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
     }
   }
 
-  // PDF Print trigger
+  // PDF Print trigger with sanitized candidate title
   const handleConfirmPrint = () => {
+    const candidateName =
+      profile?.display_name?.trim() ||
+      user?.user_metadata?.full_name?.trim() ||
+      user?.user_metadata?.name?.trim() ||
+      resumeData.personalInfo?.fullName?.trim() ||
+      'resume'
+    const targetDocTitle = `${candidateName.replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'resume'}-resume`
+    const originalTitle = document.title
+    document.title = targetDocTitle
     setTimeout(() => {
       window.print()
+      setTimeout(() => {
+        document.title = originalTitle
+      }, 1000)
     }, 120)
   }
 

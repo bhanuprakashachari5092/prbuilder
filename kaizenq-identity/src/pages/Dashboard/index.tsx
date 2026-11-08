@@ -233,19 +233,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
       rData = loadResumeDraft().data
     }
 
-    const candidateName = profile?.display_name?.trim() || user?.user_metadata?.full_name?.trim()
-    if ((!rData.personalInfo?.fullName || rData.personalInfo.fullName.trim() === '') && candidateName) {
+    const candidateName =
+      profile?.display_name?.trim() ||
+      user?.user_metadata?.full_name?.trim() ||
+      user?.user_metadata?.name?.trim() ||
+      user?.user_metadata?.display_name?.trim() ||
+      (user?.email ? user.email.split('@')[0] : '')
+
+    const currentName = rData.personalInfo?.fullName?.trim()
+    const isSampleOrEmpty =
+      !currentName ||
+      currentName === '' ||
+      currentName.toLowerCase() === 'rahul sharma' ||
+      currentName.toLowerCase() === 'rahul varma' ||
+      currentName.toLowerCase() === 'your name'
+
+    if (isSampleOrEmpty && candidateName) {
       return {
         ...rData,
         personalInfo: {
           ...rData.personalInfo,
           fullName: candidateName,
-          email: rData.personalInfo?.email || user?.email || '',
+          email:
+            rData.personalInfo?.email && rData.personalInfo.email !== 'rahul.sharma@example.edu'
+              ? rData.personalInfo.email
+              : (user?.email || rData.personalInfo?.email || ''),
         },
       }
     }
     return rData
-  }, [cloudResume, profile?.display_name, user?.user_metadata?.full_name, user?.email])
+  }, [cloudResume, profile?.display_name, user?.user_metadata?.full_name, user?.user_metadata?.name, user?.user_metadata?.display_name, user?.email])
 
   // Compute genuine completion percentages
   const completion = useMemo(() => {

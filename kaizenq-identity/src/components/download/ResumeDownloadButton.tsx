@@ -31,27 +31,54 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
   const [showMenu, setShowMenu] = useState<boolean>(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Resolve best candidate profile name from resume data, auth profile, or user metadata
-  const resolvedProfileName =
-    data.personalInfo?.fullName?.trim() ||
+  // Resolve authenticated candidate profile name from auth profile, user metadata, or email
+  const authProfileName =
     profile?.display_name?.trim() ||
     user?.user_metadata?.full_name?.trim() ||
     user?.user_metadata?.name?.trim() ||
+    user?.user_metadata?.display_name?.trim() ||
+    (user?.email ? user.email.split('@')[0] : '')
+
+  const isSampleOrPlaceholder = (name?: string | null) => {
+    if (!name) return true
+    const l = name.trim().toLowerCase()
+    return (
+      l === '' ||
+      l === 'your name' ||
+      l === 'rahul sharma' ||
+      l === 'rahul varma' ||
+      l.startsWith('rahul ') ||
+      l === 'rahul'
+    )
+  }
+
+  // Resolve best candidate profile name for export: prioritizes signed-in user profile over sample placeholder
+  const resolvedProfileName =
+    (authProfileName && isSampleOrPlaceholder(data.personalInfo?.fullName) ? authProfileName : null) ||
+    (!isSampleOrPlaceholder(data.personalInfo?.fullName) ? data.personalInfo?.fullName?.trim() : null) ||
+    authProfileName ||
+    data.personalInfo?.fullName?.trim() ||
     ''
 
   const effectiveData = React.useMemo(() => {
-    if ((!data.personalInfo?.fullName || data.personalInfo.fullName.trim() === '') && resolvedProfileName) {
+    const currentName = data.personalInfo?.fullName?.trim()
+    const shouldInjectAuth = Boolean(authProfileName && isSampleOrPlaceholder(currentName))
+
+    if (shouldInjectAuth) {
       return {
         ...data,
         personalInfo: {
           ...data.personalInfo,
-          fullName: resolvedProfileName,
-          email: data.personalInfo?.email || user?.email || '',
+          fullName: authProfileName,
+          email:
+            data.personalInfo?.email && data.personalInfo.email !== 'rahul.sharma@example.edu'
+              ? data.personalInfo.email
+              : (user?.email || data.personalInfo?.email || ''),
         },
       }
     }
     return data
-  }, [data, resolvedProfileName, user?.email])
+  }, [data, authProfileName, user?.email])
 
   const isSufficient = hasSufficientResumeContent(effectiveData)
 
@@ -74,19 +101,26 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
     setShowMenu(false)
 
     try {
-      const dataToExport =
-        (!targetData.personalInfo?.fullName || targetData.personalInfo.fullName.trim() === '') && resolvedProfileName
-          ? {
-              ...targetData,
-              personalInfo: {
-                ...targetData.personalInfo,
-                fullName: resolvedProfileName,
-                email: targetData.personalInfo?.email || user?.email || '',
-              },
-            }
-          : targetData
+      const currentName = targetData.personalInfo?.fullName?.trim()
+      const shouldInjectAuth = Boolean(authProfileName && isSampleOrPlaceholder(currentName))
 
-      const result = await downloadResumePdf(dataToExport, { mode, profileName: resolvedProfileName })
+      const dataToExport = shouldInjectAuth
+        ? {
+            ...targetData,
+            personalInfo: {
+              ...targetData.personalInfo,
+              fullName: authProfileName,
+              email:
+                targetData.personalInfo?.email && targetData.personalInfo.email !== 'rahul.sharma@example.edu'
+                  ? targetData.personalInfo.email
+                  : (user?.email || targetData.personalInfo?.email || ''),
+            },
+          }
+        : targetData
+
+      const filenameProfileName = authProfileName || resolvedProfileName
+
+      const result = await downloadResumePdf(dataToExport, { mode, profileName: filenameProfileName })
 
       if (result.success) {
         setStatus('success')
@@ -351,10 +385,20 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
                 leftIcon={<Sparkles className="w-3.5 h-3.5" />}
                 onClick={() => {
                   setShowEmptyModal(false)
-                  triggerExport(SAMPLE_RESUME_DATA, 'direct')
+                  const customizedSample = authProfileName
+                    ? {
+                        ...SAMPLE_RESUME_DATA,
+                        personalInfo: {
+                          ...SAMPLE_RESUME_DATA.personalInfo,
+                          fullName: authProfileName,
+                          email: user?.email || SAMPLE_RESUME_DATA.personalInfo.email,
+                        },
+                      }
+                    : SAMPLE_RESUME_DATA
+                  triggerExport(customizedSample, 'direct')
                 }}
                 className="text-xs font-semibold"
-                title="Download Rahul Sharma sample ATS resume PDF"
+                title={`Download ${authProfileName || 'sample'} ATS resume PDF`}
               >
                 Download Sample Resume PDF
               </Button>
