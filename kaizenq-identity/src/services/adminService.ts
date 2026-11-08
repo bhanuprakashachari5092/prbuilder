@@ -594,6 +594,58 @@ function parseAdminOverviewStats(data: Record<string, unknown>): AdminOverviewSt
   }
 }
 
+const LOCAL_AUDIT_LOGS_KEY = 'pr_builder_admin_audit_logs'
+
+export function getLocalAuditLogs(): AdminAuditLogItem[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(LOCAL_AUDIT_LOGS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw) as AdminAuditLogItem[]
+  } catch {
+    return []
+  }
+}
+
+export function filterLocalAuditLogs(
+  logs: AdminAuditLogItem[],
+  search?: string,
+  actionFilter?: string
+): AdminAuditLogItem[] {
+  let list = logs
+  if (actionFilter && actionFilter !== 'all') {
+    list = list.filter((l) => l.action === actionFilter)
+  }
+  if (search?.trim()) {
+    const q = search.trim().toLowerCase()
+    list = list.filter(
+      (l) =>
+        l.action.toLowerCase().includes(q) ||
+        (l.targetId && l.targetId.toLowerCase().includes(q)) ||
+        l.targetType.toLowerCase().includes(q) ||
+        (l.adminEmail && l.adminEmail.toLowerCase().includes(q)) ||
+        (l.adminName && l.adminName.toLowerCase().includes(q))
+    )
+  }
+  return list
+}
+
+export function appendLocalAuditLog(item: Omit<AdminAuditLogItem, 'id' | 'createdAt'>): void {
+  if (typeof window === 'undefined') return
+  try {
+    const logs = getLocalAuditLogs()
+    const newLog: AdminAuditLogItem = {
+      ...item,
+      id: `local-log-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      createdAt: new Date().toISOString(),
+    }
+    const updated = [newLog, ...logs].slice(0, 100)
+    localStorage.setItem(LOCAL_AUDIT_LOGS_KEY, JSON.stringify(updated))
+  } catch {
+    // ignore local storage errors
+  }
+}
+
 export const adminService = {
   /**
    * Record real user activity event to public.analytics_events
@@ -1205,7 +1257,11 @@ export const adminService = {
     actionFilter?: string
     page?: number
     pageSize?: number
-  } = {}): Promise<{ data: PaginatedResult<AdminAuditLogItem> | null; error: Error | null }> {
+  } = {}): Promise<{
+    data: PaginatedResult<AdminAuditLogItem> | null
+    error: Error | null
+    isTableMissing?: boolean
+  }> {
     const page = params.page || 1
     const pageSize = params.pageSize || 15
     const emptyResult: PaginatedResult<AdminAuditLogItem> = {
@@ -1217,7 +1273,21 @@ export const adminService = {
     }
 
     if (!isSupabaseConfigured()) {
-      return { data: emptyResult, error: null }
+      const localLogs = getLocalAuditLogs()
+      const filtered = filterLocalAuditLogs(localLogs, params.search, params.actionFilter)
+      const total = filtered.length
+      const from = (page - 1) * pageSize
+      return {
+        data: {
+          items: filtered.slice(from, from + pageSize),
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        },
+        error: null,
+        isTableMissing: true,
+      }
     }
 
     try {
@@ -1231,7 +1301,7 @@ export const adminService = {
       if (!error && data) {
         const parsed = parsePaginatedRpc<AdminAuditLogItem>(data, parseAdminAuditLogItem, page, pageSize)
         if (parsed) {
-          return { data: parsed, error: null }
+          return { data: parsed, error: null, isTableMissing: false }
         }
       }
 
@@ -1240,7 +1310,7 @@ export const adminService = {
       if (params.search?.trim()) {
         query = query.ilike('action', `%${params.search.trim()}%`)
       }
-      if (params.actionFilter) {
+      if (params.actionFilter && params.actionFilter !== 'all') {
         query = query.eq('action', params.actionFilter)
       }
 
@@ -1275,11 +1345,75 @@ export const adminService = {
           totalPages: Math.ceil(total / pageSize),
         },
         error: null,
+        isTableMissing: false,
+      }
+    } catch (err: unknown) {
+      console.warn('Failed to get audit logs from Supabase:', err)
+      const errMsg = err instanceof Error ? err.message : String(err)
+      const errCode = (err as { code?: string })?.code
+      const isMissingTable =
+        errCode === 'PGRST204' ||
+        errCode === '42P01' ||
+        errMsg.toLowerCase().includes('schema cache') ||
+        errMsg.toLowerCase().includes('does not exist')
+
+      if (isMissingTable) {
+        const localLogs = getLocalAuditLogs()
+        const filtered = filterLocalAuditLogs(localLogs, params.search, params.actionFilter)
+        const total = filtered.length
+        const from = (page - 1) * pageSize
+        return {
+          data: {
+            items: filtered.slice(from, from + pageSize),
+            total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize),
+          },
+          error: null,
+          isTableMissing: true,
+        }
+      }
+
+      return { data: emptyResult, error: err as Error, isTableMissing: false }
+    }
+  },
+
+  /**
+   * Record administrative audit log
+   */
+  async logAction(
+    action: string,
+    targetType: string,
+    targetId?: string,
+    outcome: 'success' | 'failure' | 'denied' = 'success',
+    metadata: Record<string, unknown> = {}
+  ): Promise<void> {
+    try {
+      if (isSupabaseConfigured()) {
+        const { error } = await supabase.rpc('admin_log_action', {
+          p_action: action,
+          p_target_id: targetId || '',
+          p_target_type: targetType,
+          p_outcome: outcome,
+          p_metadata: metadata as Json,
+        })
+        if (!error) return
       }
     } catch (err) {
-      console.warn('Failed to get audit logs:', err)
-      return { data: emptyResult, error: err as Error }
+      console.warn('Remote audit logging failed, recording locally:', err)
     }
+
+    appendLocalAuditLog({
+      adminId: 'current-admin',
+      adminEmail: 'admin@gmail.com',
+      adminName: 'Platform Administrator',
+      action,
+      targetType,
+      targetId: targetId || null,
+      outcome,
+      metadata,
+    })
   },
 
   /**
