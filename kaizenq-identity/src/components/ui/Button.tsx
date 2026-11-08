@@ -69,7 +69,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           onClick={onClick as unknown as React.MouseEventHandler<HTMLAnchorElement>}
         >
           {leftIcon && <span className="inline-flex shrink-0">{leftIcon}</span>}
-          <span>{children}</span>
+          <span className="inline-flex items-center gap-2">{children}</span>
           {rightIcon && <span className="inline-flex shrink-0">{rightIcon}</span>}
         </a>
       )
@@ -110,7 +110,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           leftIcon && <span className="inline-flex shrink-0">{leftIcon}</span>
         )}
-        <span>{children}</span>
+        <span className="inline-flex items-center gap-2">{children}</span>
         {!isLoading && rightIcon && <span className="inline-flex shrink-0">{rightIcon}</span>}
       </motion.button>
     )
