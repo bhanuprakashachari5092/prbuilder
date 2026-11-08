@@ -85,65 +85,113 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
     triggerExport(data, 'direct')
   }
 
+  const isOutline = variant === 'outline' || variant === 'secondary'
+
+  const sizeConfig = {
+    sm: {
+      left: 'px-3.5 py-1.5 text-xs gap-1.5',
+      right: 'px-2 py-1.5',
+      icon: 'w-3.5 h-3.5',
+    },
+    md: {
+      left: 'px-4 py-2 text-xs sm:text-sm gap-2',
+      right: 'px-2.5 py-2',
+      icon: 'w-4 h-4',
+    },
+    lg: {
+      left: 'px-5 py-2.5 text-sm sm:text-base gap-2.5',
+      right: 'px-3 py-2.5',
+      icon: 'w-4 h-4',
+    },
+  }[size || 'sm'] || {
+    left: 'px-3.5 py-1.5 text-xs gap-1.5',
+    right: 'px-2 py-1.5',
+    icon: 'w-3.5 h-3.5',
+  }
+
+  let containerStyles = 'inline-flex items-stretch rounded-xl shadow-xs transition-all duration-200 border select-none '
+  if (status === 'success') {
+    containerStyles += 'bg-emerald-600 border-emerald-600 text-white shadow-emerald-500/20'
+  } else if (status === 'error') {
+    containerStyles += 'bg-rose-50 border-rose-300 text-rose-700'
+  } else if (isOutline) {
+    containerStyles += 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 text-slate-800'
+  } else {
+    // primary / glow
+    containerStyles += 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-blue-600/40 text-white shadow-blue-500/20'
+  }
+
   return (
     <>
-      <div className="relative inline-flex items-center gap-0.5" ref={menuRef}>
+      <div className={`relative inline-flex items-center ${className}`} ref={menuRef}>
         <div className="inline-flex flex-col items-start gap-1">
-          <div className="inline-flex rounded-xl shadow-xs overflow-hidden">
-            <Button
-              variant={status === 'error' ? 'outline' : variant}
-              size={size}
+          <div className={containerStyles}>
+            {/* Primary Action Button */}
+            <button
+              type="button"
               onClick={handlePrimaryClick}
               disabled={status === 'loading'}
-              className={`${className} ${
-                status === 'success'
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
-                  : status === 'error'
-                    ? 'border-rose-300 text-rose-700 hover:bg-rose-50'
-                    : ''
-              }`}
               aria-label={label}
+              className={`inline-flex items-center justify-center font-semibold rounded-l-xl rounded-r-none transition-colors cursor-pointer focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed ${
+                sizeConfig.left
+              } ${
+                !isOutline && status !== 'error' ? 'hover:bg-white/10 active:bg-white/20' : 'hover:bg-slate-100'
+              }`}
               title={
                 isSufficient
                   ? 'Download ATS-compliant vector PDF file directly to your computer'
                   : 'Resume needs more content before downloading'
               }
-              leftIcon={
-                showIcon ? (
-                  status === 'loading' ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : status === 'success' ? (
-                    <Check className="w-3.5 h-3.5 text-white" />
-                  ) : status === 'error' ? (
-                    <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                  ) : (
-                    <Download className="w-3.5 h-3.5" />
-                  )
-                ) : undefined
-              }
             >
-              {status === 'loading'
-                ? 'Generating PDF...'
-                : status === 'success'
-                  ? 'PDF Downloaded!'
-                  : status === 'error'
-                    ? 'Export Failed'
-                    : label}
-            </Button>
+              {showIcon && (
+                <span className="shrink-0">
+                  {status === 'loading' ? (
+                    <Loader2 className={`${sizeConfig.icon} animate-spin`} />
+                  ) : status === 'success' ? (
+                    <Check className={`${sizeConfig.icon} text-white`} />
+                  ) : status === 'error' ? (
+                    <AlertCircle className={`${sizeConfig.icon} text-rose-600`} />
+                  ) : (
+                    <Download className={sizeConfig.icon} />
+                  )}
+                </span>
+              )}
+              <span>
+                {status === 'loading'
+                  ? 'Generating PDF...'
+                  : status === 'success'
+                    ? 'PDF Downloaded!'
+                    : status === 'error'
+                      ? 'Export Failed'
+                      : label}
+              </span>
+            </button>
+
+            {/* Crisp Divider */}
+            <div
+              className={`w-[1px] h-4 self-center shrink-0 ${
+                isOutline || status === 'error' ? 'bg-slate-200' : 'bg-white/25'
+              }`}
+            />
 
             {/* Dropdown Options Toggle */}
             <button
               type="button"
               onClick={() => setShowMenu((prev) => !prev)}
               disabled={status === 'loading'}
-              className={`px-1.5 flex items-center justify-center border-l transition-colors cursor-pointer ${
-                variant === 'outline' || variant === 'secondary'
-                  ? 'bg-white hover:bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B]'
-                  : 'bg-[#1D4ED8] hover:bg-[#1E40AF] border-white/20 text-white'
+              aria-label="More export options"
+              className={`inline-flex items-center justify-center rounded-r-xl rounded-l-none transition-colors cursor-pointer focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed ${
+                sizeConfig.right
+              } ${
+                !isOutline && status !== 'error' ? 'hover:bg-white/15 active:bg-white/25' : 'hover:bg-slate-100'
               }`}
               title="More export options"
             >
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                  showMenu ? 'rotate-180' : ''
+                }`}
+              />
             </button>
           </div>
 
@@ -156,7 +204,7 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
 
         {/* Dropdown Menu */}
         {showMenu && (
-          <div className="absolute right-0 top-full mt-1.5 w-60 bg-white border border-[#E2E8F0] rounded-xl shadow-xl p-1.5 z-40 text-xs text-[#111827] space-y-1 animate-fadeIn">
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-50 text-xs text-slate-800 dark:text-slate-200 space-y-1 animate-fadeIn">
             <button
               type="button"
               onClick={() => {
@@ -166,15 +214,22 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
                 }
                 triggerExport(data, 'direct')
               }}
-              className="w-full flex items-start gap-2.5 px-3 py-2 text-left rounded-lg hover:bg-[#F8FAFC] transition-colors cursor-pointer group"
+              className="w-full flex items-start gap-2.5 px-3 py-2 text-left rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
             >
-              <Download className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-[#111827] group-hover:text-[#2563EB]">
-                  Direct PDF Download
-                </p>
-                <p className="text-[10px] text-[#64748B]">
-                  Saves ATS-ready .pdf file straight to Downloads folder
+              <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0">
+                <Download className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600">
+                    Direct PDF Download
+                  </p>
+                  <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    .pdf
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Vector PDF ready for applicant tracking systems
                 </p>
               </div>
             </button>
@@ -188,15 +243,22 @@ export const ResumeDownloadButton: React.FC<ResumeDownloadButtonProps> = ({
                 }
                 triggerExport(data, 'print')
               }}
-              className="w-full flex items-start gap-2.5 px-3 py-2 text-left rounded-lg hover:bg-[#F8FAFC] transition-colors cursor-pointer group"
+              className="w-full flex items-start gap-2.5 px-3 py-2 text-left rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
             >
-              <Printer className="w-4 h-4 text-[#64748B] shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-[#111827] group-hover:text-[#2563EB]">
-                  Print / Save via Browser
-                </p>
-                <p className="text-[10px] text-[#64748B]">
-                  Opens browser system print dialog with A4 layout
+              <div className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 mt-0.5 shrink-0">
+                <Printer className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-slate-900 dark:text-white group-hover:text-blue-600">
+                    Print / System Dialog
+                  </p>
+                  <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    A4
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Opens browser print with calibrated 10mm margins
                 </p>
               </div>
             </button>
