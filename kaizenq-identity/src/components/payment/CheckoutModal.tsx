@@ -246,7 +246,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       // 2. Ensure payment session is available
       let currentSession = paymentSessionId || order.paymentSessionId
       if (!currentSession) {
-        const isSandboxEnv = import.meta.env.VITE_PAYMENT_MODE !== 'live'
+        const isSandboxEnv = cashfreeService.getMode() === 'sandbox'
         const cfRes = await cashfreeService.createOrder(
           productId,
           isSandboxEnv,
@@ -878,17 +878,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     )}
                   </div>
 
-                  {/* Developer Sandbox Test Simulation */}
-                  <div className="pt-0.5 text-center">
-                    <button
-                      type="button"
-                      onClick={handleSimulatePayment}
-                      disabled={isSimulating}
-                      className="text-[10px] text-[#94A3B8] hover:text-[#475569] transition-colors cursor-pointer"
-                    >
-                      {isSimulating ? 'Simulating test payment...' : 'Developer Sandbox Test Simulation'}
-                    </button>
-                  </div>
+                  {/* Security Guarantee & Optional Local Dev Simulation */}
+                  {import.meta.env.DEV && cashfreeService.getMode() === 'sandbox' ? (
+                    <div className="pt-0.5 text-center">
+                      <button
+                        type="button"
+                        onClick={handleSimulatePayment}
+                        disabled={isSimulating}
+                        className="text-[10px] text-[#94A3B8] hover:text-[#475569] transition-colors cursor-pointer"
+                      >
+                        {isSimulating ? 'Simulating test payment...' : 'Developer Sandbox Test Simulation'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="pt-1 text-center text-[10px] text-[#94A3B8] flex items-center justify-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Bank-grade 256-bit SSL encryption • Official Cashfree Partner</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
