@@ -11,7 +11,7 @@ import {
   Sparkles,
   TrendingUp,
   X,
-  Zap,
+  RotateCcw,
 } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import {
@@ -187,15 +187,16 @@ export const AdminPricingView: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={async () => {
-              const res = await paymentService.simulateRealtimePayment(999, 'PR Builder Pro All-Access Pass')
-              setSuccessMsg(`⚡ Live Real-Time Sale Verified: +₹${res.amountRupees} for All-Access Pass! Counters updated.`)
+              await paymentService.resetRevenue()
+              setSuccessMsg('Revenue telemetry and test orders have been reset to ₹0.00.')
               setTimeout(() => setSuccessMsg(null), 4000)
               loadCatalog()
             }}
-            leftIcon={<Zap className="w-3.5 h-3.5 text-amber-500" />}
-            className="text-xs border-amber-200 bg-amber-50/60 hover:bg-amber-100/80 text-amber-900"
+            leftIcon={<RotateCcw className="w-3.5 h-3.5 text-rose-500" />}
+            className="text-xs border-rose-200 bg-rose-50/60 hover:bg-rose-100/80 text-rose-800"
+            title="Reset revenue telemetry and test orders to ₹0.00"
           >
-            Simulate +₹999 Sale
+            Reset Revenue
           </Button>
 
           <Button

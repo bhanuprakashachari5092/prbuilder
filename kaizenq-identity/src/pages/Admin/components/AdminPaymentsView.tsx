@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   FileSpreadsheet,
   Zap,
+  RotateCcw,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -153,6 +154,20 @@ export const AdminPaymentsView: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await paymentService.resetRevenue()
+              await loadAnalytics()
+            }}
+            className="border-rose-200 bg-rose-50/60 text-rose-700 hover:bg-rose-100/70 text-xs"
+            title="Reset simulated orders and zero ledger revenue"
+          >
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-rose-600" />
+            Reset Revenue
           </Button>
 
           <Button

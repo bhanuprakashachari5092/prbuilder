@@ -952,6 +952,36 @@ export const paymentService = {
   },
 
   /**
+   * Resets all simulated/test revenue and clears in-memory orders.
+   * Broadcasts a real-time revenue updated event so all dashboards reset immediately to ₹0.00.
+   */
+  async resetRevenue(): Promise<{ success: boolean; error: Error | null }> {
+    localOrdersMap.clear()
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase
+          .from('payment_orders')
+          .delete()
+          .or('is_sandbox.eq.true,id.like.ORD_LIVE_%,id.like.CF_SIM_%,id.like.TEST_%')
+      } catch (err) {
+        console.warn('Realtime test payment database reset note:', err)
+      }
+    }
+
+    this.notifyRevenueUpdated({
+      orderId: 'RESET',
+      amountRupees: 0,
+      amountPaise: 0,
+      utr: 'RESET',
+      productName: 'Ledger Reset',
+      status: 'cancelled',
+    })
+
+    return { success: true, error: null }
+  },
+
+  /**
    * Fetches admin payment analytics & ledger with real-time accuracy.
    */
   async getAdminPaymentAnalytics(): Promise<{ data: AdminPaymentAnalytics | null; error: Error | null }> {

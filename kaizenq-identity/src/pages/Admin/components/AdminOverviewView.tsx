@@ -17,6 +17,7 @@ import {
   QrCode,
   Archive,
   Zap,
+  RotateCcw,
   DollarSign,
 } from 'lucide-react'
 import {
@@ -214,14 +215,14 @@ export const AdminOverviewView: React.FC<AdminOverviewViewProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={async () => {
-                await paymentService.simulateRealtimePayment(199, 'Modern Professional Resume Template')
+                await paymentService.resetRevenue()
                 onRefresh()
               }}
-              className="text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Test real-time revenue counter increment"
+              className="text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl border border-rose-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Reset revenue telemetry and test orders to ₹0.00"
             >
-              <Zap className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Simulate +₹199 Live Payment</span>
+              <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+              <span>Reset Revenue</span>
             </button>
             <button
               onClick={() => onSelectTab('payments')}
