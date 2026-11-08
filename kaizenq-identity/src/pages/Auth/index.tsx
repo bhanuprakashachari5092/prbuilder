@@ -97,22 +97,6 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
     return { score: 100, label: 'Strong', color: 'bg-emerald-500' }
   }, [password])
 
-  // Quick Demo Account Auto-Fill for Testing
-  const handleFillDemo = (type: 'student' | 'admin') => {
-    if (type === 'student') {
-      setEmail('student.demo@university.edu')
-      setPassword('StudentPass123!')
-      setDisplayName('Kavya Sharma')
-      setMode('signin')
-    } else {
-      setEmail('admin@gmail.com')
-      setPassword('AdminMaster2026!')
-      setDisplayName('Platform Administrator')
-      setMode('signin')
-    }
-    setErrorMsg(null)
-  }
-
   const handleContinueLocal = () => {
     onSuccess?.()
     onClose?.()
@@ -756,27 +740,8 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
           )}
         </div>
 
-        {/* Card Footer: Quick Demo Credentials & Mode Switcher */}
-        <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800 text-center space-y-3">
-          <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500">
-            <span>Test Credentials:</span>
-            <button
-              type="button"
-              onClick={() => handleFillDemo('student')}
-              className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-400 font-semibold transition-colors cursor-pointer"
-            >
-              Student Demo
-            </button>
-            <span>•</span>
-            <button
-              type="button"
-              onClick={() => handleFillDemo('admin')}
-              className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-semibold transition-colors cursor-pointer"
-            >
-              Admin Demo
-            </button>
-          </div>
-
+        {/* Card Footer: Mode Switcher */}
+        <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800 text-center">
           {/* Mode Switcher */}
           {mode !== 'recovery' && (
             <div className="text-xs text-slate-500">
