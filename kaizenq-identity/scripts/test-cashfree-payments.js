@@ -182,12 +182,47 @@ assert(
   'cashfreeService.ts provides resetSdk() to safely reset SDK state for clean retries',
 )
 assert(
+  cashfreeServiceCode.includes('removeCashfreeScriptTags'),
+  'cashfreeService.ts implements removeCashfreeScriptTags() to purge stalled script tags from DOM',
+)
+assert(
   cashfreeServiceCode.includes('Unable to load the secure payment service'),
   'cashfreeService.ts maps network/SDK errors to user-friendly message',
 )
 assert(
   !cashfreeServiceCode.includes("script.crossOrigin = 'anonymous'"),
   'cashfreeService.ts avoids crossOrigin=anonymous (CORS) on script tags since Cashfree CDN omits CORS headers',
+)
+
+// Error Sanitization Unit Check
+function sanitizePaymentError(rawMessage) {
+  const raw = String(rawMessage || '')
+  const isConnectionIssue =
+    raw.includes('load the secure payment') ||
+    raw.includes('Network') ||
+    raw.includes('Failed to load') ||
+    raw.includes('SDK') ||
+    raw.includes('connection') ||
+    raw.includes('timed out') ||
+    raw.includes('cashfree.com') ||
+    raw.includes('cashfree.js') ||
+    raw.includes('script')
+  return isConnectionIssue
+    ? 'Unable to load the secure payment service. Please check your connection and try again.'
+    : (raw || 'Unable to open secure checkout. Please try again.')
+}
+
+const rawNetworkErr = 'Network error loading Cashfree SDK from https://sdk.cashfree.com/js/v3/cashfree.js'
+assert(
+  sanitizePaymentError(rawNetworkErr) === 'Unable to load the secure payment service. Please check your connection and try again.',
+  'Sanitizes raw Cashfree CDN network error into friendly user-facing guidance',
+)
+
+// Index.html SDK Tag Audit
+const indexHtmlContent = fs.readFileSync(path.resolve(rootDir, 'index.html'), 'utf8')
+assert(
+  indexHtmlContent.includes('sdk.cashfree.com/js/v3/cashfree.js') && indexHtmlContent.includes('data-cf-sdk="true"'),
+  'index.html tags Cashfree SDK with data-cf-sdk="true" for DOM lifecycle management',
 )
 assert(
   edgeOrderCode.includes("x-api-version") && edgeOrderCode.includes("x-client-id") && edgeOrderCode.includes("x-client-secret"),

@@ -18,3 +18,4 @@ const result = spawnSync(process.execPath, [eslintPath, '.'], {
 })
 
 process.exit(result.status ?? 0)
+

@@ -289,7 +289,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         raw.includes('connection') ||
         raw.includes('timed out') ||
         raw.includes('Failed to load') ||
-        raw.includes('SDK')
+        raw.includes('SDK') ||
+        raw.includes('cashfree.com') ||
+        raw.includes('cashfree.js') ||
+        raw.includes('script')
       const message = isConnectionIssue
         ? 'Unable to load the secure payment service. Please check your connection and try again.'
         : raw || 'Unable to open secure checkout. Please try again.'
@@ -745,7 +748,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           <p className="text-xs font-medium leading-relaxed">{cashfreeError}</p>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-red-100">
-                          <span className="text-[11px] text-red-700">Scan QR code below or retry</span>
+                          <span className="text-[11px] text-red-700">Please check your connection or retry</span>
                           <button
                             type="button"
                             onClick={handleRetryCashfree}

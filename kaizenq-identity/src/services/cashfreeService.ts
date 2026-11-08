@@ -58,9 +58,24 @@ declare global {
 
 const CASHFREE_SDK_URL = 'https://sdk.cashfree.com/js/v3/cashfree.js'
 const SDK_LOAD_TIMEOUT_MS = 10000
+const USER_FRIENDLY_SDK_ERROR =
+  'Unable to load the secure payment service. Please check your connection and try again.'
 
 let sdkLoadingPromise: Promise<any> | null = null
 let cfSdkInstance: any = null
+
+/**
+ * Cleanly removes all Cashfree SDK script tags from the document DOM.
+ */
+function removeCashfreeScriptTags(): void {
+  if (typeof document === 'undefined') return
+  const scripts = document.querySelectorAll('script[src*="cashfree.js"], script[data-cf-sdk="true"]')
+  scripts.forEach((el) => {
+    try {
+      el.parentNode?.removeChild(el)
+    } catch {}
+  })
+}
 
 export const cashfreeService = {
   /**
@@ -92,13 +107,20 @@ export const cashfreeService = {
   },
 
   /**
-   * Resets SDK loading cache to allow a fresh retry.
+   * Resets SDK loading cache and purges any stalled script elements from DOM.
+   * Ensures clean slate for user retries without stale failure references.
    */
   resetSdk(): void {
     sdkLoadingPromise = null
     cfSdkInstance = null
     if (typeof window !== 'undefined') {
       window._cfInstance = undefined
+      try {
+        delete (window as any).Cashfree
+      } catch {
+        window.Cashfree = undefined
+      }
+      removeCashfreeScriptTags()
     }
   },
 
@@ -109,7 +131,8 @@ export const cashfreeService = {
    * - Reuses already-loaded window.Cashfree instance
    * - Handles script load, error, timeout (10s), and retry states
    * - Never enforces crossOrigin='anonymous' as Cashfree CDN does not send CORS headers
-   * - Translates errors to user-friendly message
+   * - Stale script detection: automatically replaces non-evaluating scripts on retry
+   * - Translates all network/CDN errors to user-friendly message
    */
   async loadSdk(): Promise<any> {
     if (typeof window === 'undefined') return null
@@ -141,15 +164,20 @@ export const cashfreeService = {
     }
 
     sdkLoadingPromise = new Promise((resolve, reject) => {
-      let timeoutId: NodeJS.Timeout | null = null
-      let pollIntervalId: NodeJS.Timeout | null = null
+      let timeoutId: any = null
+      let pollIntervalId: any = null
+      let settled = false
 
       const cleanup = () => {
         if (timeoutId) clearTimeout(timeoutId)
         if (pollIntervalId) clearInterval(pollIntervalId)
+        timeoutId = null
+        pollIntervalId = null
       }
 
       const onSdkAvailable = () => {
+        if (settled) return
+        settled = true
         cleanup()
         if (typeof window.Cashfree === 'function') {
           try {
@@ -157,39 +185,26 @@ export const cashfreeService = {
             window._cfInstance = instance
             cfSdkInstance = instance
             resolve(instance)
-          } catch (initErr: any) {
+          } catch {
             sdkLoadingPromise = null
             cfSdkInstance = null
-            reject(
-              new Error(
-                'Unable to load the secure payment service. Please check your connection and try again.',
-              ),
-            )
+            reject(new Error(USER_FRIENDLY_SDK_ERROR))
           }
         } else {
           sdkLoadingPromise = null
-          reject(
-            new Error(
-              'Unable to load the secure payment service. Please check your connection and try again.',
-            ),
-          )
+          reject(new Error(USER_FRIENDLY_SDK_ERROR))
         }
       }
 
       const onSdkFailed = () => {
+        if (settled) return
+        settled = true
         cleanup()
         sdkLoadingPromise = null
         cfSdkInstance = null
-        // Remove failed script so retry can re-insert freshly
-        const failedScript = document.querySelector('script[data-cf-sdk="true"]')
-        if (failedScript && failedScript.parentNode) {
-          failedScript.parentNode.removeChild(failedScript)
-        }
-        reject(
-          new Error(
-            'Unable to load the secure payment service. Please check your connection and try again.',
-          ),
-        )
+        // Remove failed script elements so subsequent retry re-inserts freshly
+        removeCashfreeScriptTags()
+        reject(new Error(USER_FRIENDLY_SDK_ERROR))
       }
 
       // 10-second timeout guard
@@ -197,14 +212,54 @@ export const cashfreeService = {
         onSdkFailed()
       }, SDK_LOAD_TIMEOUT_MS)
 
+      // Inject fresh script element with event listeners
+      const injectFreshScript = () => {
+        removeCashfreeScriptTags()
+        const script = document.createElement('script')
+        script.src = CASHFREE_SDK_URL
+        script.async = true
+        script.setAttribute('data-cf-sdk', 'true')
+
+        script.onload = () => {
+          if (typeof window.Cashfree === 'function') {
+            onSdkAvailable()
+          } else {
+            // Short grace period in case script evaluated asynchronously
+            setTimeout(() => {
+              if (typeof window.Cashfree === 'function') {
+                onSdkAvailable()
+              } else {
+                onSdkFailed()
+              }
+            }, 100)
+          }
+        }
+        script.onerror = onSdkFailed
+
+        document.head.appendChild(script)
+      }
+
       // Check if script tag is already in DOM
-      const existingScript = document.querySelector(`script[src="${CASHFREE_SDK_URL}"]`) as HTMLScriptElement | null
+      const existingScript = document.querySelector(`script[src*="cashfree.js"]`) as HTMLScriptElement | null
 
       if (existingScript) {
-        // Fast polling to detect when script finishes evaluating
+        let elapsed = 0
+        // Polling to detect when script finishes evaluating
         pollIntervalId = setInterval(() => {
           if (typeof window.Cashfree === 'function') {
             onSdkAvailable()
+            return
+          }
+          elapsed += 50
+          // If after 2 seconds the existing script hasn't evaluated window.Cashfree,
+          // it likely errored before listener attachment (e.g. at initial page load).
+          // Replace it with a fresh dynamically injected script.
+          if (elapsed >= 2000) {
+            if (pollIntervalId) clearInterval(pollIntervalId)
+            pollIntervalId = null
+            if (!settled && typeof window.Cashfree !== 'function') {
+              injectFreshScript()
+            }
           }
         }, 50)
 
@@ -213,16 +268,8 @@ export const cashfreeService = {
         return
       }
 
-      // Inject official script tag without crossOrigin (avoids CORS header requirement)
-      const script = document.createElement('script')
-      script.src = CASHFREE_SDK_URL
-      script.async = true
-      script.setAttribute('data-cf-sdk', 'true')
-
-      script.onload = onSdkAvailable
-      script.onerror = onSdkFailed
-
-      document.head.appendChild(script)
+      // No existing script tag found; inject fresh script tag
+      injectFreshScript()
 
       // Safety polling interval
       pollIntervalId = setInterval(() => {
@@ -403,12 +450,15 @@ export const cashfreeService = {
         raw.includes('Failed to load') ||
         raw.includes('SDK') ||
         raw.includes('connection') ||
-        raw.includes('timed out')
+        raw.includes('timed out') ||
+        raw.includes('cashfree.com') ||
+        raw.includes('cashfree.js') ||
+        raw.includes('script')
 
       return {
         error: {
           message: isConnectionIssue
-            ? 'Unable to load the secure payment service. Please check your connection and try again.'
+            ? USER_FRIENDLY_SDK_ERROR
             : (raw || 'Unable to open secure checkout. Please try again.'),
           code: 'CHECKOUT_ERROR',
         },
