@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../ui/Button.tsx'
 import { Badge } from '../ui/Badge.tsx'
-import { formatINR } from '../../hooks/usePricingCatalog.ts'
+import { formatINR, usePricingCatalog } from '../../hooks/usePricingCatalog.ts'
 
 export interface PRBuilderProBundleCardProps {
   proPassPriceRupees: number
@@ -28,6 +28,12 @@ export const PRBuilderProBundleCard: React.FC<PRBuilderProBundleCardProps> = ({
   onUnlock,
   className = '',
 }) => {
+  const catalog = usePricingCatalog()
+  const modProPrice = catalog.getTemplatePrice('modern-professional').formatted
+  const techPrice = catalog.getTemplatePrice('technical').formatted
+  const creativePrice = catalog.getThemePrice('creative').formatted
+  const cleanPrice = catalog.getThemePrice('modern').formatted
+  const domainPassPrice = catalog.getDomainPassPrice().formatted
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-[#0F172A] via-[#1E1B4B] to-[#0F172A] text-white p-5 sm:p-6 shadow-xl ${className}`}
@@ -65,7 +71,7 @@ export const PRBuilderProBundleCard: React.FC<PRBuilderProBundleCardProps> = ({
                 {formatINR(componentSumRupees)}
               </div>
               <div className="text-[10px] text-slate-400">
-                (Modern Pro ₹199 + Tech ₹199 + Creative ₹299 + Modern Clean ₹299 + Custom Domain ₹499)
+                (Modern Pro {modProPrice} + Tech {techPrice} + Creative {creativePrice} + Modern Clean {cleanPrice} + Custom Domain {domainPassPrice})
               </div>
             </div>
 
@@ -87,23 +93,23 @@ export const PRBuilderProBundleCard: React.FC<PRBuilderProBundleCardProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs text-indigo-100/90">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-              <span>Modern Professional Resume Template (₹199 value)</span>
+              <span>Modern Professional Resume Template ({modProPrice} value)</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-              <span>Technical Developer Resume Template (₹199 value)</span>
+              <span>Technical Developer Resume Template ({techPrice} value)</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-              <span>Creative Studio Portfolio Theme (₹299 value)</span>
+              <span>Creative Studio Portfolio Theme ({creativePrice} value)</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-              <span>Modern Clean Portfolio Theme (₹299 value)</span>
+              <span>Modern Clean Portfolio Theme ({cleanPrice} value)</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-              <span>Instant Custom Domain Pass & SSL (₹499 value)</span>
+              <span>Instant Custom Domain Pass & SSL ({domainPassPrice} value)</span>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />

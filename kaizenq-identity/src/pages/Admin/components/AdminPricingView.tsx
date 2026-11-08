@@ -155,6 +155,18 @@ export const AdminPricingView: React.FC = () => {
   const totalVerifiedRevenuePaise = products.reduce((acc, p) => acc + (p.totalRevenuePaise || 0), 0)
   const totalSalesCount = products.reduce((acc, p) => acc + (p.salesCount || 0), 0)
   const allAccessProduct = products.find((p) => (p.productId || p.id) === 'pro-all-access-pass')
+  const modernProProduct = products.find((p) => (p.productId || p.id) === 'resume-template-modern-professional')
+  const techProduct = products.find((p) => (p.productId || p.id) === 'resume-template-technical')
+  const creativeProduct = products.find((p) => (p.productId || p.id) === 'portfolio-theme-creative')
+  const modernCleanProduct = products.find((p) => (p.productId || p.id) === 'portfolio-theme-modern-clean')
+  const customDomainProduct = products.find((p) => (p.productId || p.id) === 'custom-domain-pass')
+
+  const resumeSumRupees = ((modernProProduct?.pricePaise || 19900) + (techProduct?.pricePaise || 19900)) / 100
+  const portfolioSumRupees = ((creativeProduct?.pricePaise || 29900) + (modernCleanProduct?.pricePaise || 29900)) / 100
+  const domainPassRupees = (customDomainProduct?.pricePaise || 49900) / 100
+  const componentTotalRupees = resumeSumRupees + portfolioSumRupees + domainPassRupees
+  const allAccessPassRupees = (allAccessProduct?.pricePaise || 99900) / 100
+  const bundleSavingsRupees = Math.max(0, componentTotalRupees - allAccessPassRupees)
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
@@ -284,18 +296,18 @@ export const AdminPricingView: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-            <strong>PR Builder Pro All-Access Lifetime Pass</strong> (₹999 / 99900 paise) maps to{' '}
+            <strong>PR Builder Pro All-Access Lifetime Pass</strong> (₹{allAccessPassRupees.toLocaleString('en-IN')} / {allAccessProduct?.pricePaise || 99900} paise) maps to{' '}
             <code className="text-blue-700 bg-white px-1.5 py-0.5 rounded border border-blue-200 font-mono text-[11px]">
               bundle:all_access
             </code>
-            , unlocking all 2 resume templates (₹398), 2 portfolio themes (₹598), and the custom domain pass (₹499)
-            with a total component value of ₹1,495. Customer bundle discount is ₹496.
+            , unlocking all 2 resume templates (₹{resumeSumRupees.toLocaleString('en-IN')}), 2 portfolio themes (₹{portfolioSumRupees.toLocaleString('en-IN')}), and the custom domain pass (₹{domainPassRupees.toLocaleString('en-IN')})
+            with a total component value of ₹{componentTotalRupees.toLocaleString('en-IN')}. Customer bundle discount is ₹{bundleSavingsRupees.toLocaleString('en-IN')}.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="p-2.5 rounded-xl bg-white border border-blue-200 text-right">
             <span className="text-[10px] text-slate-400 block uppercase tracking-wider">Bundle Savings</span>
-            <span className="text-sm font-bold text-emerald-600">₹496.00</span>
+            <span className="text-sm font-bold text-emerald-600">₹{bundleSavingsRupees.toFixed(2)}</span>
           </div>
         </div>
       </div>

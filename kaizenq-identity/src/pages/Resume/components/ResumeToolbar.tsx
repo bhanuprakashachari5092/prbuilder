@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { ResumeDownloadButton } from '../../../components/download/ResumeDownloadButton.tsx'
+import { usePricingCatalog } from '../../../hooks/usePricingCatalog.ts'
 import type { ResumeData, ResumeTemplateId, ResumeCustomization } from '../types.ts'
 
 export interface ResumeToolbarProps {
@@ -49,6 +50,7 @@ export const ResumeToolbar: React.FC<ResumeToolbarProps> = ({
   onToggleMobileView,
   onChangeCustomization,
 }) => {
+  const catalog = usePricingCatalog()
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showStyleMenu, setShowStyleMenu] = useState(false)
 
@@ -136,10 +138,10 @@ export const ResumeToolbar: React.FC<ResumeToolbarProps> = ({
                 Minimal Editorial (Free)
               </option>
               <option value="modern-professional" className="bg-white text-[#111827]">
-                Modern Professional {isTemplateUnlocked?.('modern-professional') ? '✓ Unlocked' : '🔒 Pro (₹199)'}
+                Modern Professional {isTemplateUnlocked?.('modern-professional') ? '✓ Unlocked' : `🔒 Pro (${catalog.getTemplatePrice('modern-professional').formatted})`}
               </option>
               <option value="technical" className="bg-white text-[#111827]">
-                Technical Developer {isTemplateUnlocked?.('technical') ? '✓ Unlocked' : '🔒 Pro (₹199)'}
+                Technical Developer {isTemplateUnlocked?.('technical') ? '✓ Unlocked' : `🔒 Pro (${catalog.getTemplatePrice('technical').formatted})`}
               </option>
             </select>
           </div>

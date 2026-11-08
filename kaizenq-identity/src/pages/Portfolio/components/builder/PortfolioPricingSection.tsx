@@ -168,7 +168,7 @@ export const PortfolioPricingSection: React.FC<PortfolioPricingSectionProps> = (
                 Build Your Portfolio Package
               </h2>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                3 Free • 2 Pro (₹299)
+                3 Free • 2 Pro ({catalog.getThemePrice('creative').formatted})
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">

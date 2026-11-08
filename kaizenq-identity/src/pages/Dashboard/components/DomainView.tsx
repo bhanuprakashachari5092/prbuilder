@@ -23,6 +23,7 @@ import { Button } from '../../../components/ui/Button.tsx'
 import { CheckoutModal } from '../../../components/payment/CheckoutModal.tsx'
 import { useAuth } from '../../../app/providers/AuthContext.tsx'
 import { useEntitlements } from '../../../hooks/useEntitlements.ts'
+import { usePricingCatalog } from '../../../hooks/usePricingCatalog.ts'
 import {
   domainService,
   type DomainRow,
@@ -44,6 +45,8 @@ export interface DomainViewProps {
 export const DomainView: React.FC<DomainViewProps> = ({ student: _student }) => {
   const { user, isConfigured } = useAuth()
   const { isCustomDomainUnlocked, hasAllAccessPass, refreshEntitlements } = useEntitlements()
+  const catalog = usePricingCatalog()
+  const domainPassPrice = catalog.getDomainPassPrice()
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
 
   // Custom domain state
@@ -334,7 +337,7 @@ export const DomainView: React.FC<DomainViewProps> = ({ student: _student }) => 
               ) : (
                 <>
                   <Lock className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Pass Required (₹499)</span>
+                  <span>Pass Required ({domainPassPrice.formatted})</span>
                 </>
               )}
             </span>
@@ -376,7 +379,7 @@ export const DomainView: React.FC<DomainViewProps> = ({ student: _student }) => 
               onClick={() => setIsCheckoutOpen(true)}
               className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-semibold shrink-0 shadow-xs"
             >
-              Unlock Domain Pass (₹499)
+              Unlock Domain Pass ({domainPassPrice.formatted})
             </Button>
           </div>
         )}
@@ -969,7 +972,7 @@ export const DomainView: React.FC<DomainViewProps> = ({ student: _student }) => 
         productId="custom-domain-pass"
         productTitle="Instant Custom Domain Pass"
         productCategory="domain_pass"
-        pricePaise={49900}
+        pricePaise={domainPassPrice.paise}
         onClose={() => setIsCheckoutOpen(false)}
         onSuccess={async () => {
           await refreshEntitlements()

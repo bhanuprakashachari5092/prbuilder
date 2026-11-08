@@ -81,6 +81,33 @@ export function usePricingCatalog(): PricingCatalogState {
 
   useEffect(() => {
     loadCatalog()
+
+    const unsubscribe = paymentService.subscribeToPricingUpdates(() => {
+      loadCatalog()
+    })
+
+    const handleCustomEvent = () => {
+      loadCatalog()
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'prbuilder_pricing_catalog_overrides') {
+        loadCatalog()
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('prbuilder-pricing-updated', handleCustomEvent)
+      window.addEventListener('storage', handleStorage)
+    }
+
+    return () => {
+      unsubscribe()
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('prbuilder-pricing-updated', handleCustomEvent)
+        window.removeEventListener('storage', handleStorage)
+      }
+    }
   }, [loadCatalog])
 
   const productsMap = useMemo(() => {

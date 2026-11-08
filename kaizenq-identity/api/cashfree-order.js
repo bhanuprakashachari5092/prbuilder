@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       'pro-all-access-pass': 999.0,
     }
 
-    let finalAmount = CATALOG[productId] || (amountRupees ? Number(amountRupees) : 199.0)
+    let finalAmount = (amountRupees && Number(amountRupees) > 0) ? Number(amountRupees) : (CATALOG[productId] || 199.0)
 
     // Apply coupon discount if provided
     if (couponCode) {

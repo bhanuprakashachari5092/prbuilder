@@ -51,6 +51,10 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
 }) => {
   const domainPass = catalog.getDomainPassPrice()
   const proPass = catalog.getProPassPrice()
+  const sampleResumeTemplate = catalog.getTemplatePrice('modern-professional')
+  const samplePortfolioTheme = catalog.getThemePrice('creative')
+  const resumeVal = catalog.getTemplatePrice('modern-professional').rupees + catalog.getTemplatePrice('technical').rupees
+  const portfolioVal = catalog.getThemePrice('creative').rupees + catalog.getThemePrice('modern').rupees
 
   // Define supported options per builder
   const options: CustomizationOptionItem[] = [
@@ -64,12 +68,12 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
           ? 'Includes 4 free ATS templates (Classic ATS, Minimal, Classic, Modern) and 2 Pro templates (Modern Professional, Technical Developer).'
           : 'Includes 3 free themes (Developer, Minimal, Midnight) and 2 Pro themes (Creative Studio, Modern Clean).',
       statusType: 'included',
-      priceDisplay: mode === 'resume' ? 'Free (₹0) / Pro (₹199)' : 'Free (₹0) / Pro (₹299)',
+      priceDisplay: mode === 'resume' ? `Free (₹0) / Pro (${sampleResumeTemplate.formatted})` : `Free (₹0) / Pro (${samplePortfolioTheme.formatted})`,
       details: [
         'Free ATS templates/themes are 100% free forever',
         mode === 'resume'
-          ? 'Pro templates: ₹199 per template (lifetime unlock)'
-          : 'Pro themes: ₹299 per theme (lifetime unlock)',
+          ? `Pro templates: ${sampleResumeTemplate.formatted} per template (lifetime unlock)`
+          : `Pro themes: ${samplePortfolioTheme.formatted} per theme (lifetime unlock)`,
         'Zero data loss when switching or previewing templates',
       ],
     },
@@ -201,9 +205,9 @@ export const CustomizationPricingPanel: React.FC<CustomizationPricingPanelProps>
       productId: 'pro-all-access-pass',
       isOwned: entitlements.hasAllAccessPass,
       details: [
-        'Unlocks Modern Professional & Technical Developer resumes (₹398 value)',
-        'Unlocks Creative Studio & Modern Clean portfolio themes (₹598 value)',
-        'Includes Instant Custom Domain Pass (₹499 value)',
+        `Unlocks Modern Professional & Technical Developer resumes (${formatINR(resumeVal)} value)`,
+        `Unlocks Creative Studio & Modern Clean portfolio themes (${formatINR(portfolioVal)} value)`,
+        `Includes Instant Custom Domain Pass (${domainPass.formatted} value)`,
         `Saves ${formatINR(proPass.savingsRupees)} vs individual purchases`,
       ],
     },

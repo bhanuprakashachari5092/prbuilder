@@ -174,7 +174,7 @@ export const ResumePricingSection: React.FC<ResumePricingSectionProps> = ({
                 Customize Your Resume & Get Pricing
               </h2>
               <Badge variant="success" size="sm">
-                4 FREE • 2 PRO (₹199)
+                4 FREE • 2 PRO ({catalog.getTemplatePrice('modern-professional').formatted})
               </Badge>
             </div>
             <p className="text-[11px] text-[#64748B]">
