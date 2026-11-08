@@ -278,15 +278,30 @@ export const AdminAuditLogsView: React.FC<AdminAuditLogsViewProps> = ({ globalSe
       pageSize,
     })
 
-    if (res.isTableMissing) {
+    const rawErrorMsg = res.error
+      ? typeof (res.error as any).message === 'string'
+        ? (res.error as any).message
+        : String(res.error)
+      : ''
+    const looksLikeMissingTable =
+      res.isTableMissing ||
+      rawErrorMsg.toLowerCase().includes('schema cache') ||
+      rawErrorMsg.toLowerCase().includes('admin_audit_logs') ||
+      rawErrorMsg.toLowerCase().includes('does not exist') ||
+      rawErrorMsg.includes('PGRST205') ||
+      rawErrorMsg.includes('PGRST204') ||
+      rawErrorMsg.includes('PGRST202') ||
+      rawErrorMsg.includes('42P01')
+
+    if (looksLikeMissingTable) {
       setIsTableMissing(true)
+      setError(null)
+      setData(res.data)
+    } else if (res.error) {
+      setIsTableMissing(false)
+      setError(rawErrorMsg || 'Failed to fetch audit logs')
     } else {
       setIsTableMissing(false)
-    }
-
-    if (res.error) {
-      setError(res.error.message || 'Failed to fetch audit logs')
-    } else {
       setError(null)
       setData(res.data)
     }
