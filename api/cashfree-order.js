@@ -49,7 +49,10 @@ export default async function handler(req, res) {
     }
 
     const apiVersion = process.env.CASHFREE_API_VERSION || '2023-08-01'
-    const isSandbox = (process.env.CASHFREE_ENV || 'production') === 'sandbox'
+    const isSandbox =
+      (process.env.CASHFREE_ENV || '').toLowerCase() === 'sandbox' ||
+      (secretKey && secretKey.startsWith('cfsk_ma_test_')) ||
+      (appId && appId.startsWith('TEST'))
 
     if (!appId || !secretKey) {
       return res.status(500).json({ error: 'Cashfree credentials not configured in server environment' })
@@ -82,13 +85,18 @@ export default async function handler(req, res) {
     }
 
     const orderId =
+      (req.body && req.body.orderId) ||
       'ORD_PRB_' + Date.now() + '_' + Math.random().toString(16).slice(2, 8).toUpperCase()
 
     let phone = String(customerPhone || '9999999999').replace(/\D/g, '')
     if (phone.length < 10) phone = '9999999999'
     if (phone.length > 10) phone = phone.slice(-10)
 
-    let origin = process.env.VITE_APP_URL || 'https://prbuilder.xyz'
+    const customerEmail = (req.body && req.body.customerEmail) || 'customer@prbuilder.xyz'
+    const customerName = (req.body && req.body.customerName) || 'PR Builder Customer'
+    const customerId = (req.body && req.body.customerId) || ('cust_' + Date.now())
+
+    let origin = 'https://www.prbuilder.xyz'
     if (req.headers) {
       if (req.headers.origin) {
         origin = req.headers.origin
@@ -96,25 +104,23 @@ export default async function handler(req, res) {
         try {
           origin = new URL(req.headers.referer).origin
         } catch {
-          // Keep default
+          // Fall back to default
         }
       }
     }
-
-    const finalReturnUrl = clientReturnUrl || `${origin}/dashboard?order_id=${orderId}`
 
     const cfPayload = {
       order_id: orderId,
       order_amount: finalAmount,
       order_currency: 'INR',
       customer_details: {
-        customer_id: 'cust_' + Date.now(),
-        customer_email: 'customer@prbuilder.xyz',
+        customer_id: customerId,
+        customer_email: customerEmail,
         customer_phone: phone,
-        customer_name: 'PR Builder Customer',
+        customer_name: customerName,
       },
       order_meta: {
-        return_url: finalReturnUrl,
+        return_url: clientReturnUrl || `${origin}/dashboard?order_id=${orderId}`,
       },
       order_note: productTitle || 'PR Builder Pro Upgrade',
     }

@@ -45,7 +45,10 @@ export default async function handler(req, res) {
     }
 
     const apiVersion = process.env.CASHFREE_API_VERSION || '2023-08-01'
-    const isSandbox = (process.env.CASHFREE_ENV || 'production') === 'sandbox'
+    const isSandbox =
+      (process.env.CASHFREE_ENV || '').toLowerCase() === 'sandbox' ||
+      (secretKey && secretKey.startsWith('cfsk_ma_test_')) ||
+      (appId && appId.startsWith('TEST'))
 
     if (!appId || !secretKey) {
       return res.status(500).json({ error: 'Cashfree credentials not configured in server environment' })

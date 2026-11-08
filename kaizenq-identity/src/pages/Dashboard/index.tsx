@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { FileText, Globe, ExternalLink } from 'lucide-react'
+import { FileText, Globe, ExternalLink, CheckCircle2, Clock, AlertCircle, X, RefreshCw } from 'lucide-react'
 import { DashboardLayout } from './components/DashboardLayout.tsx'
 import { WelcomeSection } from './components/WelcomeSection.tsx'
 import { DashboardStatCard } from './components/DashboardStatCard.tsx'
@@ -20,6 +20,8 @@ import { portfolioService, type PortfolioRow } from '../../services/portfolioSer
 import { resumeService, type ResumeRow } from '../../services/resumeService.ts'
 import { activityService } from '../../services/activityService.ts'
 import { domainService, type DomainRow } from '../../services/domainService.ts'
+import { cashfreeService } from '../../services/cashfreeService.ts'
+import { paymentService } from '../../services/paymentService.ts'
 import { loadPortfolioDraft } from '../Portfolio/storage.ts'
 import { loadResumeDraft } from '../Resume/storage.ts'
 import type { PortfolioData } from '../Portfolio/types.ts'
@@ -116,6 +118,87 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
       loadDashboardData(user.id)
     }
   }, [user?.id, isConfigured, loadDashboardData])
+
+  // Cashfree Payment Return URL Verification Handler
+  const [returnPaymentStatus, setReturnPaymentStatus] = useState<{
+    status: 'idle' | 'verifying' | 'paid' | 'pending' | 'failed'
+    orderId?: string
+    message?: string
+    utr?: string
+  }>({ status: 'idle' })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const orderId = params.get('order_id')
+    if (!orderId) return
+
+    let isMounted = true
+    setReturnPaymentStatus({
+      status: 'verifying',
+      orderId,
+      message: 'Verifying payment with Cashfree...',
+    })
+
+    const verifyReturnPayment = async () => {
+      try {
+        const res = await cashfreeService.verifyOrder(orderId)
+        if (!isMounted) return
+
+        if (res.success || res.status === 'paid') {
+          await paymentService.verifyAndFulfill(
+            orderId,
+            res.utr || 'CASHFREE_VERIFIED',
+            undefined,
+            undefined,
+            false,
+          )
+          setReturnPaymentStatus({
+            status: 'paid',
+            orderId,
+            utr: res.utr || 'CONFIRMED',
+            message: 'Payment Verified! Your pro feature has been successfully unlocked.',
+          })
+          if (user?.id) {
+            loadDashboardData(user.id)
+          }
+        } else if (res.status === 'pending' || res.status === 'active') {
+          setReturnPaymentStatus({
+            status: 'pending',
+            orderId,
+            message: 'Payment is currently processing. Your features will activate once confirmed.',
+          })
+        } else {
+          setReturnPaymentStatus({
+            status: 'failed',
+            orderId,
+            message: `Payment status: ${res.status || 'not completed'}. You can try again anytime.`,
+          })
+        }
+      } catch (err: any) {
+        if (!isMounted) return
+        setReturnPaymentStatus({
+          status: 'failed',
+          orderId,
+          message: err?.message || 'Payment verification failed. Please try again.',
+        })
+      } finally {
+        try {
+          const newUrl = new URL(window.location.href)
+          newUrl.searchParams.delete('order_id')
+          window.history.replaceState({}, document.title, newUrl.pathname + newUrl.search)
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    verifyReturnPayment()
+
+    return () => {
+      isMounted = false
+    }
+  }, [user?.id, loadDashboardData])
 
   // Extract projects from real portfolio or local state
   const projectsList = useMemo(() => {
@@ -392,6 +475,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, initialTab = '
       onSelectTab={handleSelectTab}
       onExitToHome={() => onNavigate?.('home')}
     >
+      {/* Real-Time Payment Return Notification Banner */}
+      {returnPaymentStatus.status !== 'idle' && (
+        <div
+          className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all animate-fadeIn ${
+            returnPaymentStatus.status === 'paid'
+              ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950 shadow-sm'
+              : returnPaymentStatus.status === 'pending'
+                ? 'bg-amber-50/80 border-amber-200 text-amber-950 shadow-sm'
+                : returnPaymentStatus.status === 'verifying'
+                  ? 'bg-blue-50/80 border-blue-200 text-blue-950 shadow-sm'
+                  : 'bg-red-50/80 border-red-200 text-red-950 shadow-sm'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            {returnPaymentStatus.status === 'paid' ? (
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            ) : returnPaymentStatus.status === 'pending' ? (
+              <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+            ) : returnPaymentStatus.status === 'verifying' ? (
+              <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 shrink-0">
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center text-red-700 shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-semibold">{returnPaymentStatus.message}</p>
+              {returnPaymentStatus.utr && (
+                <p className="text-xs text-emerald-700 mt-0.5 font-mono">Reference: {returnPaymentStatus.utr}</p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setReturnPaymentStatus({ status: 'idle' })}
+            className="p-1.5 hover:bg-black/5 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            aria-label="Dismiss banner"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="space-y-6 animate-fadeIn">

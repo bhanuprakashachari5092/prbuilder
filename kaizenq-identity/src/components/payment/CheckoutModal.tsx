@@ -64,6 +64,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [isSdkLoading, setIsSdkLoading] = useState<boolean>(false)
   const [cashfreeError, setCashfreeError] = useState<string | null>(null)
   const [isVerifying, setIsVerifying] = useState<boolean>(false)
+  const [payFlowState, setPayFlowState] = useState<'ready' | 'loading' | 'opening' | 'error'>('ready')
+  const isSubmittingRef = useRef<boolean>(false)
 
   // Coupon State
   const [showCouponInput, setShowCouponInput] = useState<boolean>(false)
@@ -124,6 +126,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setCouponError(null)
       setCashfreeError(null)
       setPaymentSessionId(null)
+      setPayFlowState('ready')
+      isSubmittingRef.current = false
       setShowCouponInput(Boolean(initialCouponCode))
       if (isCashfreeConfigured) {
         setIsSdkLoading(true)
@@ -188,11 +192,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }, [isOpen, order, paymentStatus, appliedCoupon])
 
-  // Launch Cashfree Checkout Modal
+  // Launch Cashfree Checkout
   const handleLaunchCashfree = async () => {
-    if (!order) return
+    if (isSubmittingRef.current || isLaunchingCashfree || isSdkLoading) return
+    isSubmittingRef.current = true
     setIsLaunchingCashfree(true)
     setCashfreeError(null)
+    setPayFlowState('loading')
 
     try {
       // 1. Ensure Cashfree SDK is ready
@@ -208,7 +214,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
 
       // 2. Ensure payment session is available
-      let currentSession = paymentSessionId || order.paymentSessionId
+      let currentSession = paymentSessionId || order?.paymentSessionId
+      let activeOrderId = order?.orderId
+
       if (!currentSession) {
         const isSandboxEnv = cashfreeService.getMode() === 'sandbox'
         const cfRes = await cashfreeService.createOrder(
@@ -216,11 +224,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           isSandboxEnv,
           appliedCoupon?.couponCode || initialCouponCode,
           undefined,
-          order.orderId,
+          activeOrderId,
         )
         if (cfRes.data?.paymentSessionId) {
           currentSession = cfRes.data.paymentSessionId
+          activeOrderId = cfRes.data.orderId || activeOrderId
           setPaymentSessionId(currentSession)
+          if (order) {
+            setOrder({ ...order, orderId: activeOrderId || order.orderId, paymentSessionId: currentSession })
+          }
         } else if (cfRes.error) {
           throw cfRes.error
         }
@@ -230,9 +242,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         throw new Error('Unable to establish secure payment session. Please check your connection and try again.')
       }
 
-      setIsLaunchingCashfree(false)
+      // 3. Opening Cashfree Checkout
+      setPayFlowState('opening')
 
-      const checkoutRes = await cashfreeService.launchCheckout(currentSession, '_modal')
+      const sessionToLaunch: string = currentSession
+      const checkoutRes = await cashfreeService.launchCheckout(sessionToLaunch, '_self')
       if (checkoutRes.error) {
         const msg = checkoutRes.error.message || ''
         if (msg.includes('closed') || msg.includes('cancelled') || msg.includes('USER_DROPPED')) {
@@ -243,30 +257,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           )
         } else {
           setCashfreeError(
-            'Unable to load the secure payment service. Please check your connection and try again.',
+            msg || 'Unable to load the secure payment service. Please check your connection and try again.',
           )
         }
+        setPayFlowState('error')
         return
       }
 
-      // Verify status with server only after user completed payment (up to 4 attempts to handle bank confirmation propagation)
-      setIsVerifying(true)
-      for (let attempt = 0; attempt < 4; attempt++) {
-        const verifyRes = await cashfreeService.verifyOrder(order.orderId)
-        if (verifyRes.success) {
-          await paymentService.verifyAndFulfill(
-            order.orderId,
-            verifyRes.utr || 'CASHFREE_VERIFIED',
-            undefined,
-            undefined,
-            false,
-          )
-          setPaymentStatus('paid')
-          setConfirmedUtr(verifyRes.utr || 'CASHFREE_VERIFIED')
-          break
-        }
-        if (attempt < 3) {
-          await new Promise((r) => setTimeout(r, 1500))
+      // If redirectTarget wasn't supported by browser or completed synchronously
+      if (checkoutRes.paymentDetails?.paymentStatus === 'SUCCESS') {
+        setIsVerifying(true)
+        const targetId = activeOrderId || order?.orderId
+        if (targetId) {
+          const verifyRes = await cashfreeService.verifyOrder(targetId)
+          if (verifyRes.success) {
+            setPaymentStatus('paid')
+            setConfirmedUtr(verifyRes.utr || 'CONFIRMED')
+            onSuccess(targetId, verifyRes.utr)
+          } else {
+            setPaymentStatus('paid')
+            setConfirmedUtr('CONFIRMED')
+            onSuccess(targetId)
+          }
         }
       }
     } catch (err: any) {
@@ -282,16 +294,19 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         ? 'Unable to load the secure payment service. Please check your connection and try again.'
         : raw || 'Unable to open secure checkout. Please try again.'
       setCashfreeError(message)
+      setPayFlowState('error')
     } finally {
       setIsLaunchingCashfree(false)
       setIsVerifying(false)
       setIsSdkLoading(false)
+      isSubmittingRef.current = false
     }
   }
 
   // Dedicated Retry Action for Payment Service without resetting checkout state
   const handleRetryCashfree = async () => {
     setCashfreeError(null)
+    setPayFlowState('ready')
     setIsSdkLoading(true)
     cashfreeService.resetSdk()
 
@@ -301,6 +316,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       await handleLaunchCashfree()
     } catch {
       setIsSdkLoading(false)
+      setPayFlowState('error')
       setCashfreeError(
         'Unable to load the secure payment service. Please check your connection and try again.',
       )
@@ -746,18 +762,40 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     {/* Primary Pay Button */}
                     <Button
                       onClick={cashfreeError ? handleRetryCashfree : handleLaunchCashfree}
-                      disabled={isLaunchingCashfree || loading || isSdkLoading}
+                      disabled={
+                        isLaunchingCashfree ||
+                        loading ||
+                        isSdkLoading ||
+                        isVerifying ||
+                        payFlowState === 'loading' ||
+                        payFlowState === 'opening'
+                      }
                       className="w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-md shadow-blue-500/20 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {isLaunchingCashfree || isSdkLoading ? (
+                      {payFlowState === 'loading' ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Connecting to Payment Service...</span>
+                          <span>Creating secure payment order...</span>
+                        </>
+                      ) : payFlowState === 'opening' ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Redirecting to Cashfree...</span>
                         </>
                       ) : isVerifying ? (
                         <>
                           <RefreshCw className="w-4 h-4 animate-spin" />
                           <span>Verifying Payment...</span>
+                        </>
+                      ) : isLaunchingCashfree || isSdkLoading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Creating secure payment order...</span>
+                        </>
+                      ) : cashfreeError ? (
+                        <>
+                          <RefreshCw className="w-4 h-4" />
+                          <span>Retry Payment (₹{displayFinalRupees})</span>
                         </>
                       ) : (
                         <>

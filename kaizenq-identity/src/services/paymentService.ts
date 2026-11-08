@@ -372,7 +372,7 @@ export const paymentService = {
             productId,
             amountRupees: activeRupees,
             couponCode: normalizedCoupon,
-            returnUrl: `${window.location.origin}/dashboard`,
+            returnUrl: `${window.location.origin}/dashboard?order_id={order_id}`,
           }),
         })
 

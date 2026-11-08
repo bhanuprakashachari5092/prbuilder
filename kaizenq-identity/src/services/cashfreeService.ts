@@ -76,8 +76,12 @@ export const cashfreeService = {
    * Returns current Cashfree environment mode ('production' | 'sandbox').
    */
   getMode(): 'production' | 'sandbox' {
-    const mode = (import.meta.env.VITE_CASHFREE_MODE || 'production').toLowerCase()
-    return mode === 'sandbox' ? 'sandbox' : 'production'
+    const rawMode = (import.meta.env.VITE_CASHFREE_MODE || import.meta.env.VITE_PAYMENT_MODE || '').toLowerCase()
+    const appId = String(import.meta.env.VITE_CASHFREE_APP_ID || '')
+    if (rawMode === 'sandbox' || rawMode === 'test' || appId.startsWith('TEST')) {
+      return 'sandbox'
+    }
+    return 'production'
   },
 
   /**
@@ -258,7 +262,10 @@ export const cashfreeService = {
             customerName: customer?.customerName,
             customerId: customer?.customerId,
             orderId,
-            returnUrl: typeof window !== 'undefined' ? `${window.location.origin}/dashboard?order_id=${orderId || ''}` : undefined,
+            returnUrl:
+              typeof window !== 'undefined'
+                ? `${window.location.origin}/dashboard?order_id=${orderId || '{order_id}'}`
+                : undefined,
           }),
         })
 
@@ -364,7 +371,7 @@ export const cashfreeService = {
    */
   async launchCheckout(
     paymentSessionId: string,
-    redirectTarget: '_modal' | '_self' = '_modal',
+    redirectTarget: '_modal' | '_self' = '_self',
   ): Promise<CashfreeCheckoutResult> {
     try {
       // Mock session fallback for sandbox simulation
@@ -384,7 +391,7 @@ export const cashfreeService = {
 
       const result = await cashfree.checkout({
         paymentSessionId,
-        redirectTarget,
+        redirectTarget: redirectTarget || '_self',
       })
 
       return result || {}
@@ -426,6 +433,13 @@ export const cashfreeService = {
         if (verifyRes.ok) {
           const verifyData = await verifyRes.json()
           if (verifyData.success || verifyData.status === 'paid') {
+            await paymentService.verifyAndFulfill(
+              orderId,
+              verifyData.utr || 'CASHFREE_VERIFIED',
+              undefined,
+              undefined,
+              false,
+            )
             return {
               success: true,
               status: 'paid',
@@ -449,6 +463,13 @@ export const cashfreeService = {
 
           if (!edgeError && edgeData) {
             if (edgeData.status === 'paid' || edgeData.success) {
+              await paymentService.verifyAndFulfill(
+                orderId,
+                edgeData.utr || 'CASHFREE_VERIFIED',
+                undefined,
+                undefined,
+                false,
+              )
               return {
                 success: true,
                 status: 'paid',

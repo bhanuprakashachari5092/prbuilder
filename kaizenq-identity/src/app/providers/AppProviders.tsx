@@ -87,8 +87,19 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
         return 'auth'
       }
 
-      // 3. Check query param route (?route=...)
+      // 2e. Check standard top-level pathname routes (e.g. /dashboard, /settings, /resume, /portfolio)
+      const cleanPath = pathname.replace(/^\/+/, '').split('/')[0]
+      if (cleanPath && VALID_ROUTES.includes(cleanPath as ValidRoute)) {
+        return cleanPath
+      }
+
+      // 2f. Check Cashfree return URL order_id parameter
       const params = new URLSearchParams(window.location.search)
+      if (params.has('order_id')) {
+        return 'dashboard'
+      }
+
+      // 3. Check query param route (?route=...)
       return sanitizeRoute(params.get('route'))
     }
     return 'home'
