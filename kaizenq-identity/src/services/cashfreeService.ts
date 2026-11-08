@@ -258,6 +258,7 @@ export const cashfreeService = {
             customerName: customer?.customerName,
             customerId: customer?.customerId,
             orderId,
+            returnUrl: typeof window !== 'undefined' ? `${window.location.origin}/dashboard?order_id=${orderId || ''}` : undefined,
           }),
         })
 

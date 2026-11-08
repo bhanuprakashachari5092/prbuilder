@@ -119,14 +119,7 @@ exports.handler = async function (event, context) {
         customer_name: customerName,
       },
       order_meta: {
-        return_url: `${origin}/dashboard?order_id=${orderId}`,
-      },
-      order_note: productTitle || 'PR Builder Pro Upgrade',
-    }
-        customer_name: 'PR Builder Customer',
-      },
-      order_meta: {
-        return_url: `https://www.prbuilder.xyz/dashboard?order_id=${orderId}`,
+        return_url: (body && body.returnUrl) || `${origin}/dashboard?order_id=${orderId}`,
       },
       order_note: productTitle || 'PR Builder Pro Upgrade',
     }

@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { productId, amountRupees, productTitle, couponCode, customerPhone } = req.body || {}
+    const { productId, amountRupees, productTitle, couponCode, customerPhone, returnUrl: clientReturnUrl } = req.body || {}
 
     const appId = process.env.CASHFREE_APP_ID || process.env.VITE_CASHFREE_APP_ID
     const secretKey = process.env.CASHFREE_SECRET_KEY
@@ -59,6 +59,21 @@ export default async function handler(req, res) {
     if (phone.length < 10) phone = '9999999999'
     if (phone.length > 10) phone = phone.slice(-10)
 
+    let origin = process.env.VITE_APP_URL || 'https://prbuilder.xyz'
+    if (req.headers) {
+      if (req.headers.origin) {
+        origin = req.headers.origin
+      } else if (req.headers.referer) {
+        try {
+          origin = new URL(req.headers.referer).origin
+        } catch {
+          // Keep default
+        }
+      }
+    }
+
+    const finalReturnUrl = clientReturnUrl || `${origin}/dashboard?order_id=${orderId}`
+
     const cfPayload = {
       order_id: orderId,
       order_amount: finalAmount,
@@ -70,7 +85,7 @@ export default async function handler(req, res) {
         customer_name: 'PR Builder Customer',
       },
       order_meta: {
-        return_url: `https://www.prbuilder.xyz/dashboard?order_id=${orderId}`,
+        return_url: finalReturnUrl,
       },
       order_note: productTitle || 'PR Builder Pro Upgrade',
     }
