@@ -109,6 +109,17 @@ export default async function handler(req, res) {
       }
     }
 
+    let returnUrl = clientReturnUrl || `${origin}/dashboard?order_id=${orderId}`
+    if (returnUrl.includes('{order_id}')) {
+      returnUrl = returnUrl.replace('{order_id}', orderId)
+    }
+    // Cashfree Production API strictly enforces HTTPS for return URLs
+    if (returnUrl.startsWith('http://localhost') || returnUrl.startsWith('http://127.0.0.1')) {
+      returnUrl = returnUrl.replace(/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?/, 'https://prbuilder.xyz')
+    } else if (returnUrl.startsWith('http://')) {
+      returnUrl = returnUrl.replace(/^http:\/\//, 'https://')
+    }
+
     const cfPayload = {
       order_id: orderId,
       order_amount: finalAmount,
@@ -120,7 +131,7 @@ export default async function handler(req, res) {
         customer_name: customerName,
       },
       order_meta: {
-        return_url: clientReturnUrl || `${origin}/dashboard?order_id=${orderId}`,
+        return_url: returnUrl,
       },
       order_note: productTitle || 'PR Builder Pro Upgrade',
     }

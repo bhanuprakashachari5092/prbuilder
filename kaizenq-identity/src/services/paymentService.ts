@@ -1,13 +1,13 @@
 /**
- * Payment Service & YouPI-PG Gateway Adapter
- * PR Builder — Production UPI Payment Processing Layer
+ * Payment Service & Cashfree PG Gateway Adapter
+ * PR Builder — Production Cashfree Payment Processing Layer
  *
  * Invariants:
  * 1. Server-side pricing only: The client NEVER sends or controls monetary amounts.
  * 2. Integer paise representation: 1 INR = 100 paise.
  * 3. HMAC-SHA256 signature verification with constant-time equality check.
  * 4. Idempotent order state machine & atomic entitlement activation.
- * 5. Isolated gateway abstraction with sandbox test simulation support.
+ * 5. Official Cashfree Payment Gateway with instant drop-in / redirect checkout.
  */
 
 import { supabase, isSupabaseConfigured } from '../lib/supabase.ts'
@@ -35,7 +35,7 @@ export interface CreateOrderResult {
   couponId?: string | null
   couponCode?: string | null
   paymentSessionId?: string | null
-  gateway?: 'cashfree' | 'youpi'
+  gateway?: 'cashfree'
 }
 
 export interface CartItemBreakdown {
@@ -290,17 +290,14 @@ export const paymentService = {
    * Determines whether Cashfree Payment Gateway is configured and active.
    */
   isCashfreeActive(): boolean {
-    return (
-      import.meta.env.VITE_PAYMENT_GATEWAY === 'cashfree' ||
-      Boolean(import.meta.env.VITE_CASHFREE_APP_ID)
-    )
+    return true
   },
 
   /**
-   * Returns current active payment gateway identifier ('cashfree' | 'youpi').
+   * Returns current active payment gateway identifier ('cashfree').
    */
-  getActiveGateway(): 'cashfree' | 'youpi' {
-    return this.isCashfreeActive() ? 'cashfree' : 'youpi'
+  getActiveGateway(): 'cashfree' {
+    return 'cashfree'
   },
 
   /**
@@ -398,8 +395,8 @@ export const paymentService = {
               amountRupees: cfData.amountRupees,
               currency: cfData.currency || 'INR',
               status: 'pending',
-              upiVpa: 'merchant@youpi',
-              upiUri: `upi://pay?pa=merchant@youpi&pn=PR+Builder&am=${cfData.amountRupees.toFixed(2)}&cu=INR&tn=${cfData.orderId}`,
+              upiVpa: 'cashfree',
+              upiUri: `upi://pay?pa=cashfree&pn=PR+Builder&am=${cfData.amountRupees.toFixed(2)}&cu=INR&tn=${cfData.orderId}`,
               couponCode: normalizedCoupon || null,
               expiresAt: cfData.expiresAt || new Date(Date.now() + 15 * 60 * 1000).toISOString(),
               isSandbox,
@@ -410,9 +407,12 @@ export const paymentService = {
             localOrdersMap.set(order.orderId, order)
             return { data: order, error: null }
           }
+        } else {
+          const errData = await cfRes.json().catch(() => ({}))
+          console.error('Cashfree order creation error:', errData)
         }
-      } catch {
-        // Fall through to database or local order fallback
+      } catch (err) {
+        console.error('Cashfree order request failed:', err)
       }
     }
 
@@ -452,7 +452,7 @@ export const paymentService = {
 
       const orderId = `ORD_PRB_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`
       const amountRupees = Math.round((finalAmountPaise / 100) * 100) / 100
-      const upiUri = `upi://pay?pa=merchant@youpi&pn=PR+Builder&am=${amountRupees.toFixed(2)}&cu=INR&tn=${orderId}`
+      const upiUri = `upi://pay?pa=cashfree&pn=PR+Builder&am=${amountRupees.toFixed(2)}&cu=INR&tn=${orderId}`
       const order: CreateOrderResult = {
         orderId,
         productId: product.id,
@@ -463,11 +463,12 @@ export const paymentService = {
         amountRupees,
         currency: 'INR',
         status: 'pending',
-        upiVpa: 'merchant@youpi',
+        upiVpa: 'cashfree',
         upiUri,
         couponCode: normalizedCoupon || null,
         expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
         isSandbox,
+        gateway: 'cashfree',
       }
       localOrdersMap.set(orderId, order)
       return { data: order, error: null }
@@ -557,7 +558,7 @@ export const paymentService = {
           amountRupees: defaultProd.price_paise / 100,
           currency: 'INR',
           status: 'pending',
-          upiVpa: 'merchant@youpi',
+          upiVpa: 'cashfree',
           upiUri: '',
           expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
           isSandbox,
@@ -916,8 +917,8 @@ export const paymentService = {
       amountRupees,
       currency: 'INR',
       status: 'paid',
-      upiVpa: 'merchant@youpi',
-      upiUri: `upi://pay?pa=merchant@youpi&pn=PR%20Builder&am=${amountRupees}&tr=${orderId}&cu=INR`,
+      upiVpa: 'cashfree',
+      upiUri: '',
       expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       isSandbox: true,
       paidAt: nowIso,

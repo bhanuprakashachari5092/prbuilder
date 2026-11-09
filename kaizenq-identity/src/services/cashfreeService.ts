@@ -82,8 +82,6 @@ export const cashfreeService = {
    * Checks if Cashfree gateway is configured in the environment.
    */
   isConfigured(): boolean {
-    const gateway = import.meta.env.VITE_PAYMENT_GATEWAY
-    if (gateway === 'mock' || gateway === 'youpi_only') return false
     return true
   },
 

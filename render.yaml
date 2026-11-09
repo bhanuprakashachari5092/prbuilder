@@ -13,3 +13,17 @@ services:
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
+      - key: VITE_PAYMENT_GATEWAY
+        value: cashfree
+      - key: VITE_CASHFREE_MODE
+        value: production
+      - key: VITE_CASHFREE_APP_ID
+        value: 13056738326c919944b027081033765031
+      - key: CASHFREE_APP_ID
+        value: 13056738326c919944b027081033765031
+      - key: CASHFREE_SECRET_KEY
+        sync: false
+      - key: CASHFREE_ENV
+        value: production
+      - key: CASHFREE_API_VERSION
+        value: 2023-08-01

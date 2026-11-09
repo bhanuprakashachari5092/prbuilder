@@ -443,8 +443,6 @@ export const Resume: React.FC<ResumeProps> = ({ onBack }) => {
               activeSection={activeSection}
               onSectionChange={(sec) => {
                 setActiveSection(sec)
-                const stepIdx = RESUME_STEPS.findIndex((s) => s.id === sec)
-                if (stepIdx !== -1) setActiveStepIndex(stepIdx)
               }}
             />
           </div>

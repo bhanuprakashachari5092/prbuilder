@@ -89,7 +89,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setPaymentStatus('pending')
       setSecondsRemaining(300)
 
-      const isSandboxEnv = import.meta.env.VITE_PAYMENT_MODE !== 'live'
+      const isSandboxEnv = cashfreeService.getMode() === 'sandbox'
 
       const res = await paymentService.createOrder(productId, isSandboxEnv, codeToApply)
       if (res.error || !res.data) {

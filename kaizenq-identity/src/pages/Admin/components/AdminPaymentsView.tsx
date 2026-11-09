@@ -118,7 +118,7 @@ export const AdminPaymentsView: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-xl sm:text-2xl font-bold text-[#0F172A]">Payments & Revenue</h1>
             <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 text-xs">
-              YouPI-PG Core
+              Cashfree PG Core
             </Badge>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold shadow-xs">
               <span className="relative flex h-2 w-2">
@@ -439,12 +439,12 @@ export const AdminPaymentsView: React.FC = () => {
       <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-[#0F172A] space-y-2">
         <div className="flex items-center gap-2 font-bold text-blue-900">
           <ShieldCheck className="w-4 h-4 text-blue-600" />
-          <span>YouPI-PG Gateway Architecture & Isolation Notice</span>
+          <span>Cashfree PG Gateway Architecture & Security Notice</span>
         </div>
         <p className="text-[#334155] leading-relaxed">
-          Payments are handled via peer-to-peer UPI intent with direct merchant VPA routing. This deployment strictly follows
-          server-authoritative pricing (all calculations in integer paise) and isolates payment logic from browser scrapers.
-          YouPI-PG is an experimental UPI research project and is not an RBI-licensed payment aggregator.
+          Payments are handled via official Cashfree Payment Gateway with direct UPI, Cards, NetBanking, and Wallets. This deployment strictly follows
+          server-authoritative pricing (all calculations in integer paise) and isolates payment credentials from client browsers.
+          Official Cashfree PG integration with automated instant entitlement fulfillment and cryptographically verified webhook settlement.
         </p>
       </div>
     </div>
