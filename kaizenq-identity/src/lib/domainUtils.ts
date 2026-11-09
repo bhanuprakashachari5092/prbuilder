@@ -56,13 +56,35 @@ export const RESERVED_SUBDOMAINS = [
 
 /**
  * Returns the primary configured platform domain (e.g. prbuilder.xyz).
- * Reads from VITE_PLATFORM_DOMAIN, falling back to 'prbuilder.xyz'.
+ * Dynamically detects active host if in browser, reads from VITE_PLATFORM_DOMAIN
+ * (strictly filtering out deprecated 'prelevate' or mock 'example.com'),
+ * and defaults canonically to 'prbuilder.xyz'.
  */
 export function getPlatformDomain(): string {
+  // 1. If running in browser, dynamically check active hostname
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const host = window.location.hostname.toLowerCase()
+    if (host.includes('prbuilder.xyz')) {
+      return 'prbuilder.xyz'
+    }
+    if (host.includes('prbuilder.in')) {
+      return 'prbuilder.in'
+    }
+  }
+
+  // 2. Read from environment variable with strict hygiene
   const envDomain = import.meta.env.VITE_PLATFORM_DOMAIN
-  if (envDomain && typeof envDomain === 'string' && envDomain.trim() && !envDomain.includes('example.com')) {
+  if (
+    envDomain &&
+    typeof envDomain === 'string' &&
+    envDomain.trim() &&
+    !envDomain.includes('example.com') &&
+    !envDomain.includes('prelevate')
+  ) {
     return envDomain.trim().toLowerCase()
   }
+
+  // 3. Authoritative canonical default
   return 'prbuilder.xyz'
 }
 
@@ -167,15 +189,13 @@ export function getSubdomainFromHostname(hostname?: string): string | null {
     host === `www.${platformDomain}` ||
     host === 'prbuilder.xyz' ||
     host === 'www.prbuilder.xyz' ||
-    host === 'prelevate.xyz' ||
-    host === 'www.prelevate.xyz' ||
     host === 'prbuilder.in' ||
     host === 'www.prbuilder.in'
   ) {
     return null
   }
 
-  // 4. Platform subdomain match (e.g. username.prbuilder.xyz or username.prelevate.xyz)
+  // 4. Platform subdomain match (e.g. username.prbuilder.xyz or username.prbuilder.in)
   if (host.endsWith(`.${platformDomain}`)) {
     const prefix = host.slice(0, -(platformDomain.length + 1))
     const parts = prefix.split('.')
@@ -186,14 +206,6 @@ export function getSubdomainFromHostname(hostname?: string): string | null {
 
   if (host.endsWith('.prbuilder.xyz')) {
     const prefix = host.slice(0, -'.prbuilder.xyz'.length)
-    const parts = prefix.split('.')
-    const slug = parts[parts.length - 1]
-    if (!slug || isReservedSubdomain(slug)) return null
-    return slug
-  }
-
-  if (host.endsWith('.prelevate.xyz')) {
-    const prefix = host.slice(0, -'.prelevate.xyz'.length)
     const parts = prefix.split('.')
     const slug = parts[parts.length - 1]
     if (!slug || isReservedSubdomain(slug)) return null

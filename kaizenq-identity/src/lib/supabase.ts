@@ -45,16 +45,28 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
 
 /**
  * Returns the verified base public application URL.
+ * Prioritizes window.location.origin during browser runtime,
+ * strictly filters out deprecated 'prelevate' or mock 'example.com',
+ * and defaults to 'https://prbuilder.xyz'.
  */
 export function getBaseAppUrl(): string {
-  const envUrl = import.meta.env.VITE_APP_URL
-  if (envUrl && !envUrl.includes('example.com')) {
-    return envUrl.replace(/\/$/, '')
-  }
   if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin
+    const origin = window.location.origin.replace(/\/$/, '')
+    if (!origin.includes('prelevate') && !origin.includes('example.com')) {
+      return origin
+    }
   }
-  return 'http://localhost:5174'
+  const envUrl = import.meta.env.VITE_APP_URL
+  if (
+    envUrl &&
+    typeof envUrl === 'string' &&
+    envUrl.trim() &&
+    !envUrl.includes('example.com') &&
+    !envUrl.includes('prelevate')
+  ) {
+    return envUrl.trim().replace(/\/$/, '')
+  }
+  return 'https://prbuilder.xyz'
 }
 
 /**

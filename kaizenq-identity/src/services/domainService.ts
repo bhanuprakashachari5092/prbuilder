@@ -365,7 +365,7 @@ export const domainService = {
           for (const ans of json.Answer) {
             const rawData = String(ans.data || '').replace(/"/g, '').replace(/\.$/, '')
             currentRecords.push(`${ans.type === 1 ? 'A' : ans.type === 5 ? 'CNAME' : 'RECORD'}: ${rawData}`)
-            if (rawData === '75.2.60.5' || rawData.includes('prbuilder.xyz') || rawData.includes('prelevate.xyz') || rawData.includes('prbuilder.in') || rawData.includes('netlify.app')) {
+            if (rawData === '75.2.60.5' || rawData.includes('prbuilder.xyz') || rawData.includes('prbuilder.in') || rawData.includes('netlify.app')) {
               targetConfigured = true
             }
           }

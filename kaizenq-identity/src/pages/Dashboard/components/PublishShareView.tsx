@@ -423,7 +423,7 @@ export const PublishShareView: React.FC<PublishShareViewProps> = ({
             <p className="text-xs text-[#64748B] leading-relaxed">
               {isPublished
                 ? 'Your free subdomain is active. Share your branded link or QR code with recruiters.'
-                : 'Publish your portfolio to claim your free personal subdomain on prbuilder.in.'}
+                : `Publish your portfolio to claim your free personal subdomain on ${platformDomain}.`}
             </p>
 
             {/* Subdomain URL box */}

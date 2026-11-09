@@ -18,6 +18,7 @@ import { Button } from '../ui/Button.tsx'
 import type { PortfolioData } from '../../pages/Portfolio/types.ts'
 import { downloadPortfolioZip, hasSufficientPortfolioContent } from '../../services/portfolioExportService.ts'
 import { portfolioService, type PortfolioRow } from '../../services/portfolioService.ts'
+import { getBaseAppUrl } from '../../lib/supabase.ts'
 import {
   getPlatformDomain,
   validateSubdomainSlug,
@@ -79,7 +80,22 @@ export const PortfolioCompletionModal: React.FC<PortfolioCompletionModalProps> =
   })
   const [publishErrorMessage, setPublishErrorMessage] = useState<string | null>(null)
   const [isUnpublishing, setIsUnpublishing] = useState<boolean>(false)
-  const [copySuccess, setCopySuccess] = useState<boolean>(false)
+  const [copySubdomainSuccess, setCopySubdomainSuccess] = useState<boolean>(false)
+  const [copyDirectSuccess, setCopyDirectSuccess] = useState<boolean>(false)
+
+  // Canonical URLs sanitized against stale domains
+  const activePublishedSlug = (
+    cloudPortfolio?.slug ||
+    subdomainInput ||
+    initialSlug ||
+    ''
+  ).trim().toLowerCase()
+
+  const canonicalSubdomainUrl = (
+    publishedUrl || buildSubdomainUrl(activePublishedSlug)
+  ).replace(/prelevate\.xyz/g, platformDomain)
+
+  const directLiveUrl = activePublishedSlug ? `${getBaseAppUrl()}/p/${activePublishedSlug}` : ''
 
   // --- ZIP Export State ---
   const [zipStatus, setZipStatus] = useState<'idle' | 'generating' | 'downloaded' | 'error'>('idle')
@@ -247,17 +263,30 @@ export const PortfolioCompletionModal: React.FC<PortfolioCompletionModalProps> =
     }
   }
 
-  // --- Copy Link Handler ---
-  const handleCopyLink = async () => {
-    if (!publishedUrl) return
+  // --- Copy Link Handlers ---
+  const handleCopySubdomain = async () => {
+    if (!canonicalSubdomainUrl) return
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(publishedUrl)
-        setCopySuccess(true)
-        setTimeout(() => setCopySuccess(false), 2200)
+        await navigator.clipboard.writeText(canonicalSubdomainUrl)
+        setCopySubdomainSuccess(true)
+        setTimeout(() => setCopySubdomainSuccess(false), 2200)
       }
     } catch {
-      setCopySuccess(false)
+      setCopySubdomainSuccess(false)
+    }
+  }
+
+  const handleCopyDirect = async () => {
+    if (!directLiveUrl) return
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(directLiveUrl)
+        setCopyDirectSuccess(true)
+        setTimeout(() => setCopyDirectSuccess(false), 2200)
+      }
+    } catch {
+      setCopyDirectSuccess(false)
     }
   }
 
@@ -436,7 +465,7 @@ export const PortfolioCompletionModal: React.FC<PortfolioCompletionModalProps> =
                 </Button>
               </div>
             ) : publishState === 'published' ? (
-              /* Published State: View URL, Copy Link, Open Portfolio, and Unpublish option */
+              /* Published State: View Subdomain URL, Direct Route, and Open Portfolio */
               <div className="space-y-4 pt-2">
                 <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-3">
                   <div className="flex items-center justify-between">
@@ -449,32 +478,33 @@ export const PortfolioCompletionModal: React.FC<PortfolioCompletionModalProps> =
                     </span>
                   </div>
 
+                  {/* Primary Subdomain */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <div className="flex-1 bg-white px-3.5 py-2 rounded-xl border border-emerald-200 font-mono text-xs sm:text-sm text-[#111827] truncate font-semibold select-all">
-                      {publishedUrl}
+                      {canonicalSubdomainUrl}
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <Button
                         size="sm"
-                        variant={copySuccess ? 'outline' : 'secondary'}
-                        onClick={handleCopyLink}
+                        variant={copySubdomainSuccess ? 'outline' : 'secondary'}
+                        onClick={handleCopySubdomain}
                         leftIcon={
-                          copySuccess ? (
+                          copySubdomainSuccess ? (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
                           )
                         }
                         className={`text-xs font-semibold ${
-                          copySuccess ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : ''
+                          copySubdomainSuccess ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : ''
                         }`}
                       >
-                        {copySuccess ? 'Copied!' : 'Copy Link'}
+                        {copySubdomainSuccess ? 'Copied!' : 'Copy Link'}
                       </Button>
 
                       <a
-                        href={publishedUrl}
+                        href={directLiveUrl || canonicalSubdomainUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors shadow-xs"
@@ -484,6 +514,33 @@ export const PortfolioCompletionModal: React.FC<PortfolioCompletionModalProps> =
                       </a>
                     </div>
                   </div>
+
+                  {/* Direct Route fallback link (instant 100% live access) */}
+                  {directLiveUrl && (
+                    <div className="p-2.5 rounded-lg bg-white/95 border border-emerald-200 font-mono text-[11px] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[#475569]">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="font-sans font-bold text-emerald-800 shrink-0">Direct Route:</span>
+                        <span className="truncate text-[#111827] select-all">{directLiveUrl}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyDirect}
+                        className="inline-flex items-center gap-1 text-[11px] font-sans font-semibold text-[#2563EB] hover:text-[#1D4ED8] hover:underline shrink-0 cursor-pointer self-end sm:self-auto"
+                      >
+                        {copyDirectSuccess ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Copied Direct!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy Direct URL</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-[#64748B] pt-1">

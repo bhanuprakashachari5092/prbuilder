@@ -58,9 +58,22 @@ export function validateRedirectRoute(route: string | null | undefined): string 
  */
 export const getAuthRedirectBaseUrl = (): string => {
   if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin
+    const origin = window.location.origin
+    if (!origin.includes('prelevate') && !origin.includes('example.com')) {
+      return origin
+    }
   }
-  return import.meta.env.VITE_APP_URL || 'https://www.prbuilder.xyz'
+  const envUrl = import.meta.env.VITE_APP_URL
+  if (
+    envUrl &&
+    typeof envUrl === 'string' &&
+    envUrl.trim() &&
+    !envUrl.includes('example.com') &&
+    !envUrl.includes('prelevate')
+  ) {
+    return envUrl.trim().replace(/\/$/, '')
+  }
+  return 'https://www.prbuilder.xyz'
 }
 
 export const authService = {
