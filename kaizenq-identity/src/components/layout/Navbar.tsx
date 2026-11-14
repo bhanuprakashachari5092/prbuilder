@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Menu, X, ArrowRight, Shield, FileText, Globe, Sparkles } from 'lucide-react'
+import { Menu, X, ArrowRight, Shield, FileText, Globe, Sparkles, Layers } from 'lucide-react'
 import { PRLogo } from '../brand/PRLogo.tsx'
 import { Button } from '../ui/Button.tsx'
 import { Container } from '../ui/Container.tsx'
@@ -169,6 +169,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Portfolio Builder
             </button>
+            <a
+              href="/showroom.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-1.5 text-xs lg:text-sm font-medium text-[#64748B] hover:text-[#111827] transition-colors rounded-full hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>3D Showroom</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
+            </a>
           </nav>
 
           {/* Action CTAs */}
@@ -246,6 +255,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <Globe className="w-4 h-4 text-blue-600 shrink-0" />
                 <span>Portfolio Builder</span>
               </button>
+              <a
+                href="/showroom.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-medium text-slate-700 hover:text-cyan-600 hover:bg-cyan-50/60 rounded-xl transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Layers className="w-4 h-4 text-cyan-600 shrink-0" />
+                  <span>3D Showroom</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-100 text-cyan-700 font-bold">Live</span>
+              </a>
 
               <div className="pt-3 mt-1.5 border-t border-slate-200">
                 {isAdmin ? (
