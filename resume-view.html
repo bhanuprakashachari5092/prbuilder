@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alexander Vance | Staff Systems Engineer Resume | PR Builder</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cinematic: '#0a0a0a',
+            surface: '#111111',
+            indigoNeon: '#6366F1',
+            indigoGlow: 'rgba(99, 102, 241, 0.35)',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          boxShadow: {
+            'indigo-card': '0 10px 40px -10px rgba(99, 102, 241, 0.25)',
+            'indigo-btn': '0 0 25px rgba(99, 102, 241, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e1b4b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6366F1;
+    }
+
+    /* Scroll Animation Styles */
+    .fade-in-section {
+      opacity: 0;
+      transform: translateY(35px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+    .fade-in-section.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Timeline Glow Line */
+    .timeline-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 19px;
+      width: 2px;
+      background: linear-gradient(to bottom, #6366f1, #818cf8, rgba(99, 102, 241, 0.1));
+    }
+
+    /* Timeline Node Hover */
+    .timeline-node {
+      transition: all 0.3s ease;
+    }
+    .timeline-item:hover .timeline-node {
+      box-shadow: 0 0 25px rgba(99, 102, 241, 0.8);
+      transform: scale(1.15);
+      background-color: #818cf8;
+    }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-slate-100 min-h-screen relative overflow-x-hidden font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+
+  <!-- ========================================================================= -->
+  <!-- 3D BACKGROUND VIDEO LAYER & INTERACTIVE CANVAS BACKDROP                   -->
+  <!-- ========================================================================= -->
+  <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+    <!-- Autoplay Muted Looping 3D Background Video -->
+    <video
+      class="w-full h-full object-cover opacity-20 filter brightness-75 contrast-125"
+      autoplay
+      muted
+      loop
+      playsinline
+      poster="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230a0a0a'/></svg>"
+    >
+      <source src="bg-video.mp4" type="video/mp4">
+      <!-- Fallback High-Quality Dark 3D Abstract Loop -->
+      <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-dark-blue-particles-movement-41619-large.mp4" type="video/mp4">
+    </video>
+
+    <!-- Canvas 3D Indigo Particle Mesh -->
+    <canvas id="bg-canvas-indigo" class="absolute inset-0 w-full h-full opacity-50"></canvas>
+
+    <!-- Dark Gradient Overlays for Readability -->
+    <div class="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/70 via-[#0a0a0a]/85 to-[#0a0a0a]"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.15),transparent_70%)]"></div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN CONTENT CONTAINER                                                    -->
+  <!-- ========================================================================= -->
+  <div class="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 space-y-16">
+
+    <!-- ======================================================================= -->
+    <!-- 1. RESUME EXECUTIVE HEADER & ACTIONS                                    -->
+    <!-- ======================================================================= -->
+    <header class="fade-in-section rounded-3xl bg-[#0e0e12]/90 border border-indigo-500/25 p-6 sm:p-8 backdrop-blur-2xl shadow-indigo-card space-y-6">
+      
+      <!-- Top Badges Row -->
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-5">
+        <div class="flex items-center gap-2">
+          <span class="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-mono font-semibold flex items-center gap-1.5">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            <span>ATS OPTIMIZED: 98/100</span>
+          </span>
+          <span class="text-xs font-mono text-slate-500 hidden sm:inline">• VERIFIED CANONICAL</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            onclick="window.print()"
+            class="px-3.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] text-xs font-semibold text-slate-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+            title="Print or save as PDF"
+          >
+            <i data-lucide="printer" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>Export PDF</span>
+          </button>
+          
+          <button
+            onclick="copyAtsText()"
+            id="copy-btn"
+            class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-indigo-btn transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span id="copy-btn-text">Copy Plaintext</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Profile Banner -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div>
+          <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight">ALEXANDER VANCE</h1>
+          <p class="text-sm sm:text-lg font-mono text-indigo-400 font-semibold mt-1">
+            Staff Software Engineer &amp; Distributed Systems Architect
+          </p>
+        </div>
+
+        <div class="space-y-1.5 text-xs text-slate-400 font-mono sm:text-right shrink-0">
+          <p class="flex sm:justify-end items-center gap-2 text-slate-300">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-indigo-400"></i>
+            San Francisco, CA (Remote / Hybrid)
+          </p>
+          <p class="flex sm:justify-end items-center gap-2">
+            <i data-lucide="mail" class="w-3.5 h-3.5 text-indigo-400"></i>
+            alex@prbuilder.xyz
+          </p>
+          <p class="flex sm:justify-end items-center gap-2">
+            <i data-lucide="globe" class="w-3.5 h-3.5 text-indigo-400"></i>
+            www.prbuilder.xyz
+          </p>
+        </div>
+      </div>
+
+      <!-- Executive Summary -->
+      <div class="pt-2 text-slate-300 text-xs sm:text-sm leading-relaxed border-t border-white/[0.06]">
+        Senior systems engineer with 6+ years of production experience architecting real-time distributed platforms, WebGL shader visualization engines, and resilient cloud microservices. Proven track record reducing infrastructure latency by 40%+ while scaling systems to 450M+ requests/day.
+      </div>
+    </header>
+
+    <!-- ======================================================================= -->
+    <!-- 2. CORE TECHNICAL COMPETENCIES (CATEGORIZED SKILLS)                      -->
+    <!-- ======================================================================= -->
+    <section class="fade-in-section space-y-4">
+      <div class="flex items-center gap-2 text-indigo-400 text-xs font-mono font-bold uppercase tracking-wider">
+        <i data-lucide="cpu" class="w-4 h-4"></i> Technical Competencies Matrix
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Languages & Runtime -->
+        <div class="p-5 rounded-2xl bg-[#0e0e12]/80 border border-white/[0.08] space-y-2">
+          <h3 class="text-xs font-mono font-bold text-white flex items-center justify-between">
+            <span>LANGUAGES &amp; CORE</span>
+            <span class="text-[10px] text-indigo-400">Production</span>
+          </h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            TypeScript, JavaScript (ESNext), Rust, Go (Golang), Python, SQL (Postgres), GLSL Shaders, WebAssembly.
+          </p>
+        </div>
+
+        <!-- Frontend & 3D WebGL -->
+        <div class="p-5 rounded-2xl bg-[#0e0e12]/80 border border-white/[0.08] space-y-2">
+          <h3 class="text-xs font-mono font-bold text-white flex items-center justify-between">
+            <span>FRONTEND &amp; 3D SYSTEMS</span>
+            <span class="text-[10px] text-indigo-400">Expert</span>
+          </h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            React 19, Next.js 15, Three.js, WebGL 2.0, Tailwind CSS, Motion/React, HTML5 Canvas, WebSocket Streams.
+          </p>
+        </div>
+
+        <!-- Cloud, Databases & DevOps -->
+        <div class="p-5 rounded-2xl bg-[#0e0e12]/80 border border-white/[0.08] space-y-2">
+          <h3 class="text-xs font-mono font-bold text-white flex items-center justify-between">
+            <span>CLOUD &amp; INFRASTRUCTURE</span>
+            <span class="text-[10px] text-indigo-400">Scalable</span>
+          </h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            AWS (Lambda, ECS, S3, CloudFront), Docker, Supabase, Cloudflare Workers, Redis, Cashfree / Stripe Gateways.
+          </p>
+        </div>
+
+        <!-- Architecture & Practices -->
+        <div class="p-5 rounded-2xl bg-[#0e0e12]/80 border border-white/[0.08] space-y-2">
+          <h3 class="text-xs font-mono font-bold text-white flex items-center justify-between">
+            <span>ARCHITECTURE &amp; METHODOLOGIES</span>
+            <span class="text-[10px] text-indigo-400">Leadership</span>
+          </h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Microservices, Event-Driven Systems, Zero-Downtime Deployment, CI/CD Pipeline Automation, SLA Monitoring.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- 3. PROFESSIONAL EXPERIENCE TIMELINE (SCROLL-ANIMATED)                   -->
+    <!-- ======================================================================= -->
+    <section class="fade-in-section space-y-6">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-4">
+        <div class="flex items-center gap-2 text-indigo-400 text-xs font-mono font-bold uppercase tracking-wider">
+          <i data-lucide="briefcase" class="w-4 h-4"></i> Professional Experience Timeline
+        </div>
+        <span class="text-xs font-mono text-slate-500">2019 — PRESENT</span>
+      </div>
+
+      <!-- Relative Container for Connecting Neon Timeline -->
+      <div class="relative pl-10 space-y-10">
+        <!-- Glowing Timeline Connecting Line -->
+        <div class="timeline-line"></div>
+
+        <!-- Role 1 -->
+        <div class="timeline-item relative fade-in-section space-y-3">
+          <!-- Glowing Node -->
+          <div class="timeline-node absolute -left-10 top-1 w-5 h-5 rounded-full bg-indigo-500 border-4 border-[#0a0a0a] shadow-[0_0_15px_rgba(99,102,241,0.6)]"></div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div>
+              <h3 class="text-lg font-bold text-white">Staff Software Engineer</h3>
+              <p class="text-xs font-mono text-indigo-400 font-semibold">Aether Technologies Inc. • San Francisco, CA</p>
+            </div>
+            <span class="text-xs font-mono text-slate-400 bg-white/[0.03] px-2.5 py-1 rounded-md border border-white/[0.06] w-fit">
+              2023 — Present
+            </span>
+          </div>
+
+          <ul class="list-disc list-inside space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <li>Architected real-time multi-agent orchestration pipeline servicing <strong>450M+ telemetry calls per day</strong> with 99.98% availability.</li>
+            <li>Optimized 3D client rendering engines by replacing CPU bottlenecks with custom <strong>GLSL shaders</strong>, cutting frame drop rates by 68%.</li>
+            <li>Mentored a distributed engineering pod of 12 full-stack engineers and instituted automated performance regressions in GitHub CI.</li>
+          </ul>
+
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">Next.js 15</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.04] text-slate-400">Three.js</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.04] text-slate-400">Go</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.04] text-slate-400">AWS ECS</span>
+          </div>
+        </div>
+
+        <!-- Role 2 -->
+        <div class="timeline-item relative fade-in-section space-y-3">
+          <!-- Glowing Node -->
+          <div class="timeline-node absolute -left-10 top-1 w-5 h-5 rounded-full bg-indigo-600 border-4 border-[#0a0a0a]"></div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div>
+              <h3 class="text-lg font-bold text-white">Senior Full-Stack Engineer</h3>
+              <p class="text-xs font-mono text-indigo-400 font-semibold">Nexus Distributed Systems • Seattle, WA</p>
+            </div>
+            <span class="text-xs font-mono text-slate-400 bg-white/[0.03] px-2.5 py-1 rounded-md border border-white/[0.06] w-fit">
+              2021 — 2023
+            </span>
+          </div>
+
+          <ul class="list-disc list-inside space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <li>Led the frontend and gateway modernization from legacy monolith to decoupled <strong>TypeScript micro-frontends</strong>.</li>
+            <li>Decreased global Time-To-First-Byte (TTFB) from <strong>310ms to 48ms</strong> across 28 global Cloudflare edge POPs.</li>
+            <li>Constructed zero-loss database sync pipelines with <strong>Supabase</strong> and PostgreSQL CDC webhooks.</li>
+          </ul>
+
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">TypeScript</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.04] text-slate-400">PostgreSQL</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.04] text-slate-400">Supabase</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.04] text-slate-400">Docker</span>
+          </div>
+        </div>
+
+        <!-- Role 3 -->
+        <div class="timeline-item relative fade-in-section space-y-3">
+          <!-- Glowing Node -->
+          <div class="timeline-node absolute -left-10 top-1 w-5 h-5 rounded-full bg-indigo-700 border-4 border-[#0a0a0a]"></div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div>
+              <h3 class="text-lg font-bold text-white">Software Engineer II</h3>
+              <p class="text-xs font-mono text-indigo-400 font-semibold">Horizon Interactive • Austin, TX</p>
+            </div>
+            <span class="text-xs font-mono text-slate-400 bg-white/[0.03] px-2.5 py-1 rounded-md border border-white/[0.06] w-fit">
+              2019 — 2021
+            </span>
+          </div>
+
+          <ul class="list-disc list-inside space-y-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <li>Developed reactive collaboration workspaces with WebSocket-driven peer state synchronization.</li>
+            <li>Integrated secure payment processing using <strong>Cashfree &amp; Stripe SDKs</strong>, handling $1.8M ARR with zero checkout failures.</li>
+          </ul>
+
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">React</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.04] text-slate-400">Node.js</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.04] text-slate-400">WebSockets</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- 4. EDUCATION & VERIFIED CREDENTIALS                                     -->
+    <!-- ======================================================================= -->
+    <section class="fade-in-section space-y-4">
+      <div class="flex items-center gap-2 text-indigo-400 text-xs font-mono font-bold uppercase tracking-wider">
+        <i data-lucide="graduation-cap" class="w-4 h-4"></i> Education &amp; Certifications
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Education -->
+        <div class="p-5 rounded-2xl bg-[#0e0e12]/80 border border-white/[0.08] space-y-2">
+          <div class="text-[10px] font-mono text-indigo-400 uppercase">Degree</div>
+          <h3 class="text-base font-bold text-white">B.S. in Computer Science</h3>
+          <p class="text-xs text-slate-400">Stanford University • Honors (3.92 GPA)</p>
+          <p class="text-[11px] text-slate-500 font-mono">Specialization in Distributed Systems &amp; Graphics</p>
+        </div>
+
+        <!-- Certification -->
+        <div class="p-5 rounded-2xl bg-[#0e0e12]/80 border border-white/[0.08] space-y-2">
+          <div class="text-[10px] font-mono text-indigo-400 uppercase">Credentials</div>
+          <h3 class="text-base font-bold text-white">AWS Solutions Architect Pro</h3>
+          <p class="text-xs text-slate-400">Amazon Web Services • Credential ID: AWS-78942-PR</p>
+          <p class="text-[11px] text-slate-500 font-mono">Certified Kubernetes Administrator (CKA)</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- 5. FOOTER                                                               -->
+    <!-- ======================================================================= -->
+    <footer class="fade-in-section pt-10 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-mono">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+        <span>Alexander Vance • Resume View</span>
+      </div>
+      <div>
+        <span>Built on PR Builder Identity System • </span>
+        <a href="https://www.prbuilder.xyz" target="_blank" class="text-indigo-400 hover:underline">www.prbuilder.xyz</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT: Scroll Observers, Canvas 3D & Plaintext ATS Exporter          -->
+  <!-- ========================================================================= -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // 1. IntersectionObserver for Timeline & Section Animations
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '0px 0px -40px 0px'
+    });
+
+    document.querySelectorAll('.fade-in-section').forEach(el => observer.observe(el));
+
+    // 2. Copy Plaintext ATS Function
+    function copyAtsText() {
+      const atsPlaintext = `ALEXANDER VANCE
+San Francisco, CA | alex@prbuilder.xyz | https://www.prbuilder.xyz
+
+SUMMARY:
+Staff Software Engineer with 6+ years experience architecting real-time distributed platforms, WebGL shader visualization engines, and resilient cloud microservices. Scaled systems to 450M+ requests/day with sub-14ms edge latency.
+
+TECHNICAL SKILLS:
+- Languages: TypeScript, JavaScript, Rust, Go, Python, SQL, GLSL, WebAssembly
+- Frontend: React 19, Next.js 15, Three.js, WebGL 2.0, Tailwind CSS
+- Cloud & Infrastructure: AWS, Docker, Kubernetes, Supabase, Cloudflare, Redis
+
+EXPERIENCE:
+Staff Software Engineer — Aether Technologies Inc. (2023 - Present)
+- Architected real-time multi-agent orchestration pipeline servicing 450M+ calls/day.
+- Reduced 3D WebGL client rendering latency by 42% with custom GLSL shaders.
+- Mentored pod of 12 senior engineers with zero regression standards.
+
+Senior Full-Stack Engineer — Nexus Distributed Systems (2021 - 2023)
+- Modernized core monolith to decoupled TypeScript micro-frontends.
+- Decreased global TTFB from 310ms to 48ms across 28 edge POPs.
+
+EDUCATION:
+B.S. in Computer Science — Stanford University (Honors, 3.92 GPA)`;
+
+      navigator.clipboard.writeText(atsPlaintext).then(() => {
+        const btnText = document.getElementById('copy-btn-text');
+        btnText.textContent = 'Copied to Clipboard!';
+        setTimeout(() => {
+          btnText.textContent = 'Copy Plaintext';
+        }, 2500);
+      });
+    }
+
+    // 3. Canvas 3D Interactive Indigo Particle Mesh
+    const canvas = document.getElementById('bg-canvas-indigo');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let particles = [];
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.7;
+        this.vy = (Math.random() - 0.5) * 0.7;
+        this.radius = Math.random() * 1.5 + 0.8;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0) this.x = width;
+        if (this.x > width) this.x = 0;
+        if (this.y < 0) this.y = height;
+        if (this.y > height) this.y = 0;
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#6366F1';
+        ctx.fill();
+      }
+    }
+
+    const count = Math.min(Math.floor((window.innerWidth * window.innerHeight) / 15000), 70);
+    for (let i = 0; i < count; i++) {
+      particles.push(new Particle());
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw Connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 115) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(99, 102, 241, ${0.22 * (1 - dist / 115)})`;
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        }
+      }
+
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+
+      requestAnimationFrame(animate);
+    }
+    animate();
+  </script>
+</body>
+</html>
