@@ -261,8 +261,16 @@ export const authService = {
     const isCallbackPath = pathname === '/auth/callback' || pathname.startsWith('/auth/callback')
     const typeParam = searchParams.get('type') || hashParams.get('type')
 
+    const isRecovery =
+      typeParam === 'recovery' ||
+      searchParams.get('type') === 'recovery' ||
+      hashParams.get('type') === 'recovery' ||
+      hash.includes('type=recovery') ||
+      search.includes('type=recovery') ||
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('prbuilder_auth_mode') === 'recovery')
+
     // If explicitly a recovery flow and not on the OAuth callback path, let recovery handler process it
-    if (typeParam === 'recovery' && !isCallbackPath) {
+    if (isRecovery && !isCallbackPath) {
       return { isCallback: false, hasError: false, errorMessage: null, targetRoute: 'dashboard' }
     }
 
@@ -365,7 +373,22 @@ export const authService = {
       errorDesc?.toLowerCase().includes('invalid')
     )
 
-    const isRecovery = typeParam === 'recovery' || hash.includes('type=recovery') || search.includes('type=recovery')
+    const isRecovery =
+      typeParam === 'recovery' ||
+      searchParams.get('type') === 'recovery' ||
+      hashParams.get('type') === 'recovery' ||
+      hash.includes('type=recovery') ||
+      search.includes('type=recovery') ||
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('prbuilder_auth_mode') === 'recovery')
+
+    if (isRecovery && typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.setItem('prbuilder_auth_mode', 'recovery')
+      } catch {
+        // ignore
+      }
+    }
+
     const isSignupConfirmation = typeParam === 'signup' || hash.includes('type=signup') || search.includes('type=signup')
     const isOAuthCallback =
       isCallbackPath ||

@@ -57,6 +57,7 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const { targetRouteAfterAuth } = useApp()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -66,14 +67,15 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
 
   const isConfigured = isSupabaseConfigured()
 
-  // Detect recovery mode or expired links from URL hash/params
+  // Detect recovery mode or expired links from URL hash/params or persistent session flag
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const parsedAuth = authService.parseAuthUrl()
+      const isRecoverySession = sessionStorage.getItem('prbuilder_auth_mode') === 'recovery'
       if (parsedAuth.isExpiredOtp) {
         setIsExpiredLink(true)
         setErrorMsg('This verification or password reset link has expired or has already been used. Please request a new one below.')
-      } else if (parsedAuth.isRecovery) {
+      } else if (parsedAuth.isRecovery || isRecoverySession) {
         setMode('recovery')
       } else if (parsedAuth.isSignupConfirmation) {
         setSuccessMsg('Your email has been confirmed successfully! You can now sign in to your workspace.')
@@ -266,6 +268,12 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
           return
         }
 
+        try {
+          sessionStorage.removeItem('prbuilder_auth_mode')
+        } catch {
+          // ignore
+        }
+
         setSuccessMsg('Password updated successfully! Routing to your workspace...')
         setTimeout(() => {
           onSuccess?.()
@@ -328,7 +336,7 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
                 : mode === 'signin'
                 ? 'Sign in to access your cloud workspace, personal domain, and telemetry.'
                 : mode === 'recovery'
-                ? 'Choose a strong new password for your PR Builder account.'
+                ? `Choose a strong new password for ${user?.email || 'your PR Builder account'}.`
                 : 'Enter your account email to receive secure recovery instructions.'}
             </p>
           </div>
@@ -768,54 +776,72 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
 
         {/* Card Footer: Mode Switcher */}
         <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800 text-center">
-          {mode !== 'recovery' && (
-            <div className="text-xs text-slate-500">
-              {mode === 'forgot' ? (
-                <span>
-                  Remember your password?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorMsg(null)
-                      setSuccessMsg(null)
-                      setMode('signin')
-                    }}
-                    className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
-                  >
-                    Back to Sign In
-                  </button>
-                </span>
-              ) : mode === 'signup' ? (
-                <span>
-                  Already have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorMsg(null)
-                      setMode('signin')
-                    }}
-                    className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
-                  >
-                    Sign In
-                  </button>
-                </span>
-              ) : (
-                <span>
-                  New to PR Builder?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorMsg(null)
-                      setMode('signup')
-                    }}
-                    className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
-                  >
-                    Create Account
-                  </button>
-                </span>
-              )}
-            </div>
-          )}
+          <div className="text-xs text-slate-500">
+            {mode === 'recovery' ? (
+              <span>
+                Want to cancel password reset?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg(null)
+                    setSuccessMsg(null)
+                    try {
+                      sessionStorage.removeItem('prbuilder_auth_mode')
+                    } catch {
+                      // ignore
+                    }
+                    setMode('signin')
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
+                >
+                  Back to Sign In
+                </button>
+              </span>
+            ) : mode === 'forgot' ? (
+              <span>
+                Remember your password?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg(null)
+                    setSuccessMsg(null)
+                    setMode('signin')
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
+                >
+                  Back to Sign In
+                </button>
+              </span>
+            ) : mode === 'signup' ? (
+              <span>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg(null)
+                    setMode('signin')
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </span>
+            ) : (
+              <span>
+                New to PR Builder?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg(null)
+                    setMode('signup')
+                  }}
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
+                >
+                  Create Account
+                </button>
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -828,7 +854,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'signup',
   onSuccess,
 }) => {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'recovery'>(initialMode)
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'recovery'>(() => {
+    if (typeof window !== 'undefined') {
+      const parsed = authService.parseAuthUrl()
+      const isRecoverySession = sessionStorage.getItem('prbuilder_auth_mode') === 'recovery'
+      if (parsed.isRecovery || isRecoverySession) {
+        return 'recovery'
+      }
+    }
+    return initialMode
+  })
 
   if (!isOpen) return null
 
@@ -873,15 +908,45 @@ export const AuthPage: React.FC<{
   onSuccess?: (targetRoute?: string) => void
   onBackHome?: () => void
 }> = ({ initialMode = 'signin', onSuccess, onBackHome }) => {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'recovery'>(initialMode)
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'recovery'>(() => {
+    if (typeof window !== 'undefined') {
+      const parsed = authService.parseAuthUrl()
+      const isRecoverySession = sessionStorage.getItem('prbuilder_auth_mode') === 'recovery'
+      if (parsed.isRecovery || isRecoverySession) {
+        return 'recovery'
+      }
+      if (parsed.isExpiredOtp) {
+        return 'forgot'
+      }
+    }
+    return initialMode
+  })
   const { setCurrentRoute, targetRouteAfterAuth, setTargetRouteAfterAuth } = useApp()
   const { user, isLoading } = useAuth()
 
   const isOAuthCallback = typeof window !== 'undefined' && authService.parseOAuthCallback().isCallback
 
+  // Ensure recovery mode stays active if URL or persistent session flag indicates it
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const parsed = authService.parseAuthUrl()
+      const isRecoverySession = sessionStorage.getItem('prbuilder_auth_mode') === 'recovery'
+      if (parsed.isRecovery || isRecoverySession) {
+        setMode('recovery')
+      }
+    }
+  }, [])
+
   // If user is already authenticated and not in password recovery, redirect to destination
   useEffect(() => {
-    if (!isLoading && user && !isOAuthCallback && mode !== 'recovery') {
+    const isRecoveryMode =
+      mode === 'recovery' ||
+      (typeof window !== 'undefined' && (
+        authService.parseAuthUrl().isRecovery ||
+        sessionStorage.getItem('prbuilder_auth_mode') === 'recovery'
+      ))
+
+    if (!isLoading && user && !isOAuthCallback && !isRecoveryMode) {
       const dest = targetRouteAfterAuth || 'dashboard'
       setTargetRouteAfterAuth(null)
       setCurrentRoute(dest)

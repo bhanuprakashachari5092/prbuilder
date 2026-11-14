@@ -78,6 +78,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentRoute('home')
         }
       }
+
+      if (event === 'PASSWORD_RECOVERY') {
+        try {
+          sessionStorage.setItem('prbuilder_auth_mode', 'recovery')
+        } catch {
+          // ignore
+        }
+        setCurrentRoute('auth')
+      }
+
       setIsLoading(false)
     })
 
@@ -87,6 +97,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isConfigured, fetchProfile, setCurrentRoute])
 
   const handleSignOut = async () => {
+    try {
+      sessionStorage.removeItem('prbuilder_auth_mode')
+    } catch {
+      // ignore
+    }
     await authService.signOut()
     setUser(null)
     setSession(null)
