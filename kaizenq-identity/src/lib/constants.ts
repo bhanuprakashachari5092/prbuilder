@@ -4,20 +4,26 @@
  */
 
 export const SITE_CONFIG = {
-  name: 'KaizenQ Identity',
-  shortName: 'KaizenQ',
-  brandPartner: 'Shaivika Groups',
-  collaborationText: 'Shaivika Groups × KaizenQ',
-  tagline: 'Your Skills. Your Story. Your Digital Identity.',
+  name: 'PR Builder',
+  shortName: 'PR Builder',
+  brandPartner: 'Shaivikait Technologies',
+  parentCompany: 'Shaivikait Technologies',
+  parentCompanyUrl: 'https://www.shaivikaittechnologies.in',
+  poweredByText: 'Powered by Shaivikait Technologies',
+  poweredByUrl: 'https://www.shaivikaittechnologies.in',
+  collaborationText: 'Powered by Shaivikait Technologies (www.shaivikaittechnologies.in)',
+  tagline: 'ATS Resumes, 3D Portfolios & Verified Custom Domains',
   description:
-    'Create a professional resume, showcase your projects, and build a portfolio you can share with the world.',
-  version: '1.0.0',
+    'PR Builder by Shaivikait Technologies — Build an ATS-optimized resume, cinematic 3D portfolio, and personal custom domain.',
+  version: '2.4.0',
   cohortSize: '350 Participants Rollout',
-  eventTag: 'Shaivika Groups × KaizenQ • FUSION 2K26',
+  eventTag: 'Shaivikait Technologies • PR Builder',
   links: {
-    github: 'https://github.com/kaizenq',
-    twitter: 'https://twitter.com/kaizenq_id',
-    discord: 'https://discord.gg/kaizenq',
+    website: 'https://www.prbuilder.xyz',
+    parentWebsite: 'https://www.shaivikaittechnologies.in',
+    github: 'https://github.com/bhanuprakashachari5092/prbuilder',
+    twitter: 'https://twitter.com/prbuilder_xyz',
+    discord: 'https://discord.gg/prbuilder',
   },
 } as const
 

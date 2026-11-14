@@ -1,0 +1,18 @@
+# ==============================================================================
+# PR Builder Robots.txt (www.prbuilder.xyz)
+# Powered by Shaivikait Technologies (www.shaivikaittechnologies.in)
+# ==============================================================================
+
+User-agent: *
+Allow: /
+Allow: /assets/
+Allow: /portfolio-view.html
+Allow: /resume-view.html
+Allow: /showroom.html
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+
+# Host & Sitemap Directives
+Host: https://www.prbuilder.xyz
+Sitemap: https://www.prbuilder.xyz/sitemap.xml

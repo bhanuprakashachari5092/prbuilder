@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- Primary Homepage & Identity Studio -->
+  <url>
+    <loc>https://www.prbuilder.xyz/</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.00</priority>
+  </url>
+
+  <!-- ATS Resume Builder Studio -->
+  <url>
+    <loc>https://www.prbuilder.xyz/resume</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <!-- 3D Interactive Portfolio Studio -->
+  <url>
+    <loc>https://www.prbuilder.xyz/portfolio</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <!-- User Authentication & Sign-in Gateway -->
+  <url>
+    <loc>https://www.prbuilder.xyz/auth</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <!-- Domain Studio & Subdomain Publishing -->
+  <url>
+    <loc>https://www.prbuilder.xyz/publish</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Figma-Style 3D Showroom Prototype -->
+  <url>
+    <loc>https://www.prbuilder.xyz/showroom.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- Standalone 3D Portfolio Sub-Page -->
+  <url>
+    <loc>https://www.prbuilder.xyz/portfolio-view.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- Standalone ATS Resume Sub-Page -->
+  <url>
+    <loc>https://www.prbuilder.xyz/resume-view.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+</urlset>
