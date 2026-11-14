@@ -298,6 +298,21 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
               </span>
             </div>
 
+            {mode === 'forgot' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorMsg(null)
+                  setSuccessMsg(null)
+                  setMode('signin')
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline mb-3 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Sign In</span>
+              </button>
+            )}
+
             <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
               {mode === 'signup'
                 ? 'Create Your Student Identity'
@@ -367,8 +382,8 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
             </div>
           )}
 
-          {/* Google OAuth Quick Button */}
-          {mode !== 'recovery' && (
+          {/* Google OAuth Quick Button (Sign In & Sign Up only) */}
+          {(mode === 'signin' || mode === 'signup') && (
             <div className="mb-4">
               <button
                 type="button"
@@ -533,17 +548,28 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
               )}
 
               {mode === 'forgot' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSuccessMsg(null)
-                    setMode('signin')
-                  }}
-                  className="text-xs mt-3"
-                >
-                  Return to Sign In
-                </Button>
+                <div className="space-y-3 pt-2 text-center max-w-sm mx-auto">
+                  <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left">
+                    <p className="font-semibold text-blue-900 dark:text-blue-300 mb-1">Didn't see the email?</p>
+                    <ul className="list-disc list-inside space-y-0.5 text-slate-600 dark:text-slate-400">
+                      <li>Check your <strong>Spam</strong> or <strong>Promotions</strong> folder.</li>
+                      <li>Allow 1-2 minutes for email dispatch.</li>
+                      <li>Make sure the email address is spelled correctly.</li>
+                    </ul>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSuccessMsg(null)
+                      setMode('signin')
+                    }}
+                    className="text-xs"
+                  >
+                    Return to Sign In
+                  </Button>
+                </div>
               )}
             </motion.div>
           ) : (
@@ -733,7 +759,7 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
                     ? 'Sign In to Workspace'
                     : mode === 'recovery'
                     ? 'Update Password & Enter Workspace'
-                    : 'Send Recovery Instructions'}
+                    : 'Send Password Reset Link'}
                 </Button>
               </div>
             </form>
@@ -742,13 +768,28 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
 
         {/* Card Footer: Mode Switcher */}
         <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800 text-center">
-          {/* Mode Switcher */}
           {mode !== 'recovery' && (
             <div className="text-xs text-slate-500">
-              {mode === 'signup' ? (
+              {mode === 'forgot' ? (
+                <span>
+                  Remember your password?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMsg(null)
+                      setSuccessMsg(null)
+                      setMode('signin')
+                    }}
+                    className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
+                  >
+                    Back to Sign In
+                  </button>
+                </span>
+              ) : mode === 'signup' ? (
                 <span>
                   Already have an account?{' '}
                   <button
+                    type="button"
                     onClick={() => {
                       setErrorMsg(null)
                       setMode('signin')
@@ -762,13 +803,14 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
                 <span>
                   New to PR Builder?{' '}
                   <button
+                    type="button"
                     onClick={() => {
                       setErrorMsg(null)
                       setMode('signup')
                     }}
                     className="text-blue-600 dark:text-blue-400 hover:underline font-bold cursor-pointer"
                   >
-                    Create Profile
+                    Create Account
                   </button>
                 </span>
               )}
