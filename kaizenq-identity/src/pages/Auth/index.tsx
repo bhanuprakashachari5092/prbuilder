@@ -287,26 +287,30 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
     }
   }
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-      {/* LEFT COLUMN: 3D Perspective Browser Iframes & Live Mockups (Visible on Desktop) */}
-      <div className="hidden lg:block lg:col-span-6 p-6 xl:p-8 bg-gradient-to-b from-slate-950 to-slate-900 border-r border-slate-800/80">
-        <ThreeDPreviewFrames />
-      </div>
+  const isSingleCol = mode === 'forgot' || mode === 'recovery'
 
-      {/* RIGHT COLUMN: Full Animated Login / Profile Creation Card */}
-      <div className="col-span-1 lg:col-span-6 p-6 sm:p-8 flex flex-col justify-between">
+  return (
+    <div className={isSingleCol ? 'w-full' : 'grid grid-cols-1 lg:grid-cols-12 gap-0'}>
+      {/* LEFT COLUMN: 3D Perspective Browser Iframes & Live Mockups (Visible on Desktop for Sign In & Sign Up) */}
+      {!isSingleCol && (
+        <div className="hidden lg:block lg:col-span-6 p-6 xl:p-8 bg-gradient-to-b from-slate-950 to-slate-900 border-r border-slate-800/80">
+          <ThreeDPreviewFrames />
+        </div>
+      )}
+
+      {/* RIGHT COLUMN: Full Animated Login / Profile Creation / Recovery Card */}
+      <div className={isSingleCol ? 'w-full p-6 sm:p-8 flex flex-col justify-between' : 'col-span-1 lg:col-span-6 p-6 sm:p-8 flex flex-col justify-between'}>
         <div>
           {/* Brand Header */}
           <div className="text-center sm:text-left mb-6">
             <div className="flex items-center justify-between mb-3">
               <PRLogo size="md" />
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
                 <ShieldCheck className="w-3.5 h-3.5" /> Identity &amp; Auth
               </span>
             </div>
 
-            {mode === 'forgot' && (
+            {mode === 'forgot' && !successMsg && (
               <button
                 type="button"
                 onClick={() => {
@@ -556,9 +560,11 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
               )}
 
               {mode === 'forgot' && (
-                <div className="space-y-3 pt-2 text-center max-w-sm mx-auto">
-                  <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left">
-                    <p className="font-semibold text-blue-900 dark:text-blue-300 mb-1">Didn't see the email?</p>
+                <div className="space-y-4 pt-2 text-center max-w-sm mx-auto">
+                  <div className="p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/70 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed text-left">
+                    <p className="font-semibold text-blue-900 dark:text-blue-300 mb-1 flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5 shrink-0" /> Didn't see the email?
+                    </p>
                     <ul className="list-disc list-inside space-y-0.5 text-slate-600 dark:text-slate-400">
                       <li>Check your <strong>Spam</strong> or <strong>Promotions</strong> folder.</li>
                       <li>Allow 1-2 minutes for email dispatch.</li>
@@ -566,17 +572,31 @@ export const AuthCardContent: React.FC<AuthCardContentProps> = ({
                     </ul>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSuccessMsg(null)
-                      setMode('signin')
-                    }}
-                    className="text-xs"
-                  >
-                    Return to Sign In
-                  </Button>
+                  <div className="flex flex-col gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuccessMsg(null)
+                        setErrorMsg(null)
+                        setMode('signin')
+                      }}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-xs shadow-sm transition-all cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Return to Sign In</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuccessMsg(null)
+                        setErrorMsg(null)
+                      }}
+                      className="text-[11px] text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium cursor-pointer transition-colors pt-0.5"
+                    >
+                      Didn't get the email? Try again
+                    </button>
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -880,7 +900,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 15 }}
         transition={{ type: 'spring', duration: 0.5, bounce: 0.15 }}
-        className="w-full max-w-5xl rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 shadow-2xl backdrop-blur-2xl relative overflow-hidden my-auto"
+        className={`w-full ${mode === 'forgot' || mode === 'recovery' ? 'max-w-md' : 'max-w-5xl'} rounded-3xl bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 shadow-2xl backdrop-blur-2xl relative overflow-hidden my-auto transition-all duration-300`}
       >
         {/* Close Modal Button */}
         <button
@@ -998,7 +1018,7 @@ export const AuthPage: React.FC<{
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[128px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-[128px] pointer-events-none" />
 
-      <div className="w-full max-w-5xl relative z-10">
+      <div className={`w-full ${mode === 'forgot' || mode === 'recovery' ? 'max-w-md' : 'max-w-5xl'} relative z-10 transition-all duration-300`}>
         <div className="mb-6 flex items-center justify-between">
           <button
             onClick={handleBack}
