@@ -44,14 +44,6 @@
     <priority>0.85</priority>
   </url>
 
-  <!-- Figma-Style 3D Showroom Prototype -->
-  <url>
-    <loc>https://www.prbuilder.xyz/showroom.html</loc>
-    <lastmod>2026-11-14</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-
   <!-- Standalone 3D Portfolio Sub-Page -->
   <url>
     <loc>https://www.prbuilder.xyz/portfolio-view.html</loc>
